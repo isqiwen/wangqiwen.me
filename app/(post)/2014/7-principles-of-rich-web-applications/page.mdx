@@ -62,7 +62,10 @@ This becomes particularly relevant to point out considering the rise of JavaScri
 
 Consider the scenario where the user navigates to `http://app.com/orders/` after following a link or typing in the URL. At the time your application receives and processes the request, it already has important *information* about what's going to be shown on that page. It could, for example, pre-fetch the orders from the database and include them in the response. In the case of most SPAs, a blank page and a `<script>` tag is returned instead, and another roundtrip will be made to get the scripts contents. So that then another roundtrip can be made to get the data needed for rendering.
 
-![Analysis of the HTML sent by the server for every page of a SPA in the wild](/images/7-principles-of-rich-web-applications/kpfLbf6dha.png)
+<Image
+    alt="Analysis of the HTML sent by the server for every page of a SPA in the wild"
+    src="/images/7-principles-of-rich-web-applications/kpfLbf6dha.png"
+/>
 
 At this point many developers consciously accept this tradeoff because they make sure the extra network hops happen only once for their users by sending the proper cache headers in the script and stylesheet responses. The general consensus is that it's an acceptable tradeoff because once the bundle is loaded, you can then handle most of the user interaction (like transitions to other pages) without requesting additional pages or scripts.
 
