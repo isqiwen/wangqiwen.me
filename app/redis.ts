@@ -5,7 +5,7 @@ if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
 }
 
 const redis = new Redis({
-    url: "https://distinct-glider-39002.upstash.io",
+    url: "https://grown-dragon-27464.upstash.io",
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
