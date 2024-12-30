@@ -60,7 +60,4 @@ module.exports = withMDX({
         },
         ];
     },
-    env: {
-        UPSTASH_REDIS_REST_TOKEN: "AWtIAAIjcDFlMzFiNzVlMGU1Y2I0MDJmOWNkZjdkYjcxYTkxYjFhZnAxMA",
-    },
 });
