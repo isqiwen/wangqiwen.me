@@ -1,3 +1,5 @@
+"use client";
+
 export const themeEffect = function (): "dark" | "light" {
   const pref = localStorage.getItem("userThemePreference");
 

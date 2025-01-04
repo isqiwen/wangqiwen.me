@@ -1,12 +1,8 @@
 import { Redis } from "@upstash/redis";
 
-if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
-    throw new Error("UPSTASH_REDIS_REST_TOKEN is not defined");
-}
+process.env.UPSTASH_REDIS_REST_URL = process.env.KV_REST_API_URL;
+process.env.UPSTASH_REDIS_REST_TOKEN = process.env.KV_REST_API_TOKEN;
 
-const redis = new Redis({
-    url: "https://grown-dragon-27464.upstash.io",
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+const redis = Redis.fromEnv();
 
 export default redis;
