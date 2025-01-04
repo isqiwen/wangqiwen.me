@@ -10,22 +10,22 @@ export async function generateStaticParams() {
 }
 
 // fonts
-const fontsDir = join(process.cwd(), "fonts");
+const fontsDir = join(process.cwd(), "public", "fonts");
 
 const inter300 = readFileSync(
-  join(fontsDir, "inter-latin-300-normal.woff")
+  join(fontsDir, "inter-latin-300-normal.woff2")
 );
 
 const inter500 = readFileSync(
-  join(fontsDir, "inter-latin-500-normal.woff")
+  join(fontsDir, "inter-latin-500-normal.woff2")
 );
 
 const inter600 = readFileSync(
-  join(fontsDir, "inter-latin-600-normal.woff")
+  join(fontsDir, "inter-latin-600-normal.woff2")
 );
 
 const robotoMono400 = readFileSync(
-  join(fontsDir, "roboto-mono-latin-400-normal.woff")
+  join(fontsDir, "roboto-mono-latin-400-normal.woff2")
 );
 
 export async function GET(_req: Request, props) {
