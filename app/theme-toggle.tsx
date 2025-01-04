@@ -41,7 +41,7 @@ export function ThemeToggle({ language }: ThemeProps) {
   }, [onStorageChange]);
 
   if (preference == null) {
-    return;
+    return null;
   }
 
   return (
