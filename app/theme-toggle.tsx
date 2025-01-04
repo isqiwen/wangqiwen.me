@@ -22,7 +22,7 @@ export function ThemeToggle({ language }: ThemeProps) {
 
   useEffect(() => {
     const savedPreference = localStorage.getItem("userThemePreference");
-    setPreference(savedPreference || "light");
+    setPreference(savedPreference || "auto");
     setCurrentTheme(themeEffect());
   }, [onMediaChange]);
 
