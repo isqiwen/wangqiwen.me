@@ -74,6 +74,8 @@ export async function Image({
 
     const factor = dividedBy / 100;
 
+    console.log(src + ":" + factor);
+
     return (
       <span className="my-5 flex flex-col items-center">
         <NextImage
