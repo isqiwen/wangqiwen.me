@@ -34,13 +34,13 @@ export async function Image({
           process.env.VERCEL_URL &&
           process.env.NODE_ENV === "production"
         ) {
+          console.log(src + ":url:" + "https://" + process.env.VERCEL_URL + src);
           imageBuffer = Buffer.from(
             await fetch("https://" + process.env.VERCEL_URL + src).then(res =>
               res.arrayBuffer()
             )
           );
         } else {
-          console.log(join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "public", src));
           imageBuffer = await readFile(
             new URL(
               join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "public", src)
