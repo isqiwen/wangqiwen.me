@@ -34,7 +34,6 @@ export async function Image({
           process.env.VERCEL_URL &&
           process.env.NODE_ENV === "production"
         ) {
-          console.log(src + ":url:" + "https://" + process.env.VERCEL_URL + src);
           imageBuffer = Buffer.from(
             await fetch("https://" + process.env.VERCEL_URL + src).then(res =>
               res.arrayBuffer()
@@ -73,8 +72,6 @@ export async function Image({
     }
 
     const factor = dividedBy / 100;
-
-    console.log(src + ":" + width + ":" + height + ":" + factor);
 
     return (
       <span className="my-5 flex flex-col items-center">

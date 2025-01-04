@@ -3,12 +3,16 @@
 import { useSelectedLayoutSegments } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { ago } from "time-ago";
+import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import useSWR from "swr";
 import type { Post } from "@/app/get-posts";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export function Header({ posts }: { posts: Post[] }) {
+export function Header({ posts, language }: { posts: Post[], language : "zh" | "en" }) {
+  const useChinese = language === "zh";
+
   const segments = useSelectedLayoutSegments();
   // segments can be:
   // date/post
@@ -42,7 +46,7 @@ export function Header({ posts }: { posts: Post[] }) {
                 className="hover:text-gray-800 dark:hover:text-gray-400"
                 target="_blank"
               >
-                @Wang QiWen
+                {useChinese ? "@王琦文" : "@Wang QiWen"}
               </a>
             </span>
 
@@ -54,7 +58,7 @@ export function Header({ posts }: { posts: Post[] }) {
            * In practice this is not an issue because we revalidate the entire page over time
            * and because we will move this to a server component with template.tsx at some point */}
           <span suppressHydrationWarning={true}>
-            {post.date} ({ago(post.date, true)} ago)
+            <PostDate post={post} useChinese={useChinese} />
           </span>
         </span>
 
@@ -63,6 +67,7 @@ export function Header({ posts }: { posts: Post[] }) {
             id={post.id}
             mutate={mutate}
             defaultValue={post.viewsFormatted}
+            useChinese={useChinese}
           />
         </span>
       </p>
@@ -70,7 +75,7 @@ export function Header({ posts }: { posts: Post[] }) {
   );
 }
 
-function Views({ id, mutate, defaultValue }) {
+function Views({ id, mutate, defaultValue, useChinese }) {
   const views = defaultValue;
   const didLogViewRef = useRef(false);
 
@@ -88,5 +93,35 @@ function Views({ id, mutate, defaultValue }) {
     }
   });
 
-  return <>{views != null ? <span>{views} views</span> : null}</>;
+  return <>{views != null ? <span>{views} { useChinese ? "查看数" : "views" }</span> : null}</>;
+}
+
+function formatDateToChinese(date: string) {
+  return format(new Date(date), "yyyy年 M月 d日", { locale: zhCN });
+}
+
+function formatAgoToChinese(agoText: string) {
+  return agoText.replace(/(\d+)y/, "$1");
+}
+
+function PostDate({
+  post,
+  useChinese,
+}: {
+  post: { date: string };
+  useChinese: boolean;
+}) {
+  if (useChinese) {
+    return (
+      <>
+        {formatDateToChinese(post.date)} ({formatAgoToChinese(ago(post.date, true))} 年前)
+      </>
+    );
+  } else {
+    return (
+      <>
+        {post.date} ({ago(post.date, true)} ago)
+      </>
+    );
+  }
 }
