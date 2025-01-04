@@ -1,36 +1,19 @@
-export const themeEffect = function () {
-  // `null` preference implies system (auto)
-  const pref = localStorage.getItem("theme");
+export const themeEffect = function (): "dark" | "light" {
+  const pref = localStorage.getItem("userThemePreference");
 
-  if (null === pref) {
-    document.documentElement.classList.add("theme-system");
+  let mode: "dark" | "light";
+
+  if (pref === "dark") {
+    mode = "dark";
+  } else if (pref === "light") {
+    mode = "light";
   } else {
-    document.documentElement.classList.remove("theme-system");
+    const hour = new Date().getHours();
+    mode = hour >= 6 && hour < 18 ? "light" : "dark";
   }
 
-  if (
-    pref === "dark" ||
-    (!pref && window.matchMedia("(prefers-color-scheme: dark)").matches)
-  ) {
-    document.documentElement.classList.add("pause-transitions");
-    document.documentElement.classList.add("dark");
-    document.head
-      .querySelector("meta[name=theme-color]")
-      ?.setAttribute("content", "#1c1c1c");
+  document.documentElement.classList.remove("dark", "light");
+  document.documentElement.classList.add(mode);
 
-    requestAnimationFrame(() => {
-      document.documentElement.classList.remove("pause-transitions");
-    });
-    return "dark";
-  } else {
-    document.documentElement.classList.add("pause-transitions");
-    document.documentElement.classList.remove("dark");
-    document.head
-      .querySelector("meta[name=theme-color]")
-      ?.setAttribute("content", "#fcfcfc");
-    requestAnimationFrame(() => {
-      document.documentElement.classList.remove("pause-transitions");
-    });
-    return "light";
-  }
+  return mode;
 };

@@ -1,4 +1,5 @@
 import sizeOf from "image-size";
+import { fileURLToPath } from "url";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import { Caption } from "./caption";
@@ -39,9 +40,10 @@ export async function Image({
             )
           );
         } else {
+          console.log(join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "public", src));
           imageBuffer = await readFile(
             new URL(
-              join(import.meta.url, "..", "..", "..", "..", "public", src)
+              join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "public", src)
             ).pathname
           );
         }

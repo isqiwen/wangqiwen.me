@@ -7,9 +7,14 @@ import useSWR from "swr";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
+interface PostsProps {
+  posts: any[];
+  language: "en" | "zh";
+}
+
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export function Posts({ posts: initialPosts }) {
+export function Posts({ posts: initialPosts, language }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const { data: posts } = useSWR("/api/posts", fetcher, {
     fallbackData: initialPosts,
@@ -30,6 +35,8 @@ export function Posts({ posts: initialPosts }) {
     ]);
   }
 
+  const useChinese = language === "zh";
+
   return (
     <Suspense fallback={null}>
       <main className="max-w-2xl font-mono m-auto mb-10 text-sm">
@@ -42,10 +49,10 @@ export function Posts({ posts: initialPosts }) {
                 : ""
             }`}
           >
-            date
+            {useChinese ? "日期" : "date"}
             {sort[0] === "date" && sort[1] === "asc" && "↑"}
           </button>
-          <span className="grow pl-2">title</span>
+          <span className="grow pl-2">{useChinese ? "标题" : "title"}</span>
           <button
             onClick={sortViews}
             className={`
@@ -58,7 +65,7 @@ export function Posts({ posts: initialPosts }) {
                   }
                 `}
           >
-            views
+            {useChinese ? "查看数" : "views"}
             {sort[0] === "views" ? (sort[1] === "asc" ? "↑" : "↓") : ""}
           </button>
         </header>

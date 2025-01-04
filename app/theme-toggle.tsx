@@ -3,12 +3,15 @@ import { useEffect, useState, useCallback } from "react";
 import { themeEffect } from "./theme-effect";
 import va from "@vercel/analytics";
 
-export function ThemeToggle() {
-  // a `null` preference implies auto
-  const [preference, setPreference] = useState<undefined | null | string>(
-    undefined
-  );
-  const [currentTheme, setCurrentTheme] = useState<null | string>(null);
+type ThemeProps = {
+  language: 'en' | 'zh';
+};
+
+export function ThemeToggle({ language }: ThemeProps) {
+  const useChinese = language === "zh";
+
+  const [preference, setPreference] = useState<string | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("light");
   const [isHovering, setIsHovering] = useState(false);
   const [isHoveringOverride, setIsHoveringOverride] = useState(false);
 
@@ -18,32 +21,28 @@ export function ThemeToggle() {
   }, []);
 
   useEffect(() => {
-    setPreference(localStorage.getItem("theme"));
-    const current = themeEffect();
-    setCurrentTheme(current);
-
-    const matchMedia = window.matchMedia("(prefers-color-scheme: dark)");
-    matchMedia.addEventListener("change", onMediaChange);
-    return () => matchMedia.removeEventListener("change", onMediaChange);
+    const savedPreference = localStorage.getItem("userThemePreference");
+    setPreference(savedPreference || "light");
+    setCurrentTheme(themeEffect());
   }, [onMediaChange]);
 
   const onStorageChange = useCallback(
     (event: StorageEvent) => {
-      if (event.key === "theme") setPreference(event.newValue);
-    },
-    [setPreference]
+      if (event.key === "userThemePreference") setPreference(event.newValue);
+    }, [setPreference]
   );
 
   // when the preference changes, whether from this tab or another,
   // we want to recompute the current theme
-  useEffect(() => {
-    setCurrentTheme(themeEffect());
-  }, [preference]);
 
   useEffect(() => {
     window.addEventListener("storage", onStorageChange);
     return () => window.removeEventListener("storage", onStorageChange);
-  });
+  }, [onStorageChange]);
+
+  if (preference == null) {
+    return;
+  }
 
   return (
     <>
@@ -60,58 +59,46 @@ export function ThemeToggle() {
             md:inline
           `}
         >
-          {preference === null
-            ? "System"
-            : preference === "dark"
-            ? "Dark"
-            : "Light"}
+          {
+            preference === "auto"
+              ? (useChinese ? "自动" : "Auto")
+              : preference === "dark"
+              ? (useChinese ? "深色" : "Dark")
+              : (useChinese ? "浅色" : "Light")
+          }
         </span>
       )}
 
-      {/*
-        the `theme-auto:` plugin is registered in `tailwind.config.js` and
-        works similarly to the `dark:` prefix, which depends on the `theme-effect.ts` behavior
-      */}
       <button
         aria-label="Toggle theme"
-        className={`inline-flex ${
-          isHovering && !isHoveringOverride
-            ? "bg-gray-200 dark:bg-[#313131]"
-            : ""
-        } active:bg-gray-300 transition-[background-color] dark:active:bg-[#242424] rounded-sm p-2 
-          bg-gray-200
-          dark:bg-[#313131]
-          theme-system:!bg-inherit
-          [&_.sun-icon]:hidden
-          dark:[&_.moon-icon]:hidden
-          dark:[&_.sun-icon]:inline
-        }`}
+        className={`inline-flex items-center justify-center rounded-sm p-2 transition-[background-color]
+          bg-gray-200 dark:bg-[#313131]
+          hover:bg-gray-300 dark:hover:bg-[#424242]
+          active:bg-gray-300 dark:active:bg-[#242424]
+          ${isHovering && !isHoveringOverride ? "bg-gray-300 dark:bg-[#242424]" : ""}
+        `}
         onClick={ev => {
           ev.preventDefault();
           // prevent the hover state from rendering
           setIsHoveringOverride(true);
 
-          let newPreference: string | null =
-            currentTheme === "dark" ? "light" : "dark";
-          const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-            .matches
-            ? "dark"
-            : "light";
+          let newPreference: string;
 
-          // if the user has their current OS theme as a preference (instead of auto)
-          // and they click the toggle, we want to switch to reset the preference
-          if (preference !== null && systemTheme === currentTheme) {
-            newPreference = null;
-            localStorage.removeItem("theme");
+          if (preference === "dark") {
+            newPreference = "light";
+          } else if (preference === "light") {
+            newPreference = "auto";
           } else {
-            localStorage.setItem("theme", newPreference);
+            newPreference = "dark";
           }
 
-          va.track("Theme toggle", {
-            Theme: newPreference === null ? "system" : newPreference,
-          });
-
+          localStorage.setItem("userThemePreference", newPreference);
           setPreference(newPreference);
+          setCurrentTheme(themeEffect());
+
+          va.track("Theme toggle", {
+            Theme: newPreference,
+          });
         }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => {
@@ -119,12 +106,13 @@ export function ThemeToggle() {
           setIsHoveringOverride(false);
         }}
       >
-        <span className="sun-icon">
-          <SunIcon />
-        </span>
-        <span className="moon-icon">
+        {preference === "auto" ? (
+          <AutoIcon />
+        ) : preference === "dark" ? (
           <MoonIcon />
-        </span>
+        ) : (
+          <SunIcon />
+        )}
       </button>
     </>
   );
@@ -164,6 +152,26 @@ function SunIcon(props: any) {
         stroke="none"
         fill="currentColor"
       />
+    </svg>
+  );
+}
+
+function AutoIcon(props: any) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   );
 }

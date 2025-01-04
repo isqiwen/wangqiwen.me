@@ -1,9 +1,11 @@
+import { getLanguageFromCookies } from '@/utils/get-language';
 import { Posts } from "./posts";
 import { getPosts } from "./get-posts";
 
 export const revalidate = 60;
 
 export default async function Home() {
+  const language = await getLanguageFromCookies();
   const posts = await getPosts();
-  return <Posts posts={posts} />;
+  return <Posts posts={posts} language={language} />;
 }
