@@ -8,15 +8,15 @@ import { join } from "path";
 const fontsDir = join(process.cwd(), "public", "fonts");
 
 const inter300 = readFileSync(
-  join(fontsDir, "inter-latin-300-normal.woff2")
+  join(fontsDir, "inter-latin-300-normal.woff")
 );
 
 const inter600 = readFileSync(
-  join(fontsDir, "inter-latin-600-normal.woff2")
+  join(fontsDir, "inter-latin-600-normal.woff")
 );
 
 const robotoMono400 = readFileSync(
-  join(fontsDir, "roboto-mono-latin-400-normal.woff2")
+  join(fontsDir, "roboto-mono-latin-400-normal.woff")
 );
 
 export async function GET() {
