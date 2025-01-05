@@ -1,14 +1,12 @@
 "use client";
+
 import { useEffect, useState, useCallback } from "react";
 import { themeEffect } from "./theme-effect";
 import va from "@vercel/analytics";
+import useDictionary from "@/locales/dictionary-hook";
 
-type ThemeProps = {
-  language: 'en' | 'zh';
-};
-
-export function ThemeToggle({ language }: ThemeProps) {
-  const useChinese = language === "zh";
+export function ThemeToggle() {
+  const dict = useDictionary();
 
   const [preference, setPreference] = useState<string | null>(null);
   const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("light");
@@ -61,10 +59,10 @@ export function ThemeToggle({ language }: ThemeProps) {
         >
           {
             preference === "auto"
-              ? (useChinese ? "自动" : "Auto")
+              ? dict.theme.auto
               : preference === "dark"
-              ? (useChinese ? "深色" : "Dark")
-              : (useChinese ? "浅色" : "Light")
+              ? dict.theme.dark
+              : dict.theme.light
           }
         </span>
       )}

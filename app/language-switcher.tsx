@@ -1,18 +1,19 @@
 "use client";
 
 import { usePathname, useRouter } from 'next/navigation';
+import Cookies from 'js-cookie'
 
 interface LanguageSwitcherProps {
-  language: 'en' | 'zh';
+  currentLanguage: 'en' | 'zh';
 }
 
-export function LanguageSwitcher({ language }: LanguageSwitcherProps) {
+export function LanguageSwitcher({ currentLanguage }: LanguageSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   const toggleLanguage = () => {
-    const newLanguage = language === 'zh' ? 'en' : 'zh';
-    document.cookie = `language=${newLanguage}; path=/`;
+    const newLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+    Cookies.set('language', newLanguage);
 
     if (pathname === '/') {
       router.refresh();
@@ -34,7 +35,7 @@ export function LanguageSwitcher({ language }: LanguageSwitcherProps) {
         onClick={toggleLanguage}
         className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] rounded-sm p-2 transition-[background-color]"
     >
-        {language === 'zh' ? '英语' : 'Chinese'}
+        {currentLanguage === 'zh' ? '英语' : 'Chinese'}
     </button>
   );
 }

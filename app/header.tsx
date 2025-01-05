@@ -2,28 +2,26 @@ import { ThemeToggle } from "./themes/theme-toggle";
 import { Logo } from "./logo";
 import Link from "next/link";
 import { LanguageSwitcher } from './language-switcher';
+import { getDictionary, getLocale } from "@/locales/dictionary"
 
-type HeaderProps = {
-  language: 'en' | 'zh';
-};
+export async function Header() {
+  const dict = await getDictionary();
+  const language = await getLocale();
 
-export function Header({ language }: HeaderProps) {
-  const useChinese = language === "zh";
-  
   return (
     <header className="flex mb-5 md:mb-10 items-center">
       <Logo />
 
       <nav className="font-mono text-xs grow justify-end items-center flex gap-1 md:gap-3">
-        <ThemeToggle language={language} />
+        <ThemeToggle />
 
-        <LanguageSwitcher language={language} />
+        <LanguageSwitcher currentLanguage={language} />
 
         <Link
           href="/about"
           className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] rounded-sm p-2 transition-[background-color]"
         >
-          { useChinese ? "关于" : "About"}
+          { dict.about }
         </Link>
         <a
           href="https://twitter.com/QiWenWang1"
@@ -31,8 +29,8 @@ export function Header({ language }: HeaderProps) {
           className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] items-center p-2 rounded-sm transition-[background-color] whitespace-nowrap -mr-2"
         >
           <TweetIcon style={{ marginRight: 4 }} />
-          {useChinese ? '关注我' : 'Follow'}
-          {!useChinese && <span className="hidden md:inline">&nbsp;me</span>}
+          { dict.follow }
+          {<span className="hidden md:inline">&nbsp;{ dict.me }</span>}
         </a>
       </nav>
     </header>
