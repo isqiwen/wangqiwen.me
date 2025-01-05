@@ -1,10 +1,13 @@
-import "./globals.css";
+import "@/styles/globals.css";
 import { getLanguageFromCookies } from '@/utils/get-language';
-import { themeEffect } from "./theme-effect";
+import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
+import { getDictionary } from '@/locales/dictionary'
+import ProgressBar from "@/components/ProgressBar/ProgressBar"
+import DictionaryProvider from '@/locales/DictionaryProvider'
 
 export const metadata = {
   title: "Wang QiWen's blog",
@@ -36,6 +39,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const language = await getLanguageFromCookies();
+  const dictionary = await getDictionary()
 
   return (
     <html
@@ -50,13 +54,16 @@ export default async function RootLayout({
         />
       </head>
 
-        <body className="dark:text-gray-100 max-w-2xl m-auto">
-        <main className="p-6 pt-3 md:pt-6 min-h-screen">
-          <Header language={language} />
-          {children}
-        </main>
+      <body className="dark:text-gray-100 max-w-2xl m-auto">
+        <ProgressBar />
+        <DictionaryProvider dictionary={dictionary}>
+          <main className="p-6 pt-3 md:pt-6 min-h-screen">
+            <Header language={language} />
+            {children}
+          </main>
 
-        <Footer language={language} />
+          <Footer language={language} />
+        </DictionaryProvider>
         <Analytics />
       </body>
     </html>

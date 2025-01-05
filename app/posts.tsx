@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
 import useSWR from "swr";
+import useDictionary from "@/locales/dictionary-hook";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
@@ -36,6 +37,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
   }
 
   const useChinese = language === "zh";
+  const dict = useDictionary();
 
   return (
     <Suspense fallback={null}>
@@ -49,10 +51,10 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
                 : ""
             }`}
           >
-            {useChinese ? "日期" : "date"}
+            { dict.post.date }
             {sort[0] === "date" && sort[1] === "asc" && "↑"}
           </button>
-          <span className="grow pl-2">{useChinese ? "标题" : "title"}</span>
+          <span className="grow pl-2">{ dict.post.title }</span>
           <button
             onClick={sortViews}
             className={`
@@ -65,7 +67,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
                   }
                 `}
           >
-            {useChinese ? "查看数" : "views"}
+            { dict.post.views }
             {sort[0] === "views" ? (sort[1] === "asc" ? "↑" : "↓") : ""}
           </button>
         </header>

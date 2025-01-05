@@ -1,4 +1,4 @@
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeToggle } from "./themes/theme-toggle";
 import { Logo } from "./logo";
 import Link from "next/link";
 import { LanguageSwitcher } from './language-switcher';
@@ -12,7 +12,7 @@ export function Header({ language }: HeaderProps) {
   
   return (
     <header className="flex mb-5 md:mb-10 items-center">
-      <Logo language={language} />
+      <Logo />
 
       <nav className="font-mono text-xs grow justify-end items-center flex gap-1 md:gap-3">
         <ThemeToggle language={language} />

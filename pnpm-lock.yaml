@@ -30,6 +30,9 @@ importers:
       '@fontsource/roboto-mono':
         specifier: ^5.1.1
         version: 5.1.1
+      '@formatjs/intl-localematcher':
+        specifier: ^0.5.4
+        version: 0.5.10
       '@mdx-js/react':
         specifier: ^2.3.0
         version: 2.3.0(react@19.0.0-rc-02c0e824-20241028)
@@ -57,15 +60,27 @@ importers:
       date-fns:
         specifier: ^2.29.3
         version: 2.29.3
+      i18next:
+        specifier: ^23.12.2
+        version: 23.16.8
       image-size:
         specifier: ^1.0.2
         version: 1.0.2
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
       load-script:
         specifier: ^1.0.0
         version: 1.0.0
+      negotiator:
+        specifier: ^0.6.3
+        version: 0.6.4
       next:
         specifier: 15.1.2
         version: 15.1.2(react-dom@19.0.0-rc-02c0e824-20241028(react@19.0.0-rc-02c0e824-20241028))(react@19.0.0-rc-02c0e824-20241028)
+      next-nprogress-bar:
+        specifier: ^2.3.13
+        version: 2.4.3
       react:
         specifier: 19.0.0-rc-02c0e824-20241028
         version: 19.0.0-rc-02c0e824-20241028
@@ -135,6 +150,10 @@ packages:
     resolution: {integrity: sha512-xwII0//EObnq89Ji5AKYQaRYiW/nZ3llSv29d49IuxPhKbtJoLP+9QUUZ4nVragQVtaVGeZrpB+ZtG/Pdy/POw==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/runtime@7.26.0':
+    resolution: {integrity: sha512-FDSOghenHTiToteC/QRlv2q3DhPZ/oOXTBoirfWNx1Cx3TMVcGWQtMMmQcSvb/JjpNeGzx8Pq/b4fKEJuWm1sw==}
+    engines: {node: '>=6.9.0'}
+
   '@emnapi/runtime@1.3.1':
     resolution: {integrity: sha512-kEBmG8KyqtxJZv+ygbEim+KCGtIq1fC22Ms3S4ziXmYKm8uyoLX0MHONVKwp+9opg390VaKRNt4a7A9NwmpNhw==}
 
@@ -179,6 +198,9 @@ packages:
 
   '@fontsource/roboto-mono@5.1.1':
     resolution: {integrity: sha512-3Uwg4ZsoYlqzpGgPQn5bpBjCBX7HISbEmbycmrdyzK/dcMChlsmf0VGBjSs2AZV+UK7kLCUFYnCakXYz6VTIUA==}
+
+  '@formatjs/intl-localematcher@0.5.10':
+    resolution: {integrity: sha512-af3qATX+m4Rnd9+wHcjJ4w2ijq+rAVP3CCinJQvFv1kgSu1W6jypUmvleJxcewdxmutM8dmIRZFxO/IQBZmP2Q==}
 
   '@humanwhocodes/config-array@0.11.13':
     resolution: {integrity: sha512-JSBDMiDKSzQVngfRjOdFXgFfklaXI4K9nLF49Auh21lmBWRLIK3+xTErTWD4KU54pb6coM6ESE7Awz/FNU3zgQ==}
@@ -1214,6 +1236,9 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
+  i18next@23.16.8:
+    resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
+
   ignore@5.2.4:
     resolution: {integrity: sha512-MAb38BcSbH0eHNBxn7ql2NH/kX33OkB3lZ1BNdh7ENeRChHTYsTvWrMubiIAMNS2llXEEgZ1MUOBtXChP3kaFQ==}
     engines: {node: '>= 4'}
@@ -1399,6 +1424,10 @@ packages:
     resolution: {integrity: sha512-QAdOptna2NYiSSpv0O/BwoHBSmz4YhpzJHyi+fnMRTXFjp7B8i/YG5Z8IfusxB1ufjcD2Sre1F3R+nX3fvy7gg==}
     hasBin: true
 
+  js-cookie@3.0.5:
+    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
+    engines: {node: '>=14'}
+
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -1511,6 +1540,13 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
+  negotiator@0.6.4:
+    resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
+    engines: {node: '>= 0.6'}
+
+  next-nprogress-bar@2.4.3:
+    resolution: {integrity: sha512-069WmFALkpCyKiIy89q6dWcPiHhUmXh6EZz6oLpOS7zsIunNOYLscloKFALjIQNCOg3ZO9dWRPowYW4ULho4HQ==}
+
   next@15.1.2:
     resolution: {integrity: sha512-nLJDV7peNy+0oHlmY2JZjzMfJ8Aj0/dd3jCwSZS8ZiO5nkQfcZRqDrRN3U5rJtqVTQneIOGZzb6LCNrk7trMCQ==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
@@ -1551,6 +1587,9 @@ packages:
   normalize-range@0.1.2:
     resolution: {integrity: sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==}
     engines: {node: '>=0.10.0'}
+
+  nprogress-v2@1.0.4:
+    resolution: {integrity: sha512-HPhTEgqsQMFXXuaftvu6bevqEXvcQ/hogvkAswlcNyS9eRGjvo7wZY1O4H3aZS4Uq8oWSO6sL3dOj6Oq/ZJN5A==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -1774,6 +1813,9 @@ packages:
 
   regenerator-runtime@0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
+
+  regenerator-runtime@0.14.1:
+    resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
 
   regexp.prototype.flags@1.5.1:
     resolution: {integrity: sha512-sy6TXMN+hnP/wMy+ISxg3krXx7BAtWVO4UouuCN/ziM9UEne0euamVNafDfvC83bRNr95y0V5iijeDQFUNpvrg==}
@@ -2176,6 +2218,10 @@ snapshots:
     dependencies:
       regenerator-runtime: 0.13.11
 
+  '@babel/runtime@7.26.0':
+    dependencies:
+      regenerator-runtime: 0.14.1
+
   '@emnapi/runtime@1.3.1':
     dependencies:
       tslib: 2.5.0
@@ -2220,6 +2266,10 @@ snapshots:
   '@fontsource/noto-sans-sc@5.1.1': {}
 
   '@fontsource/roboto-mono@5.1.1': {}
+
+  '@formatjs/intl-localematcher@0.5.10':
+    dependencies:
+      tslib: 2.8.1
 
   '@humanwhocodes/config-array@0.11.13':
     dependencies:
@@ -3419,6 +3469,10 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  i18next@23.16.8:
+    dependencies:
+      '@babel/runtime': 7.26.0
+
   ignore@5.2.4: {}
 
   ignore@5.3.2: {}
@@ -3603,6 +3657,8 @@ snapshots:
 
   jiti@1.18.2: {}
 
+  js-cookie@3.0.5: {}
+
   js-tokens@4.0.0: {}
 
   js-yaml@4.1.0:
@@ -3701,6 +3757,12 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
+  negotiator@0.6.4: {}
+
+  next-nprogress-bar@2.4.3:
+    dependencies:
+      nprogress-v2: 1.0.4
+
   next@15.1.2(react-dom@19.0.0-rc-02c0e824-20241028(react@19.0.0-rc-02c0e824-20241028))(react@19.0.0-rc-02c0e824-20241028):
     dependencies:
       '@next/env': 15.1.2
@@ -3735,6 +3797,8 @@ snapshots:
   normalize-path@3.0.0: {}
 
   normalize-range@0.1.2: {}
+
+  nprogress-v2@1.0.4: {}
 
   object-assign@4.1.1: {}
 
@@ -3956,6 +4020,8 @@ snapshots:
       which-builtin-type: 1.1.3
 
   regenerator-runtime@0.13.11: {}
+
+  regenerator-runtime@0.14.1: {}
 
   regexp.prototype.flags@1.5.1:
     dependencies:

@@ -1,0 +1,18 @@
+{
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "auto": "Auto"
+  },
+  "post": {
+    "date": "date",
+    "title": "title",
+    "views": "views"
+  },
+  "language": {
+    "english": "English",
+    "chinese": "Chinese"
+  },
+  "about": "About",
+  "wangqiwen": "Wang QiWen"
+}
