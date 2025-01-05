@@ -70,13 +70,13 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
           </button>
         </header>
 
-        <List posts={posts} sort={sort} />
+        <List posts={posts} sort={sort} useChinese={useChinese} />
       </main>
     </Suspense>
   );
 }
 
-function List({ posts, sort }) {
+function List({ posts, sort, useChinese }) {
   // sort can be ["date", "desc"] or ["views", "desc"] for example
   const sortedPosts = useMemo(() => {
     const [sortKey, sortDirection] = sort;
@@ -120,7 +120,7 @@ function List({ posts, sort }) {
                     </span>
                   )}
 
-                  <span className="grow dark:text-gray-100">{post.title}</span>
+                  <span className="grow dark:text-gray-100">{useChinese ? post.zh_title : post.title}</span>
 
                   <span className="text-gray-500 dark:text-gray-500 text-xs">
                     {post.viewsFormatted}

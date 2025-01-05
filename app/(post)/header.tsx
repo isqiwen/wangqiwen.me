@@ -34,7 +34,7 @@ export function Header({ posts, language }: { posts: Post[], language : "zh" | "
   return (
     <>
       <h1 className="text-2xl font-bold mb-1 dark:text-gray-100">
-        {post.title}
+        {useChinese ? post.zh_title : post.title}
       </h1>
 
       <p className="font-mono flex text-xs text-gray-500 dark:text-gray-500">

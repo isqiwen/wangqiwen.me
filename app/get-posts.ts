@@ -6,6 +6,7 @@ export type Post = {
   id: string;
   date: string;
   title: string;
+  zh_title: string;
   views: number;
   viewsFormatted: string;
 };

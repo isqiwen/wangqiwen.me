@@ -50,7 +50,7 @@ export default async function RootLayout({
         />
       </head>
 
-      <body className="dark:text-gray-100 max-w-2xl m-auto">
+        <body className="dark:text-gray-100 max-w-2xl m-auto">
         <main className="p-6 pt-3 md:pt-6 min-h-screen">
           <Header language={language} />
           {children}
