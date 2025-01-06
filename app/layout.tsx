@@ -5,8 +5,8 @@ import { Analytics } from "./analytics";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
+import ProgressBar from "./progress-bar"
 import { getDictionary } from '@/locales/dictionary'
-import ProgressBar from "@/components/ProgressBar/ProgressBar"
 import DictionaryProvider from '@/locales/DictionaryProvider'
 
 export const metadata = {
