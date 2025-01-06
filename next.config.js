@@ -5,6 +5,7 @@ module.exports = withMDX({
   experimental: {
     mdxRs: true,
   },
+  transpilePackages: ["three"],
   images: {
     remotePatterns: [
       {
