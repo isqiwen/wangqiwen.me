@@ -32,6 +32,7 @@
     ],
     "strictNullChecks": true
   },
+  "typeRoots": ["react-three-fiber.d.ts"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",
