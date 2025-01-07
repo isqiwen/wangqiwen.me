@@ -1,6 +1,6 @@
 import { Header } from "./header";
 import { getPosts } from "../get-posts";
-import { getLanguageFromCookies } from '@/utils/get-language';
+import { getLanguageFromCookies } from '@/utils/server/get-language';
 
 export const revalidate = 60;
 

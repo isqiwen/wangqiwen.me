@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { setCustomHeaders } from '@/utils/response-helpers';
+import { setCustomHeaders } from '@/utils/server/response-helpers';
 
 const initialDate = Date.now();
 

@@ -36,7 +36,7 @@
     "swr": "^2.1.2",
     "three": "^0.172.0",
     "time-ago": "^0.2.1",
-    "vercel": "^39.2.5",
+    "vercel": "^39.2.6",
     "word-wrap": "^1.2.5"
   },
   "devDependencies": {

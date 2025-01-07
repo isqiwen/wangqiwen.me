@@ -1,6 +1,6 @@
 import "@/styles/globals.css";
 import { Suspense } from "react";
-import { getLanguageFromCookies } from '@/utils/get-language';
+import { getLanguageFromCookies } from '@/utils/server/get-language';
 import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";
 import { Header } from "./header";
