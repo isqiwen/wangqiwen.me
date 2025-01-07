@@ -59,13 +59,11 @@ export default async function RootLayout({
         <ProgressBar />
         <DictionaryProvider dictionary={dictionary}>
           <main className="p-6 pt-3 md:pt-6 min-h-screen">
-            <Suspense fallback={<div>Loading...</div>}>
-              <Header dict={dictionary} language={language} />
-            </Suspense>
+            <Header dict={dictionary} language={language} />
             {children}
           </main>
 
-          <Footer />
+          <Footer dict={dictionary} />
         </DictionaryProvider>
         <Analytics />
       </body>

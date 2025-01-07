@@ -1,8 +1,6 @@
 import { A } from "./(post)/components/a";
-import { getDictionary } from "@/locales/dictionary"
 
-export async function Footer() {
-  const dict = await getDictionary();
+export function Footer({ dict }: { dict: any }) {
 
   return (
     <footer className="p-6 pt-3 pb-6 flex text-xs text-center mt-3 dark:text-gray-400 text-gray-500 font-mono">
