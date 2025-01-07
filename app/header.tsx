@@ -26,7 +26,6 @@ export function Header({ dict, language }: { dict: any; language: "zh" | "en" })
         >
           <TweetIcon style={{ marginRight: 4 }} />
           { dict.follow }
-          {<span className="hidden md:inline">&nbsp;{ dict.me }</span>}
         </a>
       </nav>
     </header>
