@@ -2,12 +2,8 @@ import { ThemeToggle } from "./themes/theme-toggle";
 import { Logo } from "./logo";
 import Link from "next/link";
 import { LanguageSwitcher } from './language-switcher';
-import { getDictionary, getLocale } from "@/locales/dictionary"
 
-export async function Header() {
-  const dict = await getDictionary();
-  const language = await getLocale();
-
+export function Header({ dict, language }: { dict: any; language: "zh" | "en" }) {
   return (
     <header className="flex mb-5 md:mb-10 items-center">
       <Logo />

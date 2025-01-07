@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { Suspense } from "react";
 import { getLanguageFromCookies } from '@/utils/get-language';
 import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";
@@ -58,7 +59,9 @@ export default async function RootLayout({
         <ProgressBar />
         <DictionaryProvider dictionary={dictionary}>
           <main className="p-6 pt-3 md:pt-6 min-h-screen">
-            <Header />
+            <Suspense fallback={<div>Loading...</div>}>
+              <Header dict={dictionary} language={language} />
+            </Suspense>
             {children}
           </main>
 
