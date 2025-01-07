@@ -1,5 +1,6 @@
 import { type ReactNode, Suspense } from "react";
-import { Tweet, getTweet } from "react-tweet/api";
+import { type Tweet, getTweet } from "react-tweet/api";
+
 import {
   EmbeddedTweet,
   TweetNotFound,
