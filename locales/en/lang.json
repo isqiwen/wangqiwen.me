@@ -19,5 +19,6 @@
   "me": "me",
   "source": "Source",
   "previous": "Previous",
-  "next": "Next"
+  "next": "Next",
+  "pagination": "Showing {start}-{end} of {total}"
 }

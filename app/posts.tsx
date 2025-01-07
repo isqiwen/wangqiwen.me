@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import useSWR from "swr";
 import Cookies from 'js-cookie'
 import useDictionary from "@/locales/dictionary-hook";
+import { formatString } from "@/utils/common/string-helper"
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
@@ -18,7 +19,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 export function Posts({ posts: initialPosts }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1); // 当前页码
-  const itemsPerPage = 5; // 每页显示的项目数量
+  const itemsPerPage = 20; // 每页显示的项目数量
 
   const { data: posts } = useSWR("/api/posts", fetcher, {
     fallbackData: initialPosts,
@@ -81,6 +82,15 @@ export function Posts({ posts: initialPosts }: PostsProps) {
 
         {/* 列表渲染 */}
         <List posts={paginatedPosts} sort={sort} useChinese={useChinese} />
+
+        {/* 当前页信息 */}
+        <p className="text-gray-500 dark:text-gray-400 text-xs text-center mt-4">
+          {formatString(dict.pagination, {
+            start: (currentPage - 1) * itemsPerPage + 1,
+            end: Math.min(currentPage * itemsPerPage, posts.length),
+            total: posts.length,
+          })}
+        </p>
 
         {/* 分页控件 */}
         <Pagination
