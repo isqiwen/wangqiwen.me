@@ -43,7 +43,27 @@ function looksLikeFrontmatter(nodes) {
   return hasKeyValue;
 }
 
+function isWhitespaceText(node) {
+  return node?.type === "text" && typeof node.value === "string" && !node.value.trim();
+}
+
 const SKIP_TYPES = new Set(["mdxjsEsm", "mdxFlowExpression"]);
+
+function isSkippable(node) {
+  return node && (SKIP_TYPES.has(node.type) || isWhitespaceText(node));
+}
+
+function trimWhitespaceAround(children, startIndex, endIndex) {
+  while (startIndex > 0 && isWhitespaceText(children[startIndex - 1])) {
+    startIndex--;
+  }
+
+  while (endIndex + 1 < children.length && isWhitespaceText(children[endIndex + 1])) {
+    endIndex++;
+  }
+
+  return [startIndex, endIndex];
+}
 
 function removeFrontmatter() {
   return tree => {
@@ -54,7 +74,7 @@ function removeFrontmatter() {
     const { children } = tree;
 
     let startIndex = 0;
-    while (startIndex < children.length && SKIP_TYPES.has(children[startIndex].type)) {
+    while (startIndex < children.length && isSkippable(children[startIndex])) {
       startIndex++;
     }
 
@@ -65,7 +85,8 @@ function removeFrontmatter() {
     const first = children[startIndex];
 
     if (first.type === "yaml") {
-      children.splice(startIndex, 1);
+      const [start, end] = trimWhitespaceAround(children, startIndex, startIndex);
+      children.splice(start, end - start + 1);
       return;
     }
 
@@ -85,13 +106,16 @@ function removeFrontmatter() {
       return;
     }
 
-    const between = children.slice(startIndex + 1, closingIndex);
+    const between = children
+      .slice(startIndex + 1, closingIndex)
+      .filter(node => !isSkippable(node));
 
     if (!looksLikeFrontmatter(between)) {
       return;
     }
 
-    children.splice(startIndex, closingIndex - startIndex + 1);
+    const [start, end] = trimWhitespaceAround(children, startIndex, closingIndex);
+    children.splice(start, end - start + 1);
   };
 }
 
