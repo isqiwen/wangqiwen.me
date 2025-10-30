@@ -6,5 +6,7 @@ export const revalidate = 60;
 
 export default async function Home() {
   const posts = await getPosts();
-  return <Posts posts={posts} />;
+  const language = await getLanguageFromCookies();
+
+  return <Posts posts={posts} language={language} />;
 }
