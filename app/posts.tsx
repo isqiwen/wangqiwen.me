@@ -45,12 +45,26 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
   const useChinese = language === "zh";
   const dict = useDictionary();
 
+  const sortedPosts = useMemo(() => {
+    const [sortKey, sortDirection] = sort;
+
+    return [...posts].sort((a, b) => {
+      if (sortKey === "date") {
+        return sortDirection === "desc"
+          ? new Date(b.date).getTime() - new Date(a.date).getTime()
+          : new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+
+      return sortDirection === "desc" ? b.views - a.views : a.views - b.views;
+    });
+  }, [posts, sort]);
+
   // 计算当前页显示的数据
   const paginatedPosts = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return posts.slice(startIndex, endIndex);
-  }, [posts, currentPage, itemsPerPage]);
+    return sortedPosts.slice(startIndex, endIndex);
+  }, [sortedPosts, currentPage, itemsPerPage]);
 
   // 计算总页数
   const totalPages = Math.ceil(posts.length / itemsPerPage);
@@ -83,7 +97,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
         </header>
 
         {/* 列表渲染 */}
-        <List posts={paginatedPosts} sort={sort} useChinese={useChinese} />
+        <List posts={paginatedPosts} useChinese={useChinese} />
 
         {/* 当前页信息 */}
         <p className="text-gray-500 dark:text-gray-400 text-xs text-center mt-4">
@@ -152,37 +166,15 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   );
 }
 
-function List({
-  posts,
-  sort,
-  useChinese,
-}: {
-  posts: Post[];
-  sort: SortSetting;
-  useChinese: boolean;
-}) {
-  // sort can be ["date", "desc"] or ["views", "desc"] for example
-  const sortedPosts = useMemo(() => {
-    const [sortKey, sortDirection] = sort;
-    return [...posts].sort((a, b) => {
-      if (sortKey === "date") {
-        return sortDirection === "desc"
-          ? new Date(b.date).getTime() - new Date(a.date).getTime()
-          : new Date(a.date).getTime() - new Date(b.date).getTime();
-      } else {
-        return sortDirection === "desc" ? b.views - a.views : a.views - b.views;
-      }
-    });
-  }, [posts, sort]);
-
+function List({ posts, useChinese }: { posts: Post[]; useChinese: boolean }) {
   return (
     <ul>
-      {sortedPosts.map((post, i: number) => {
+      {posts.map((post, i: number) => {
         const year = getYear(post.date);
         const firstOfYear =
-          !sortedPosts[i - 1] || getYear(sortedPosts[i - 1].date) !== year;
+          !posts[i - 1] || getYear(posts[i - 1].date) !== year;
         const lastOfYear =
-          !sortedPosts[i + 1] || getYear(sortedPosts[i + 1].date) !== year;
+          !posts[i + 1] || getYear(posts[i + 1].date) !== year;
 
         return (
           <li key={post.id}>
