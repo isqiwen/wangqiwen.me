@@ -1,4 +1,8 @@
-const withMDX = require("@next/mdx")();
+const withMDX = require("@next/mdx")({
+  options: {
+    remarkPlugins: [require.resolve("./utils/remark/remove-frontmatter")],
+  },
+});
 
 module.exports = withMDX({
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
