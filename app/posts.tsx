@@ -4,24 +4,26 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
 import useSWR from "swr";
-import Cookies from 'js-cookie'
 import useDictionary from "@/locales/dictionary-hook";
-import { formatString } from "@/utils/common/string-helper"
+import { formatString } from "@/utils/common/string-helper";
+import type { Post } from "./get-posts";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
 interface PostsProps {
-  posts: any[];
+  posts: Post[];
+  language: "zh" | "en";
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) =>
+  fetch(url).then((res) => res.json() as Promise<Post[]>);
 
-export function Posts({ posts: initialPosts }: PostsProps) {
+export function Posts({ posts: initialPosts, language }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1); // 当前页码
   const itemsPerPage = 20; // 每页显示的项目数量
 
-  const { data: posts } = useSWR("/api/posts", fetcher, {
+  const { data: posts = initialPosts } = useSWR<Post[]>("/api/posts", fetcher, {
     fallbackData: initialPosts,
     refreshInterval: 5000,
   });
@@ -40,7 +42,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
     ]);
   }
 
-  const useChinese = Cookies.get("language") === "zh";
+  const useChinese = language === "zh";
   const dict = useDictionary();
 
   // 计算当前页显示的数据
@@ -150,7 +152,15 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   );
 }
 
-function List({ posts, sort, useChinese }) {
+function List({
+  posts,
+  sort,
+  useChinese,
+}: {
+  posts: Post[];
+  sort: SortSetting;
+  useChinese: boolean;
+}) {
   // sort can be ["date", "desc"] or ["views", "desc"] for example
   const sortedPosts = useMemo(() => {
     const [sortKey, sortDirection] = sort;
