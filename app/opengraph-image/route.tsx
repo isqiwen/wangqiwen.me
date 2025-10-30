@@ -82,7 +82,7 @@ export async function GET() {
   );
 }
 
-// lil helper to convert posts.json `date` to full year
+// lil helper to convert the formatted date to a full year
 function getYear(date: string) {
   return new Date(date).getFullYear();
 }

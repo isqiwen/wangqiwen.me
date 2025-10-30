@@ -57,7 +57,7 @@ vercel --prod         # production deployment
 - `mdx-components.ts` – Mapping of MDX elements to React components used in blog posts.
 
 ## Future development ideas
-- Replace the static `posts.json` index with a build step that scans MDX files automatically.
+- Add automated checks that validate MDX front matter so the post index stays healthy.
 - Add visual regression tests or Storybook stories for `app/(post)/components` to safeguard design changes.
 - Expand the CI pipeline with `pnpm lint` and `pnpm build` to catch issues before merging pull requests.
 - Implement local mocks for the `/api/view` endpoint so contributors can test analytics features without an Upstash account.
