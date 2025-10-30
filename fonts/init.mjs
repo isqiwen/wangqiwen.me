@@ -3,6 +3,10 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.join(__dirname, "..");
 
 // Define the source paths
 const fontPaths = [
@@ -23,24 +27,46 @@ const fontPaths = [
   "node_modules/@fontsource-variable/noto-sans-sc/files/noto-sans-sc-latin-wght-normal.woff2",
 ];
 
-// Ensure the destination directory exists
-const ensureDirectoryExistence = filePath => {
-  const dirname = path.dirname(filePath);
-  if (fs.existsSync(dirname)) {
-    return true;
+const missingFonts = [];
+
+const ensureDirectoryExistence = directoryPath => {
+  if (fs.existsSync(directoryPath)) {
+    return;
   }
-  ensureDirectoryExistence(dirname);
-  fs.mkdirSync(dirname, { recursive: true });
+
+  fs.mkdirSync(directoryPath, { recursive: true });
 };
 
-// Copy each font file
-fontPaths.forEach(src => {
-  const fileName = path.basename(src);
-  const dest = path.join("public", "fonts", fileName);
-  ensureDirectoryExistence(dest);
-  const exists = fs.existsSync(dest);
-  if (!exists) {
-    fs.copyFileSync(src, dest);
-    console.log(`Copied ${src} to ${dest}`);
+fontPaths.forEach(relativePath => {
+  const src = path.join(projectRoot, relativePath);
+
+  if (!fs.existsSync(src)) {
+    missingFonts.push(relativePath);
+    return;
   }
+
+  const fileName = path.basename(src);
+  const destDirectory = path.join(projectRoot, "public", "fonts");
+  const dest = path.join(destDirectory, fileName);
+
+  ensureDirectoryExistence(destDirectory);
+
+  if (fs.existsSync(dest)) {
+    return;
+  }
+
+  fs.copyFileSync(src, dest);
+  console.log(`Copied ${src} to ${dest}`);
 });
+
+if (missingFonts.length > 0) {
+  console.warn(
+    [
+      "Some font files could not be found.",
+      "If you recently upgraded @fontsource packages, update the",
+      "paths in fonts/init.mjs accordingly.",
+      "Missing files:",
+      ...missingFonts.map(fontPath => ` - ${fontPath}`),
+    ].join("\n")
+  );
+}

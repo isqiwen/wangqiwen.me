@@ -1,57 +1,63 @@
-# blog
+# Wang Qiwen Blog
 
-This is the blog that powers `wangqiwen.xyz`, built on
-[next.js](https://nextjs.org/) and
-deployed to the cloud via [Vercel](https://vercel.com).
+This repository contains the source code for [wangqiwen.xyz](https://wangqiwen.xyz), a multilingual personal blog built with the Next.js App Router, React 19 RC builds, Tailwind CSS, MDX, SWR, and Upstash Redis.
 
-## How to run
+## Prerequisites
+- Node.js 18.18 or higher (matching the version supported by Next.js 15)
+- [pnpm](https://pnpm.io/) 8+
+- Optional: [Vercel CLI](https://vercel.com/docs/cli) for running the production-like preview locally
 
-First, install [Vercel CLI](https://vercel.com/download).
+## Getting started
+1. Install dependencies and copy the required font assets into `public/fonts`:
+   ```bash
+   pnpm install
+   ```
+   The `postinstall` hook runs `node fonts/init.mjs`, which mirrors the necessary font files from `node_modules` into `public/fonts`. The script now skips missing files gracefully, so dependency upgrades will no longer break installation.
+2. Create a `.env.local` file with the required environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Then edit the file and fill in your Upstash Redis credentials.
+3. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+   The dev server binds to `http://0.0.0.0:3000`, so it is reachable from other devices on the same network.
 
-### Development
+## Available scripts
+- `pnpm dev` – Start the local development server with Turbopack.
+- `pnpm lint` – Run ESLint with the configuration provided by Next.js.
+- `pnpm build` – Produce an optimized production build.
+- `pnpm start` – Serve the production build locally after running `pnpm build`.
 
-```
-vc dev
-```
+## Deployment
+The project is designed for Vercel, but any platform that can run `pnpm install && pnpm build` with Node.js ≥ 18 will work.
 
-### Deployment
-
-#### Staging
-
+To test a Vercel-like environment locally:
 ```bash
-vc
+vercel login          # first time only
+vercel link           # first time only
+vercel dev            # preview environment
+vercel --prod         # production deployment
 ```
 
-This is the equivalent of submitting a PR with the [GitHub integration](https://vercel.com/github)
+## Environment variables
+| Variable | Description |
+| --- | --- |
+| `KV_REST_API_URL` | Upstash REST endpoint used by the Redis helper at `app/redis.ts`. |
+| `KV_REST_API_TOKEN` | Authentication token paired with the endpoint above. |
+| `GEO_IP_API_KEY` | Optional key for the demo endpoint at `app/api/geo/route.ts`. |
 
-#### Production
+## Project structure
+- `app/` – App Router routes. `layout.tsx` sets up global theming, language detection, analytics, and scripts. `page.tsx` renders the homepage, while `app/(post)/` contains article layouts and MDX content by locale.
+- `app/api/` – Route handlers backing features like post listings (`posts`), view counters (`view`), and the geolocation demo (`geo`).
+- `locales/` – Dictionaries, middleware helpers, and provider utilities for internationalisation.
+- `utils/` – Shared utilities used across the server and client, such as language detection and formatting helpers.
+- `styles/`, `tailwind.config.js`, `postcss.config.js` – Styling system configuration.
+- `mdx-components.ts` – Mapping of MDX elements to React components used in blog posts.
 
-```bash
-vc --prod
-```
-
-This is the equivalent of `git push` to `master` (or merging a PR to master)
-
-## Architecture
-
-### Pure components
-
-Every stateless pure component is found under `./components`.
-
-Every component that has to do with styling the post's markup
-is found under `./components/post/`
-
-These components make up the _style guide_ of the application.
-
-### Blog posts
-
-Every blog post is a static page hosted under `pages/$year/`.
-
-This allows every post to load arbitrary modules, have custom layouts
-and take advantage of automatic code splitting and lazy loading.
-
-This means that the bloat of a single post doesn't "rub off on" the
-rest of the site.
-
-An index of all posts is maintained in JSON format as `./posts.json`
-for practical reasons.
+## Future development ideas
+- Replace the static `posts.json` index with a build step that scans MDX files automatically.
+- Add visual regression tests or Storybook stories for `app/(post)/components` to safeguard design changes.
+- Expand the CI pipeline with `pnpm lint` and `pnpm build` to catch issues before merging pull requests.
+- Implement local mocks for the `/api/view` endpoint so contributors can test analytics features without an Upstash account.
