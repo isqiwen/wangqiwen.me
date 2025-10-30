@@ -71,6 +71,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "generate:english": "node scripts/generate-english-posts.cjs",
     "postinstall": "node ./fonts/init.mjs"
   },
   "prettier": {
