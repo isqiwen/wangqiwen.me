@@ -43,7 +43,7 @@ function looksLikeFrontmatter(nodes) {
   return hasKeyValue;
 }
 
-module.exports = function removeFrontmatter() {
+function removeFrontmatter() {
   return tree => {
     if (!tree || !Array.isArray(tree.children) || tree.children.length === 0) {
       return;
@@ -80,4 +80,7 @@ module.exports = function removeFrontmatter() {
 
     tree.children.splice(0, closingIndex + 1);
   };
-};
+}
+
+module.exports = removeFrontmatter;
+module.exports.default = removeFrontmatter;

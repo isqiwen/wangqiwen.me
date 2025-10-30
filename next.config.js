@@ -1,6 +1,6 @@
 const withMDX = require("@next/mdx")({
   options: {
-    remarkPlugins: [require("./utils/remark/remove-frontmatter")],
+    remarkPlugins: [require.resolve("./utils/remark/remove-frontmatter")],
   },
 });
 
