@@ -47,10 +47,10 @@ export async function GET(_req: Request, props) {
       >
         <header tw="flex text-[36px] w-full">
           <div tw="font-bold" style={font("Inter 600")}>
-            Wang QiWen
+            Wang Qiwen
           </div>
           <div tw="grow" />
-          <div tw="text-[28px]">wangqiwen.xyz</div>
+          <div tw="text-[28px]">wangqiwen.me</div>
         </header>
 
         <main tw="flex grow pb-3 flex-col items-center justify-center">

@@ -30,10 +30,10 @@ export async function GET() {
       >
         <header tw="flex text-[36px] w-full">
           <div tw="font-bold" style={font("Inter 600")}>
-            Wang QiWen
+            Wang Qiwen
           </div>
           <div tw="grow" />
-          <div tw="text-[28px]">wangqiwen.xyz</div>
+          <div tw="text-[28px]">wangqiwen.me</div>
         </header>
 
         <main tw="flex mt-10 flex-col w-full" style={font("Roboto Mono 400")}>

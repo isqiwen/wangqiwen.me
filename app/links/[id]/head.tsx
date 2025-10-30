@@ -11,13 +11,13 @@ export default function LinkHead({ params }: { params: { id: string } }) {
   return (
     <>
       <meta property="og:title" content={link.title} />
-      <meta property="og:site_name" content="Wang QiWen" />
+      <meta property="og:site_name" content="Wang Qiwen" />
       <meta property="og:description" content={link.description} />
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content="@Wang QiWen" />
+      <meta name="twitter:site" content="@Wang Qiwen" />
       <meta
         property="og:image"
-        content={`https://wangqiwen.xyz/og/${link.image}`}
+        content={`https://wangqiwen.me/og/${link.image}`}
       />
     </>
   );

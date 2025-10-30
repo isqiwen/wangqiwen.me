@@ -11,23 +11,23 @@ import { getDictionary } from '@/locales/dictionary'
 import DictionaryProvider from '@/locales/DictionaryProvider'
 
 export const metadata = {
-  title: "Wang QiWen's blog",
+  title: "Wang Qiwen's blog",
   description:
-    "Wang QiWen is the CEO and founder of Vercel, a software engineer, and the creator of Next.js, Mongoose, Socket.io and other open source libraries.",
+    "Wang Qiwen is the CEO and founder of Vercel, a software engineer, and the creator of Next.js, Mongoose, Socket.io and other open source libraries.",
   openGraph: {
-    title: "Wang QiWeng's blog",
+    title: "Wang Qiwen's blog",
     description:
       "Guillermo Rauch is the CEO and founder of Vercel, a software engineer, and the creator of Next.js, Mongoose, Socket.io and other open source libraries.",
     url: "https://rauchg.com",
-    siteName: "Wang QiWen's blog",
+    siteName: "Wang Qiwen's blog",
     images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@Wang QiWen",
-    creator: "@Wang QiWen",
+    site: "@Wang Qiwen",
+    creator: "@Wang Qiwen",
   },
-  metadataBase: new URL("https://wangqiwen.xyz"),
+  metadataBase: new URL("https://wangqiwen.me"),
 };
 
 export const viewport = {

@@ -42,7 +42,7 @@ export async function GET() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 tw="rounded-full h-74"
-                alt="Wang QiWen"
+                alt="Wang Qiwen"
                 // @ts-ignore
                 src={rauchgPhoto}
               />
@@ -50,7 +50,7 @@ export async function GET() {
 
             <div tw="flex flex-col px-10 grow text-[28px] h-70 justify-center">
               <div tw="text-[64px] mb-7" style={font("Inter 500")}>
-                Wang QiWen
+                Wang Qiwen
               </div>
               <div tw="flex mb-5" style={font("Roboto Mono 400")}>
                 <span tw="text-gray-400 mr-3">&mdash;</span> CEO and Founder of

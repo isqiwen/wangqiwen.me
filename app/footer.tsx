@@ -12,7 +12,7 @@ export function Footer({ dict }: { dict: any }) {
         )
       </div>
       <div>
-        <A target="_blank" href="https://github.com/isqiwen/wangqiwen.xyz">
+        <A target="_blank" href="https://github.com/isqiwen/wangqiwen.me">
           { dict.source }
         </A>
       </div>

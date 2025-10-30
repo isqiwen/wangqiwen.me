@@ -1,6 +1,6 @@
 # Wang Qiwen Blog
 
-This repository contains the source code for [wangqiwen.xyz](https://wangqiwen.xyz), a multilingual personal blog built with the Next.js App Router, React 19 RC builds, Tailwind CSS, MDX, SWR, and Upstash Redis.
+This repository contains the source code for [wangqiwen.me](https://wangqiwen.me), a multilingual personal blog built with the Next.js App Router, React 19 RC builds, Tailwind CSS, MDX, SWR, and Upstash Redis.
 
 ## Prerequisites
 - Node.js 18.18 or higher (matching the version supported by Next.js 15)
@@ -44,8 +44,8 @@ vercel --prod         # production deployment
 ## Environment variables
 | Variable | Description |
 | --- | --- |
-| `KV_REST_API_URL` | Upstash REST endpoint used by the Redis helper at `app/redis.ts`. |
-| `KV_REST_API_TOKEN` | Authentication token paired with the endpoint above. |
+| `UPSTASH_REDIS_REST_URL` | Upstash REST endpoint used by the Redis helper at `app/redis.ts`. |
+| `UPSTASH_REDIS_REST_TOKEN` | Authentication token paired with the endpoint above. |
 | `GEO_IP_API_KEY` | Optional key for the demo endpoint at `app/api/geo/route.ts`. |
 
 ## Project structure
