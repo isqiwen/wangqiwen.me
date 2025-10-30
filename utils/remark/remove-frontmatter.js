@@ -43,16 +43,29 @@ function looksLikeFrontmatter(nodes) {
   return hasKeyValue;
 }
 
+const SKIP_TYPES = new Set(["mdxjsEsm", "mdxFlowExpression"]);
+
 function removeFrontmatter() {
   return tree => {
     if (!tree || !Array.isArray(tree.children) || tree.children.length === 0) {
       return;
     }
 
-    const [first] = tree.children;
+    const { children } = tree;
+
+    let startIndex = 0;
+    while (startIndex < children.length && SKIP_TYPES.has(children[startIndex].type)) {
+      startIndex++;
+    }
+
+    if (startIndex >= children.length) {
+      return;
+    }
+
+    const first = children[startIndex];
 
     if (first.type === "yaml") {
-      tree.children.shift();
+      children.splice(startIndex, 1);
       return;
     }
 
@@ -61,8 +74,8 @@ function removeFrontmatter() {
     }
 
     let closingIndex = -1;
-    for (let i = 1; i < tree.children.length; i++) {
-      if (tree.children[i].type === "thematicBreak") {
+    for (let i = startIndex + 1; i < children.length; i++) {
+      if (children[i].type === "thematicBreak") {
         closingIndex = i;
         break;
       }
@@ -72,13 +85,13 @@ function removeFrontmatter() {
       return;
     }
 
-    const between = tree.children.slice(1, closingIndex);
+    const between = children.slice(startIndex + 1, closingIndex);
 
     if (!looksLikeFrontmatter(between)) {
       return;
     }
 
-    tree.children.splice(0, closingIndex + 1);
+    children.splice(startIndex, closingIndex - startIndex + 1);
   };
 }
 
