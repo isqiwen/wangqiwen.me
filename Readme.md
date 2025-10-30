@@ -27,6 +27,7 @@ This repository contains the source code for [wangqiwen.me](https://wangqiwen.me
 ## Available scripts
 - `pnpm dev` – Start the local development server with Turbopack.
 - `pnpm lint` – Run ESLint with the configuration provided by Next.js.
+- `pnpm generate:english` – Translate Chinese MDX posts into the English content tree. Use `--force` to overwrite existing files or `--dry-run` to preview the changes.
 - `pnpm build` – Produce an optimized production build.
 - `pnpm start` – Serve the production build locally after running `pnpm build`.
 
