@@ -27,12 +27,14 @@
     "negotiator": "^0.6.3",
     "next": "15.1.2",
     "next-nprogress-bar": "^2.3.13",
+    "prism-react-renderer": "^2.4.1",
     "react": "19.0.0-rc-02c0e824-20241028",
     "react-dom": "19.0.0-rc-02c0e824-20241028",
     "react-intersection-observer": "^8.34.0",
     "react-tweet": "^3.1.1",
     "react-wrap-balancer": "^0.2.4",
     "react-youtube": "^10.1.0",
+    "rehype-pretty-code": "^0.14.1",
     "swr": "^2.1.2",
     "three": "^0.172.0",
     "time-ago": "^0.2.1",
@@ -64,7 +66,12 @@
     "overrides": {
       "@types/react": "npm:types-react@19.0.0-rc.1",
       "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1"
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "@vercel/speed-insights",
+      "esbuild",
+      "sharp"
+    ]
   },
   "scripts": {
     "dev": "next dev --turbopack -H 0.0.0.0",

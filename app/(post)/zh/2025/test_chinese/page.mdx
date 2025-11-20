@@ -1,12 +1,113 @@
 export const metadata = {
-  "title": "test_chinese",
-  "description": "",
+  "title": "未来写作体验实验室",
+  "description": "用一篇文章把所有新的 MDX 组件都走一遍，看看多语言写作的可能性。",
   "publishedAt": "2025-11-20",
   "id": "test_chinese"
 };
 
+# 未来写作体验实验室
 
+<Callout type="info">
+  这篇文章是一个“组件集成测试”。我想确认新的 Steps、Tabs、Gallery、Stats、PullQuote 等组件在真实文稿里是否顺滑，也顺便记录中文写作流程的升级体验。
+</Callout>
 
+## 指标概览
 
+<Stats>
+  <Stat value="3.2K" label="今日访客" trend="较昨日 +12%" />
+  <Stat value="128" label="草稿同步" trend="自动生成" />
+  <Stat value="42ms" label="语言切换延迟" trend="使用 manifest 后" />
+  <Stat value="0" label="Redis 调用" trend="首页切换阶段" />
+</Stats>
 
-开始写作吧。
+## 工作流拆解
+
+<Steps title="Workflow">
+  <Step title="起草 & 同步">
+    先用 `pnpm new:post` 拉起中文目录，写完后跑 `pnpm sync:posts`。整个过程都在本地完成，不需要连接 Redis。
+  </Step>
+  <Step title="翻译 & 对照">
+    当需要英文版时，`pnpm generate:english --post 2025/test_chinese` 会调用 Google Translate 生成草稿，还会把结果缓存到 `.translation-cache.json`。
+  </Step>
+  <Step title="校验 & Lint">
+    最后通过 `pnpm lint:posts` 检查 metadata 是否完整、ID 是否重复，CI 里再跑一次 `pnpm sync:posts -- --check`，确保 manifest 始终干净。
+  </Step>
+</Steps>
+
+## 语录
+
+<PullQuote author="王琦文">
+  写作体验越简单，越有可能坚持。现代化的博客系统注重“即时反馈”与“极简视觉”，而不是无止境的配置文件。
+</PullQuote>
+
+## 代码对照
+
+<Tabs caption="多语言调用平方和的写法">
+  <Tab title="JavaScript">
+
+```js
+export function formatViews(value) {
+  return new Intl.NumberFormat("zh-CN").format(value);
+}
+```
+
+  </Tab>
+  <Tab title="TypeScript">
+
+```ts
+type Stat = { label: string; value: number };
+
+export const summarize = (items: Stat[]): number =>
+  items.reduce((sum, item) => sum + item.value, 0);
+```
+
+  </Tab>
+</Tabs>
+
+<Snippet caption="直接执行命令即可启动一个开发服务器">{`pnpm dev --filter blog`}</Snippet>
+
+<Snippet
+  caption="C++ 中快速计算平方和"
+  className="language-cpp"
+>{`
+#include <vector>
+#include <numeric>
+
+double squared_sum(const std::vector<double>& values) {
+  return std::accumulate(values.begin(), values.end(), 0.0,
+    [](double acc, double value) {
+      return acc + value * value;
+    }
+  );
+}
+`}</Snippet>
+
+## 图集
+
+<Gallery
+  images={[
+    {
+      src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+      alt: "夜色城市",
+      caption: "夜色中的城市，提醒我写作也要有节奏。",
+    },
+    {
+      src: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=800&q=80",
+      alt: "屏幕光影",
+      caption: "在屏幕的冷色调里寻找灵感。",
+    },
+    {
+      src: "https://images.unsplash.com/photo-1470104240373-bc1812eddc9f?auto=format&fit=crop&w=800&q=80",
+      alt: "科研设备",
+      caption: "写作和研发一样，都需要合适的工具。",
+    },
+  ]}
+/>
+
+## 一点视频
+
+<YouTube id="dQw4w9WgXcQ" />
+
+## 收尾
+
+语言切换、Redis 缓存、manifest、MDX 组件，这些点都验证完毕。接下来只要保持文章内容输出，就能真正发挥这套现代写作栈的价值。

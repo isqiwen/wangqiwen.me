@@ -18,6 +18,12 @@ import { YouTube } from "app/(post)/components/youtube";
 import { Ref, FootNotes, FootNote } from "app/(post)/components/footnotes";
 import { Blockquote as blockquote } from "app/(post)/components/blockquote";
 import { ThreeScene } from "@/app/(post)/components/three-sense";
+import { Steps, Step } from "app/(post)/components/steps";
+import { Tabs, Tab } from "app/(post)/components/tabs";
+import { PullQuote } from "app/(post)/components/pull-quote";
+import { Gallery } from "app/(post)/components/gallery";
+import { Stats, Stat } from "app/(post)/components/stats";
+import { Table, THead, TBody, TR, TH, TD } from "app/(post)/components/table";
 
 export function useMDXComponents(components: {
   [component: string]: React.ComponentType;
@@ -48,5 +54,19 @@ export function useMDXComponents(components: {
     FootNotes,
     FootNote,
     ThreeScene,
+    Steps,
+    Step,
+    Tabs,
+    Tab,
+    PullQuote,
+    Gallery,
+    Stats,
+    Stat,
+    table: Table,
+    thead: THead,
+    tbody: TBody,
+    tr: TR,
+    th: TH,
+    td: TD,
   };
 }

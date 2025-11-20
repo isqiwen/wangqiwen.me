@@ -7,17 +7,20 @@ import useDictionary from "@/locales/dictionary-hook";
 export function Logo() {
   const pathname = usePathname();
   const dict = useDictionary();
+  const label = dict.wangqiwen;
+  const isChinese = /[\u3400-\u9FFF]/.test(label);
+  const textClass = `text-md md:text-lg whitespace-nowrap font-bold ${isChinese ? "tracking-[0.2em]" : ""}`;
 
   return (
-    <span className="text-md md:text-lg whitespace-nowrap font-bold">
+    <span className={textClass}>
       {pathname === "/" ? (
-        <span className="cursor-default pr-2">{ dict.wangqiwen }</span>
+        <span className="cursor-default pr-2">{ label }</span>
       ) : (
         <Link
           href="/"
           className="hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] p-2 rounded-sm -ml-2 transition-[background-color]"
         >
-          { dict.wangqiwen }
+          { label }
         </Link>
       )}
     </span>

@@ -62,40 +62,11 @@ But here's what happened in 2019:
 
 In short, Next.js is now a comprehensive, hybrid framework, supporting the full spectrum of JAMstack with a *per-page granularity*.
 
-<table>
-  <thead>
-    <tr>
-      <th>Role</th>
-      <th>Provided by</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <tr>
-      <td>J</td>
-      <td>
-        Client-side JS injected via React Hooks (state, event listeners,
-        effects)
-      </td>
-    </tr>
-
-    <tr>
-      <td>A</td>
-      <td>
-        API pages inside the `pages/api` directory.
-      </td>
-    </tr>
-
-    <tr>
-      <td>M</td>
-      <td>
-        Pages with no data dependencies (like the simple example above) or
-        pages with static data deps that trigger build-time static site
-        generation.
-      </td>
-    </tr>
-  </tbody>
-</table>
+| Role | Provided by |
+| --- | --- |
+| J | Client-side JS injected via React Hooks (state, event listeners, effects) |
+| A | API pages inside the `pages/api` directory. |
+| M | Pages with no data dependencies (like the simple example above) or pages with static data deps that trigger build-time static site generation. |
 
 Furthermore, Next.js has been *uncompromising* in its commitment to backwards-compatibility. Servers (SSR) are still fully supported and no apps have been harmed as part of this evolution.
 
