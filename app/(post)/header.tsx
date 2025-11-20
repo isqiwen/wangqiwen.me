@@ -2,8 +2,7 @@
 
 import { useSelectedLayoutSegments } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ago } from "time-ago";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import useSWR from "swr";
 import type { Post } from "@/app/get-posts";
@@ -11,7 +10,7 @@ import useDictionary from "@/locales/dictionary-hook";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export function Header({ posts, language }: { posts: Post[], language : "zh" | "en" }) {
+export function Header({ posts, language }: { posts: Post[]; language: "zh" | "en" }) {
   const useChinese = language === "zh";
   const dict = useDictionary();
 
@@ -19,25 +18,26 @@ export function Header({ posts, language }: { posts: Post[], language : "zh" | "
   // segments can be:
   // date/post
   // lang/date/post
-  const initialPost = posts.find(
-    post => post.id === segments[segments.length - 1]
-  );
+  const initialPost = posts.find(post => post.id === segments[segments.length - 1]);
+  const canonicalPostId = initialPost?.postId;
+  const localizedPost = canonicalPostId
+    ? posts.find(post => post.postId === canonicalPostId && post.locale === language)
+    : initialPost;
+
   const { data: post, mutate } = useSWR(
-    `/api/view?id=${initialPost?.id ?? ""}`,
+    `/api/view?id=${localizedPost?.id ?? ""}`,
     fetcher,
     {
-      fallbackData: initialPost,
+      fallbackData: localizedPost,
       refreshInterval: 5000,
     }
   );
 
-  if (initialPost == null) return <></>;
+  if (localizedPost == null) return <></>;
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-1 dark:text-gray-100">
-        {useChinese ? post.zh_title : post.title}
-      </h1>
+      <h1 className="text-2xl font-bold mb-1 dark:text-gray-100">{post.title}</h1>
 
       <p className="font-mono flex text-xs text-gray-500 dark:text-gray-500">
         <span className="flex-grow">
@@ -65,19 +65,14 @@ export function Header({ posts, language }: { posts: Post[], language : "zh" | "
         </span>
 
         <span className="pr-1.5">
-          <Views
-            id={post.id}
-            mutate={mutate}
-            defaultValue={post.viewsFormatted}
-            useChinese={useChinese}
-          />
+          <Views id={post.id} mutate={mutate} defaultValue={post.viewsFormatted} />
         </span>
       </p>
     </>
   );
 }
 
-function Views({ id, mutate, defaultValue, useChinese }) {
+function Views({ id, mutate, defaultValue }) {
   const views = defaultValue;
   const didLogViewRef = useRef(false);
   const dict = useDictionary();
@@ -96,15 +91,11 @@ function Views({ id, mutate, defaultValue, useChinese }) {
     }
   });
 
-  return <>{views != null ? <span>{views} { dict.post.views }</span> : null}</>;
+  return <>{views != null ? <span>{views} {dict.post.views}</span> : null}</>;
 }
 
 function formatDateToChinese(date: string) {
   return format(new Date(date), "yyyy年 M月 d日", { locale: zhCN });
-}
-
-function formatAgoToChinese(agoText: string) {
-  return agoText.replace(/(\d+)y/, "$1");
 }
 
 function PostDate({
@@ -114,16 +105,22 @@ function PostDate({
   post: { date: string };
   useChinese: boolean;
 }) {
+  const dateValue = new Date(post.date);
+  const relative = formatDistanceToNow(dateValue, {
+    addSuffix: true,
+    locale: useChinese ? zhCN : undefined,
+  });
+
   if (useChinese) {
     return (
       <>
-        {formatDateToChinese(post.date)} ({formatAgoToChinese(ago(post.date, true))} 年前)
+        {formatDateToChinese(post.date)} ({relative})
       </>
     );
   } else {
     return (
       <>
-        {post.date} ({ago(post.date, true)} ago)
+        {post.date} ({relative})
       </>
     );
   }

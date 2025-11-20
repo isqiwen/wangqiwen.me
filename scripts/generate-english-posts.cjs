@@ -2,10 +2,12 @@
 
 const { join } = require("path");
 const { readdir, stat, readFile, mkdir, writeFile } = require("fs/promises");
+const { execSync } = require("child_process");
 const { runInNewContext } = require("vm");
 
 const SOURCE_DIR = join(process.cwd(), "app", "(post)", "zh");
 const TARGET_DIR = join(process.cwd(), "app", "(post)", "en");
+const CACHE_PATH = join(process.cwd(), ".translation-cache.json");
 
 const TRANSLATABLE_FRONTMATTER_KEYS = new Set([
   "title",
@@ -18,6 +20,7 @@ const TRANSLATABLE_FRONTMATTER_KEYS = new Set([
 const TRANSLATABLE_METADATA_KEYS = new Set(["description", "summary"]);
 
 const translationCache = new Map();
+let cacheDirty = false;
 
 async function translateText(text, options) {
   const trimmed = text.trim();
@@ -55,6 +58,7 @@ async function translateText(text, options) {
     const translated = segments.map(segment => segment[0]).join("").trim();
     const normalized = translated.length > 0 ? translated : text;
     translationCache.set(key, normalized);
+    cacheDirty = true;
     return normalized;
   } catch {
     return text;
@@ -63,7 +67,17 @@ async function translateText(text, options) {
 
 async function main() {
   const options = parseCliOptions(process.argv.slice(2));
-  const years = await safeReadDir(SOURCE_DIR);
+  await loadTranslationCache();
+
+  if (options.changed) {
+    const changedTargets = detectChangedPosts();
+    for (const target of changedTargets) {
+      options.postTargets.add(target);
+    }
+  }
+
+  const years =
+    options.years.size > 0 ? Array.from(options.years) : await safeReadDir(SOURCE_DIR);
 
   let created = 0;
   let skipped = 0;
@@ -78,6 +92,10 @@ async function main() {
 
     const posts = await safeReadDir(sourceYearDir);
     for (const slug of posts) {
+      if (!shouldProcessPost(year, slug, options)) {
+        continue;
+      }
+
       const sourcePostDir = join(sourceYearDir, slug);
       const sourcePagePath = join(sourcePostDir, "page.mdx");
 
@@ -91,6 +109,8 @@ async function main() {
 
       const targetPostDir = join(targetYearDir, slug);
       const targetPagePath = join(targetPostDir, "page.mdx");
+
+      console.log(`Processing: ${sourcePagePath}`);
 
       if (!options.force && (await fileExists(targetPagePath))) {
         skipped += 1;
@@ -114,6 +134,8 @@ async function main() {
   if (skipped > 0) {
     console.log(`Skipped existing posts: ${skipped}`);
   }
+
+  await persistTranslationCache();
 }
 
 async function buildEnglishDocument(source) {
@@ -586,16 +608,111 @@ async function fileExists(path) {
 function parseCliOptions(args) {
   let force = false;
   let dryRun = false;
+  let changed = false;
+  const years = new Set();
+  const slugs = new Set();
+  const postTargets = new Set();
 
-  for (const arg of args) {
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+
     if (arg === "--force") {
       force = true;
-    } else if (arg === "--dry-run") {
+      continue;
+    }
+
+    if (arg === "--dry-run") {
       dryRun = true;
+      continue;
+    }
+
+    if (arg === "--changed") {
+      changed = true;
+      continue;
+    }
+
+    if (arg === "--year" && args[i + 1]) {
+      years.add(args[i + 1]);
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--year=")) {
+      years.add(arg.slice(7));
+      continue;
+    }
+
+    if (arg === "--slug" && args[i + 1]) {
+      slugs.add(args[i + 1]);
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--slug=")) {
+      slugs.add(arg.slice(7));
+      continue;
+    }
+
+    if (arg === "--post" && args[i + 1]) {
+      const target = normalizePostTarget(args[i + 1]);
+      if (target) {
+        postTargets.add(target);
+      }
+      i += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--post=")) {
+      const target = normalizePostTarget(arg.slice(7));
+      if (target) {
+        postTargets.add(target);
+      }
     }
   }
 
-  return { force, dryRun };
+  return { force, dryRun, years, slugs, changed, postTargets };
+}
+
+function normalizePostTarget(value) {
+  const [year, slug] = value.split("/");
+  if (year && slug) {
+    return `${year}/${slug}`;
+  }
+  return null;
+}
+
+function shouldProcessPost(year, slug, options) {
+  if (options.postTargets.size > 0 && !options.postTargets.has(`${year}/${slug}`)) {
+    return false;
+  }
+
+  if (options.years.size > 0 && !options.years.has(year)) {
+    return false;
+  }
+
+  if (options.slugs.size > 0 && !options.slugs.has(slug)) {
+    return false;
+  }
+
+  return true;
+}
+
+function detectChangedPosts() {
+  try {
+    const output = execSync("git status --porcelain app/(post)/zh", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    const matches = output.matchAll(/app\/\(post\)\/zh\/(\d{4})\/([^/]+)\/page\.mdx/g);
+    const targets = new Set();
+    for (const match of matches) {
+      targets.add(`${match[1]}/${match[2]}`);
+    }
+    return targets;
+  } catch {
+    return new Set();
+  }
 }
 
 function ensureTrailingNewline(value) {
@@ -605,6 +722,25 @@ function ensureTrailingNewline(value) {
 function ensureTrailingDoubleNewline(value) {
   const withNewline = ensureTrailingNewline(value);
   return withNewline.endsWith("\n\n") ? withNewline : `${withNewline}\n`;
+}
+
+async function loadTranslationCache() {
+  try {
+    const file = await readFile(CACHE_PATH, "utf8");
+    const data = JSON.parse(file);
+    for (const [key, value] of Object.entries(data)) {
+      translationCache.set(key, value);
+    }
+  } catch {
+    // ignore missing cache
+  }
+}
+
+async function persistTranslationCache() {
+  if (!cacheDirty) return;
+  const payload = JSON.stringify(Object.fromEntries(translationCache), null, 2);
+  await writeFile(CACHE_PATH, payload, "utf8");
+  cacheDirty = false;
 }
 
 main().catch(error => {

@@ -1,5 +1,5 @@
 import redis from "@/app/redis";
-import { getPosts } from "@/app/get-posts";
+import { getPostBySlug } from "@/app/get-posts";
 import commaNumber from "comma-number";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -20,8 +20,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const posts = await getPosts();
-  const post = posts.find(post => post.id === id);
+  const post = await getPostBySlug(id);
 
   if (post == null) {
     return NextResponse.json(
@@ -36,18 +35,37 @@ export async function GET(req: NextRequest) {
   }
 
   if (url.searchParams.get("incr") != null) {
-    const views = await redis.hincrby("views", id, 1);
+    const views = await incrementViews(id);
     return NextResponse.json({
       ...post,
       views,
       viewsFormatted: commaNumber(views),
     });
   } else {
-    const views = (await redis.hget("views", id)) ?? 0;
+    const views = await readViews(id);
     return NextResponse.json({
       ...post,
       views,
-      viewsFormatted: commaNumber(Number(views)),
+      viewsFormatted: commaNumber(views),
     });
+  }
+}
+
+async function readViews(id: string): Promise<number> {
+  try {
+    const value = await redis.hget("views", id);
+    return Number(value ?? 0);
+  } catch (error) {
+    console.warn("Failed to read views from Redis, defaulting to 0.", error);
+    return 0;
+  }
+}
+
+async function incrementViews(id: string): Promise<number> {
+  try {
+    return Number(await redis.hincrby("views", id, 1));
+  } catch (error) {
+    console.warn("Failed to increment views in Redis.", error);
+    return 0;
   }
 }

@@ -1,32 +1,138 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
-import useSWR from "swr";
+import commaNumber from "comma-number";
 import useDictionary from "@/locales/dictionary-hook";
 import { formatString } from "@/utils/common/string-helper";
-import type { Post } from "./get-posts";
+import type { Post, PostLocale } from "./get-posts";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
 interface PostsProps {
   posts: Post[];
-  language: "zh" | "en";
+  language: PostLocale;
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => res.json() as Promise<Post[]>);
+type BasePost = {
+  id: string;
+  postId: string;
+  title: string;
+  date: string;
+  locale: PostLocale;
+};
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
 
 export function Posts({ posts: initialPosts, language }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1); // 当前页码
   const itemsPerPage = 20; // 每页显示的项目数量
 
-  const { data: posts = initialPosts } = useSWR<Post[]>("/api/posts", fetcher, {
-    fallbackData: initialPosts,
-    refreshInterval: 5000,
-  });
+  const [basePosts, setBasePosts] = useState<BasePost[]>(() => initialPosts.map(stripPost));
+  const [viewsMap, setViewsMap] = useState<Record<string, number>>(() => buildViewsMap(initialPosts));
+  const refreshTimer = useRef<NodeJS.Timeout | null>(null);
+  const activePostIds = useRef<string[]>(basePosts.map(post => post.id));
+
+  useEffect(() => {
+    setBasePosts(initialPosts.map(stripPost));
+    setViewsMap(buildViewsMap(initialPosts));
+  }, [initialPosts]);
+
+  useEffect(() => {
+    activePostIds.current = basePosts.map(post => post.id);
+  }, [basePosts]);
+
+  const refreshViews = useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return;
+      try {
+        const response = await fetch(`/api/posts/views?ids=${ids.join(",")}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as Record<string, number>;
+        setViewsMap(prev => {
+          let changed = false;
+          const next = { ...prev };
+          for (const [id, value] of Object.entries(payload)) {
+            const normalized = Number(value ?? 0);
+            if (!Number.isNaN(normalized) && next[id] !== normalized) {
+              next[id] = normalized;
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
+        });
+      } catch (error) {
+        console.warn("posts views refresh failed", error);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMetadata = async () => {
+      try {
+        const response = await fetch(`/api/posts?locale=${language}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const items: Array<{ slug: string; id: string; title: string; publishedAt: string }> =
+          data.posts ?? [];
+        if (cancelled) return;
+        const mapped: BasePost[] = items.map(item => ({
+          id: item.slug,
+          postId: item.id,
+          title: item.title,
+          date: formatPublishedAt(item.publishedAt),
+          locale: language,
+        }));
+        setBasePosts(mapped);
+        await refreshViews(mapped.map(post => post.id));
+      } catch (error) {
+        console.warn("posts metadata fetch failed", error);
+      }
+    };
+
+    loadMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [language, refreshViews]);
+
+  useEffect(() => {
+    const loop = async () => {
+      await refreshViews(activePostIds.current);
+      refreshTimer.current = setTimeout(loop, 5000);
+    };
+
+    refreshTimer.current = setTimeout(loop, 5000);
+    return () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+      }
+    };
+  }, [refreshViews]);
+
+  const posts = useMemo(() => {
+    return basePosts.map(post => {
+      const views = viewsMap[post.id] ?? 0;
+      return {
+        ...post,
+        views,
+        viewsFormatted: commaNumber(views),
+      } satisfies Post;
+    });
+  }, [basePosts, viewsMap]);
 
   function sortDate() {
     setSort((sort) => [
@@ -42,7 +148,6 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
     ]);
   }
 
-  const useChinese = language === "zh";
   const dict = useDictionary();
 
   const sortedPosts = useMemo(() => {
@@ -67,7 +172,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
   }, [sortedPosts, currentPage, itemsPerPage]);
 
   // 计算总页数
-  const totalPages = Math.ceil(posts.length / itemsPerPage);
+const totalPages = Math.ceil(posts.length / itemsPerPage);
 
   return (
     <Suspense fallback={null}>
@@ -97,7 +202,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
         </header>
 
         {/* 列表渲染 */}
-        <List posts={paginatedPosts} useChinese={useChinese} />
+        <List posts={paginatedPosts} />
 
         {/* 当前页信息 */}
         <p className="text-gray-500 dark:text-gray-400 text-xs text-center mt-4">
@@ -235,7 +340,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   );
 }
 
-function List({ posts, useChinese }: { posts: Post[]; useChinese: boolean }) {
+function List({ posts }: { posts: Post[] }) {
   return (
     <ul>
       {posts.map((post, i: number) => {
@@ -265,7 +370,7 @@ function List({ posts, useChinese }: { posts: Post[]; useChinese: boolean }) {
                     </span>
                   )}
 
-                  <span className="grow dark:text-gray-100">{useChinese ? post.zh_title : post.title}</span>
+                  <span className="grow dark:text-gray-100">{post.title}</span>
 
                   <span className="text-gray-500 dark:text-gray-500 text-xs">
                     {post.viewsFormatted}
@@ -282,4 +387,29 @@ function List({ posts, useChinese }: { posts: Post[]; useChinese: boolean }) {
 
 function getYear(date: string) {
   return new Date(date).getFullYear();
+}
+
+function stripPost(post: Post): BasePost {
+  return {
+    id: post.id,
+    postId: post.postId,
+    title: post.title,
+    date: post.date,
+    locale: post.locale,
+  };
+}
+
+function buildViewsMap(posts: Post[]): Record<string, number> {
+  return posts.reduce<Record<string, number>>((acc, post) => {
+    acc[post.id] = post.views ?? 0;
+    return acc;
+  }, {});
+}
+
+function formatPublishedAt(publishedAt: string): string {
+  const date = new Date(publishedAt);
+  if (Number.isNaN(date.getTime())) {
+    return publishedAt;
+  }
+  return DATE_FORMATTER.format(date);
 }

@@ -6,7 +6,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 export async function generateStaticParams() {
-  return (await getPosts()).map(post => ({ id: post.id }));
+  return (await getPosts("en")).map(post => ({ id: post.id }));
 }
 
 // fonts
@@ -33,7 +33,7 @@ export async function GET(_req: Request, props) {
 
   const { id } = params;
 
-  const posts = await getPosts();
+  const posts = await getPosts("en");
   const post = posts.find(p => p.id === id);
   if (!post) {
     return new Response("Not found", { status: 404 });

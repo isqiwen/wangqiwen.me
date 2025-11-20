@@ -1,7 +1,7 @@
 import { getPosts } from "@/app/get-posts";
 
 export async function GET() {
-  const posts = await getPosts();
+  const posts = await getPosts("en");
   const max = 100; // max returned posts
   return new Response(
     `<?xml version="1.0" encoding="utf-8"?>

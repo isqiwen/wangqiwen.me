@@ -72,6 +72,9 @@
     "start": "next start",
     "lint": "next lint",
     "generate:english": "node scripts/generate-english-posts.cjs",
+    "new:post": "node scripts/new-post.cjs",
+    "sync:posts": "node scripts/normalize-post-metadata.cjs",
+    "lint:posts": "node scripts/lint-posts.cjs",
     "postinstall": "node ./fonts/init.mjs"
   },
   "prettier": {

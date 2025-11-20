@@ -27,7 +27,7 @@ const robotoMono400 = readFileSync(
 );
 
 export async function GET() {
-  const posts = await getPosts();
+  const posts = await getPosts("en");
   const viewsSum = posts.reduce((sum, post) => sum + post.views, 0);
 
   return new ImageResponse(

@@ -1,8 +1,13 @@
+const { join } = require("path");
+const { readFileSync } = require("fs");
+
 const withMDX = require("@next/mdx")({
   options: {
     remarkPlugins: [require.resolve("./utils/remark/remove-frontmatter")],
   },
 });
+
+const POST_TRANSLATIONS = loadPostTranslations();
 
 module.exports = withMDX({
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
@@ -10,6 +15,9 @@ module.exports = withMDX({
     mdxRs: true,
   },
   transpilePackages: ["three"],
+  env: {
+    NEXT_PUBLIC_POST_TRANSLATIONS: JSON.stringify(POST_TRANSLATIONS),
+  },
   images: {
     remotePatterns: [
       {
@@ -66,3 +74,14 @@ module.exports = withMDX({
     ];
   },
 });
+
+function loadPostTranslations() {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(__dirname, "posts", "manifest.json"), "utf8"),
+    );
+    return manifest.translations ?? {};
+  } catch {
+    return {};
+  }
+}

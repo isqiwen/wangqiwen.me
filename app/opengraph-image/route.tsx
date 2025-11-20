@@ -20,7 +20,7 @@ const robotoMono400 = readFileSync(
 );
 
 export async function GET() {
-  const posts = await getPosts();
+  const posts = await getPosts("en");
 
   return new ImageResponse(
     (

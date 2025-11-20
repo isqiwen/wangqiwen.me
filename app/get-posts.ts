@@ -4,30 +4,59 @@ import { join } from "path";
 import { readdir, readFile, stat } from "fs/promises";
 import { runInNewContext } from "vm";
 
+export type PostLocale = "zh" | "en";
+
 export type Post = {
   id: string;
-  date: string;
+  postId: string;
   title: string;
-  zh_title: string;
+  date: string;
+  locale: PostLocale;
   views: number;
   viewsFormatted: string;
 };
 
 type Frontmatter = {
   title?: string;
-  zhTitle?: string;
   publishedAt?: string;
+  id?: string;
 };
 
 type PostMetadata = {
   id: string;
+  locale: PostLocale;
   title: string;
-  zh_title: string;
   date: string;
+  postId: string;
   publishedAt: Date;
 };
 
-const EN_POSTS_DIR = join(process.cwd(), "app", "(post)", "en");
+type Manifest = {
+  posts?: Record<
+    PostLocale,
+    Array<{
+      slug: string;
+      id: string;
+      title: string;
+      description?: string;
+      publishedAt: string;
+      path: string;
+    }>
+  >;
+};
+
+const POSTS_ROOT_DIR = join(process.cwd(), "app", "(post)");
+const POSTS_MANIFEST_PATH = join(process.cwd(), "posts", "manifest.json");
+const SUPPORTED_LOCALES: PostLocale[] = ["zh", "en"];
+const METADATA_CACHE_TTL_MS = 60 * 1000; // 1 minute cache for expensive disk scans
+
+type MetadataCache = {
+  timestamp: number;
+  data: PostMetadata[];
+};
+
+const metadataCache = new Map<PostLocale, MetadataCache>();
+let manifestCache: { timestamp: number; data: Manifest | null } | null = null;
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -35,57 +64,112 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-async function loadPostsMetadata(): Promise<PostMetadata[]> {
-  const years = await readdir(EN_POSTS_DIR);
+export const getPosts = async (locale: PostLocale = "zh") => {
+  const [metadata, allViews] = await Promise.all([
+    loadManifestMetadata(locale),
+    loadViews(),
+  ]);
+
+  return metadata.map(post => buildPost(post, allViews));
+};
+
+export const getPostBySlug = async (slug: string): Promise<Post | null> => {
+  const views = await loadViews();
+  const manifest = await getManifest();
+
+  if (manifest?.posts) {
+    for (const locale of SUPPORTED_LOCALES) {
+      const list = manifest.posts[locale] ?? [];
+      const match = list.find(post => post.slug === slug);
+      if (match) {
+        return buildPost(
+          {
+            id: match.slug,
+            locale,
+            title: match.title,
+            date: DATE_FORMATTER.format(new Date(match.publishedAt)),
+            postId: match.id,
+            publishedAt: new Date(match.publishedAt),
+          },
+          views,
+        );
+      }
+    }
+  }
+
+  for (const locale of SUPPORTED_LOCALES) {
+    const metadata = await loadPostsMetadata(locale);
+    const target = metadata.find(post => post.id === slug);
+    if (target) {
+      return buildPost(target, views);
+    }
+  }
+
+  return null;
+};
+
+async function loadViews(): Promise<Views> {
+  try {
+    return (await redis.hgetall("views")) ?? {};
+  } catch (error) {
+    console.warn("Failed to load view counts from Redis, defaulting to zeros.", error);
+    return {};
+  }
+}
+
+async function loadManifestMetadata(locale: PostLocale): Promise<PostMetadata[]> {
+  const manifest = await getManifest();
+  if (manifest?.posts?.[locale]) {
+    return manifest.posts[locale].map(post => ({
+      id: post.slug,
+      locale,
+      title: post.title,
+      date: DATE_FORMATTER.format(new Date(post.publishedAt)),
+      postId: post.id,
+      publishedAt: new Date(post.publishedAt),
+    }));
+  }
+
+  return loadPostsMetadata(locale);
+}
+
+async function loadPostsMetadata(locale: PostLocale): Promise<PostMetadata[]> {
+  const cached = metadataCache.get(locale);
+  if (cached && Date.now() - cached.timestamp < METADATA_CACHE_TTL_MS) {
+    return cached.data;
+  }
   const posts: PostMetadata[] = [];
+  const years = await safeReadDir(getLocaleDir(locale));
 
   for (const year of years) {
-    const yearPath = join(EN_POSTS_DIR, year);
+    const yearPath = join(getLocaleDir(locale), year);
+    if (!(await isDirectory(yearPath))) continue;
 
-    let yearInfo;
-    try {
-      yearInfo = await stat(yearPath);
-    } catch {
-      continue;
-    }
-
-    if (!yearInfo.isDirectory()) continue;
-
-    const candidates = await readdir(yearPath);
-    for (const candidate of candidates) {
-      const postDir = join(yearPath, candidate);
-
-      let postInfo;
-      try {
-        postInfo = await stat(postDir);
-      } catch {
-        continue;
-      }
-
-      if (!postInfo.isDirectory()) continue;
+    const slugs = await safeReadDir(yearPath);
+    for (const slug of slugs) {
+      const postDir = join(yearPath, slug);
+      if (!(await isDirectory(postDir))) continue;
 
       const pagePath = join(postDir, "page.mdx");
+      const file = await readFileSafe(pagePath);
+      if (!file) continue;
 
-      let fileContents: string;
-      try {
-        fileContents = await readFile(pagePath, "utf8");
-      } catch {
-        continue;
-      }
-
-      const { title, zhTitle, publishedAt: publishedAtRaw } =
-        parseFileMetadata(fileContents);
-
-      if (!title || !publishedAtRaw) continue;
+      const metadata = parseFileMetadata(file);
+      const title = metadata.title ?? slug;
+      const publishedAtRaw = metadata.publishedAt;
+      if (!publishedAtRaw) continue;
 
       const publishedAt = new Date(publishedAtRaw);
       if (Number.isNaN(publishedAt.getTime())) continue;
 
+      const postId = metadata.id ?? slug;
+
       posts.push({
-        id: candidate,
+        id: slug,
+        locale,
         title,
-        zh_title: zhTitle ?? title,
         date: DATE_FORMATTER.format(publishedAt),
+        postId,
         publishedAt,
       });
     }
@@ -93,7 +177,41 @@ async function loadPostsMetadata(): Promise<PostMetadata[]> {
 
   posts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 
+  metadataCache.set(locale, { timestamp: Date.now(), data: posts });
   return posts;
+}
+
+export async function getManifest(): Promise<Manifest | null> {
+  if (manifestCache && Date.now() - manifestCache.timestamp < METADATA_CACHE_TTL_MS) {
+    return manifestCache.data;
+  }
+
+  try {
+    const raw = await readFile(POSTS_MANIFEST_PATH, "utf8");
+    const data = JSON.parse(raw) as Manifest;
+    manifestCache = { timestamp: Date.now(), data };
+    return data;
+  } catch {
+    manifestCache = { timestamp: Date.now(), data: null };
+    return null;
+  }
+}
+
+function buildPost(metadata: PostMetadata, views: Views): Post {
+  const viewValue = Number(views[metadata.id] ?? 0);
+  return {
+    id: metadata.id,
+    postId: metadata.postId,
+    title: metadata.title,
+    date: metadata.date,
+    locale: metadata.locale,
+    views: viewValue,
+    viewsFormatted: commaNumber(viewValue),
+  };
+}
+
+function getLocaleDir(locale: PostLocale): string {
+  return join(POSTS_ROOT_DIR, locale);
 }
 
 function parseFileMetadata(fileContents: string): Frontmatter {
@@ -102,8 +220,8 @@ function parseFileMetadata(fileContents: string): Frontmatter {
 
   return {
     title: metadata.title ?? frontmatter.title,
-    zhTitle: metadata.zhTitle ?? frontmatter.zhTitle,
     publishedAt: metadata.publishedAt ?? frontmatter.publishedAt,
+    id: metadata.id ?? frontmatter.id,
   };
 }
 
@@ -131,14 +249,14 @@ function parseExportedMetadata(fileContents: string): Frontmatter {
       result.title = title;
     }
 
-    const zhTitle = (metadata as Record<string, unknown>).zhTitle;
-    if (typeof zhTitle === "string") {
-      result.zhTitle = zhTitle;
-    }
-
     const publishedAt = (metadata as Record<string, unknown>).publishedAt;
     if (typeof publishedAt === "string") {
       result.publishedAt = publishedAt;
+    }
+
+    const id = (metadata as Record<string, unknown>).id;
+    if (typeof id === "string") {
+      result.id = id;
     }
 
     return result;
@@ -236,7 +354,7 @@ function parseFrontmatter(fileContents: string): Frontmatter {
     if (!key) continue;
 
     if (
-      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
     ) {
       value = value.slice(1, -1);
@@ -248,24 +366,32 @@ function parseFrontmatter(fileContents: string): Frontmatter {
   return data;
 }
 
+async function readFileSafe(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function safeReadDir(path: string): Promise<string[]> {
+  try {
+    return await readdir(path);
+  } catch {
+    return [];
+  }
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    const info = await stat(path);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 // shape of the HSET in redis
 type Views = {
   [key: string]: string;
-};
-
-export const getPosts = async () => {
-  const allViews: null | Views = await redis.hgetall("views");
-  const metadata = await loadPostsMetadata();
-  const posts = metadata.map((post): Post => {
-    const views = Number(allViews?.[post.id] ?? 0);
-    return {
-      id: post.id,
-      title: post.title,
-      zh_title: post.zh_title,
-      date: post.date,
-      views,
-      viewsFormatted: commaNumber(views),
-    };
-  });
-  return posts;
 };
