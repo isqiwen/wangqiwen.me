@@ -4,6 +4,7 @@ dist
 .vercel
 .env
 .output
+tsconfig.tsbuildinfo
 .env.local
 .pnpm-debug.log
 TODO

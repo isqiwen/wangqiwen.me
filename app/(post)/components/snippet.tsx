@@ -4,7 +4,7 @@ import { Caption } from "./caption";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import { Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 type SnippetProps = {
   children: ReactNode;
@@ -12,7 +12,9 @@ type SnippetProps = {
   caption?: ReactNode;
 };
 
-type SnippetComponent = ((props: SnippetProps) => JSX.Element) & {
+type ElementWithChildren = { className?: string; children?: ReactNode };
+
+type SnippetComponent = ((props: SnippetProps) => ReactElement) & {
   __snippetComponent?: true;
 };
 
@@ -31,14 +33,12 @@ export const Snippet: SnippetComponent = ({ children, scroll = true, caption = n
             style={style}
           >
             {tokens.map((line, lineIndex) => {
-              const lineProps = getLineProps({ line, key: lineIndex });
-              const { key: lineKey, ...restLineProps } = lineProps;
+              const lineProps = getLineProps({ line });
               return (
-                <div key={lineKey} {...restLineProps}>
+                <div key={lineIndex} {...lineProps}>
                   {line.map((token, tokenIndex) => {
-                    const tokenProps = getTokenProps({ token, key: tokenIndex });
-                    const { key: tokenKey, ...restTokenProps } = tokenProps;
-                    return <span key={tokenKey} {...restTokenProps} />;
+                    const tokenProps = getTokenProps({ token });
+                    return <span key={tokenIndex} {...tokenProps} />;
                   })}
                 </div>
               );
@@ -72,7 +72,7 @@ function extractContent(children: ReactNode): { code: string; className?: string
     };
   }
 
-  if (isValidElement(children)) {
+  if (isValidElement<ElementWithChildren>(children)) {
     const className = children.props?.className;
     const content = extractContent(children.props?.children ?? "").code;
     return { code: content, className };

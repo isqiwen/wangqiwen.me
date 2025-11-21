@@ -19,6 +19,12 @@ type TabProps = {
   children: ReactNode;
 };
 
+type ElementWithChildren = { className?: string; children?: ReactNode };
+
+function isElementWithChildren(node: unknown): node is ReactElement<ElementWithChildren> {
+  return isValidElement<ElementWithChildren>(node);
+}
+
 export function Tabs({
   children,
   defaultIndex = 0,
@@ -52,14 +58,12 @@ export function Tabs({
             style={style}
           >
             {tokens.map((line, lineIndex) => {
-              const lineProps = getLineProps({ line, key: lineIndex });
-              const { key: lineKey, ...restLineProps } = lineProps;
+              const lineProps = getLineProps({ line });
               return (
-                <div key={lineKey} {...restLineProps}>
+                <div key={lineIndex} {...lineProps}>
                   {line.map((token, tokenIndex) => {
-                    const tokenProps = getTokenProps({ token, key: tokenIndex });
-                    const { key: tokenKey, ...restTokenProps } = tokenProps;
-                    return <span key={tokenKey} {...restTokenProps} />;
+                    const tokenProps = getTokenProps({ token });
+                    return <span key={tokenIndex} {...tokenProps} />;
                   })}
                 </div>
               );
@@ -128,15 +132,13 @@ function findCodeSnippet(children: ReactNode | ReactNode[]): { code: string; lan
       continue;
     }
 
-    if (!isValidElement(node)) continue;
+    if (!isElementWithChildren(node)) continue;
 
     if (node.type === "pre" && node.props?.children) {
-      const codeChild = Children.toArray(node.props.children).find(element =>
-        isValidElement(element),
-      ) as ReactElement | undefined;
+      const codeChild = Children.toArray(node.props.children).find(isElementWithChildren);
 
       if (codeChild) {
-        const className = codeChild.props?.className ?? "";
+        const className = codeChild.props.className ?? "";
         const match = className.match(/language-([\w-]+)/);
         const language = (match?.[1] ?? "text") as Language;
         const codeText = getCodeText(codeChild.props.children);
@@ -149,7 +151,7 @@ function findCodeSnippet(children: ReactNode | ReactNode[]): { code: string; lan
       if (info) return info;
     }
 
-    const nested = findCodeSnippet(node.props?.children);
+    const nested = findCodeSnippet(node.props.children);
     if (nested) return nested;
   }
 
@@ -168,23 +170,25 @@ function getCodeText(value: ReactNode): string {
       .trim();
   }
 
-  if (isValidElement(value)) {
-    return getCodeText(value.props?.children ?? "");
+  if (isElementWithChildren(value)) {
+    return getCodeText(value.props.children ?? "");
   }
 
   return "";
 }
 
-function extractFromSnippetNode(node: ReactElement): { code: string; language: Language } | null {
-  const childArray = Children.toArray(node.props?.children ?? []).filter(Boolean);
+function extractFromSnippetNode(
+  node: ReactElement<ElementWithChildren>,
+): { code: string; language: Language } | null {
+  const childArray = Children.toArray(node.props.children ?? []).filter(Boolean);
   const primaryChild = childArray[0];
 
-  let className = node.props?.className ?? "";
-  let contentSource: ReactNode = node.props?.children;
+  let className = node.props.className ?? "";
+  let contentSource: ReactNode = node.props.children;
 
-  if (primaryChild && isValidElement(primaryChild)) {
-    className = primaryChild.props?.className ?? className;
-    contentSource = primaryChild.props?.children ?? primaryChild;
+  if (primaryChild && isElementWithChildren(primaryChild)) {
+    className = primaryChild.props.className ?? className;
+    contentSource = primaryChild.props.children ?? primaryChild;
   }
 
   const match = className.match(/language-([\w-]+)/);
