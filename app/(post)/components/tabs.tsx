@@ -9,7 +9,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import { Snippet } from "./snippet";
 import { Caption } from "./caption";
@@ -51,31 +50,14 @@ export function Tabs({
     const { code, language } = highlightInfo;
 
     return (
-      <Highlight theme={themes.nightOwl} code={code} language={language}>
-        {({ className, style, tokens, getLineProps, getTokenProps }) => (
-          <pre
-            className={`rounded-2xl border border-white/10 bg-[#0b1120] p-4 text-sm text-white ${className}`}
-            style={style}
-          >
-            {tokens.map((line, lineIndex) => {
-              const lineProps = getLineProps({ line });
-              return (
-                <div key={lineIndex} {...lineProps}>
-                  {line.map((token, tokenIndex) => {
-                    const tokenProps = getTokenProps({ token });
-                    return <span key={tokenIndex} {...tokenProps} />;
-                  })}
-                </div>
-              );
-            })}
-          </pre>
-        )}
-      </Highlight>
+      <Snippet scroll caption={caption} className="my-2">
+        <code className={`language-${language}`}>{code}</code>
+      </Snippet>
     );
-  }, [activeTab]);
+  }, [activeTab, caption]);
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+    <div className="my-4 w-full space-y-2">
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab, index) => (
           <button
@@ -92,13 +74,10 @@ export function Tabs({
           </button>
         ))}
       </div>
-      <div
-        id={`${id}-panel-${active}`}
-        className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-slate-200"
-      >
+      <div id={`${id}-panel-${active}`} className="w-full">
         {renderedContent}
       </div>
-      {caption ? <Caption>{caption}</Caption> : null}
+      {!findCodeSnippet(activeTab?.props.children) && caption ? <Caption className="mt-1">{caption}</Caption> : null}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import useSWR from "swr";
 import { Suspense } from "react";
 import commaNumber from "comma-number";
 import useDictionary from "@/locales/dictionary-hook";
@@ -34,94 +35,48 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
   const [currentPage, setCurrentPage] = useState(1); // 当前页码
   const itemsPerPage = 20; // 每页显示的项目数量
 
-  const [basePosts, setBasePosts] = useState<BasePost[]>(() => initialPosts.map(stripPost));
-  const [viewsMap, setViewsMap] = useState<Record<string, number>>(() => buildViewsMap(initialPosts));
-  const refreshTimer = useRef<NodeJS.Timeout | null>(null);
-  const activePostIds = useRef<string[]>(basePosts.map(post => post.id));
+  const initialBasePosts = useMemo(() => initialPosts.map(stripPost), [initialPosts]);
+  const initialViewsMap = useMemo(() => buildViewsMap(initialPosts), [initialPosts]);
 
-  useEffect(() => {
-    setBasePosts(initialPosts.map(stripPost));
-    setViewsMap(buildViewsMap(initialPosts));
-  }, [initialPosts]);
-
-  useEffect(() => {
-    activePostIds.current = basePosts.map(post => post.id);
-  }, [basePosts]);
-
-  const refreshViews = useCallback(
-    async (ids: string[]) => {
-      if (!ids.length) return;
-      try {
-        const response = await fetch(`/api/posts/views?ids=${ids.join(",")}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const payload = (await response.json()) as Record<string, number>;
-        setViewsMap(prev => {
-          let changed = false;
-          const next = { ...prev };
-          for (const [id, value] of Object.entries(payload)) {
-            const normalized = Number(value ?? 0);
-            if (!Number.isNaN(normalized) && next[id] !== normalized) {
-              next[id] = normalized;
-              changed = true;
-            }
-          }
-          return changed ? next : prev;
-        });
-      } catch (error) {
-        console.warn("posts views refresh failed", error);
-      }
+  const { data: basePosts = initialBasePosts } = useSWR(
+    ["/api/posts", language],
+    async ([, locale]) => {
+      const response = await fetch(`/api/posts?locale=${locale}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed to load posts metadata");
+      const data = await response.json();
+      const items: Array<{ slug: string; id: string; title: string; publishedAt: string }> =
+        data.posts ?? [];
+      return items.map(item => ({
+        id: item.slug,
+        postId: item.id,
+        title: item.title,
+        date: formatPublishedAt(item.publishedAt),
+        locale,
+      }));
     },
-    [],
+    {
+      fallbackData: initialBasePosts,
+      keepPreviousData: true,
+      revalidateOnFocus: true,
+    },
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const ids = useMemo(() => basePosts.map(post => post.id), [basePosts]);
 
-    const loadMetadata = async () => {
-      try {
-        const response = await fetch(`/api/posts?locale=${language}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const items: Array<{ slug: string; id: string; title: string; publishedAt: string }> =
-          data.posts ?? [];
-        if (cancelled) return;
-        const mapped: BasePost[] = items.map(item => ({
-          id: item.slug,
-          postId: item.id,
-          title: item.title,
-          date: formatPublishedAt(item.publishedAt),
-          locale: language,
-        }));
-        setBasePosts(mapped);
-        await refreshViews(mapped.map(post => post.id));
-      } catch (error) {
-        console.warn("posts metadata fetch failed", error);
-      }
-    };
-
-    loadMetadata();
-    return () => {
-      cancelled = true;
-    };
-  }, [language, refreshViews]);
-
-  useEffect(() => {
-    const loop = async () => {
-      await refreshViews(activePostIds.current);
-      refreshTimer.current = setTimeout(loop, 5000);
-    };
-
-    refreshTimer.current = setTimeout(loop, 5000);
-    return () => {
-      if (refreshTimer.current) {
-        clearTimeout(refreshTimer.current);
-      }
-    };
-  }, [refreshViews]);
+  const { data: viewsMap = initialViewsMap } = useSWR(
+    ids.length ? ["/api/posts/views", ids.join(",")] : null,
+    async ([, idsParam]) => {
+      const response = await fetch(`/api/posts/views?ids=${idsParam}`, { cache: "no-store" });
+      if (!response.ok) return {};
+      return (await response.json()) as Record<string, number>;
+    },
+    {
+      fallbackData: initialViewsMap,
+      revalidateOnFocus: true,
+      refreshInterval: () =>
+        typeof document !== "undefined" && document.visibilityState === "visible" ? 5000 : 0,
+    },
+  );
 
   const posts = useMemo(() => {
     return basePosts.map(post => {
@@ -172,7 +127,7 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
   }, [sortedPosts, currentPage, itemsPerPage]);
 
   // 计算总页数
-const totalPages = Math.ceil(posts.length / itemsPerPage);
+  const totalPages = Math.ceil(posts.length / itemsPerPage);
 
   return (
     <Suspense fallback={null}>

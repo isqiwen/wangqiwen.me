@@ -10,6 +10,7 @@ type SnippetProps = {
   children: ReactNode;
   scroll?: boolean;
   caption?: ReactNode;
+  className?: string;
 };
 
 type ElementWithChildren = { className?: string; children?: ReactNode };
@@ -18,12 +19,19 @@ type SnippetComponent = ((props: SnippetProps) => ReactElement) & {
   __snippetComponent?: true;
 };
 
-export const Snippet: SnippetComponent = ({ children, scroll = true, caption = null }) => {
-  const { code, className } = extractContent(children);
-  const language = getLanguage(className);
+export const Snippet: SnippetComponent = ({
+  children,
+  scroll = true,
+  caption = null,
+  className,
+}) => {
+  const { code: rawCode, className: contentClassName } = extractContent(children);
+  const code = trimEmptyLines(rawCode);
+  const language = getLanguage(contentClassName);
+  const containerClass = className ?? "my-4";
 
   return (
-    <div className="my-6">
+    <div className={containerClass}>
       <Highlight theme={themes.nightOwl} code={code} language={language}>
         {({ className: highlightClass, style, tokens, getLineProps, getTokenProps }) => (
           <pre
@@ -46,7 +54,6 @@ export const Snippet: SnippetComponent = ({ children, scroll = true, caption = n
           </pre>
         )}
       </Highlight>
-
       {caption != null ? <Caption>{caption}</Caption> : null}
     </div>
   );
@@ -79,6 +86,20 @@ function extractContent(children: ReactNode): { code: string; className?: string
   }
 
   return { code: "", className: undefined };
+}
+
+function trimEmptyLines(code: string): string {
+  const lines = code.split(/\r?\n/);
+
+  while (lines.length && lines[0].trim() === "") {
+    lines.shift();
+  }
+
+  while (lines.length && lines[lines.length - 1].trim() === "") {
+    lines.pop();
+  }
+
+  return lines.join("\n");
 }
 
 function getLanguage(className?: string): Language {

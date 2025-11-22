@@ -8,22 +8,22 @@ type RedisLike = {
   get: (key: string) => Promise<unknown | null>;
 };
 
-process.env.UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
-process.env.UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-
 const hasRedisCredentials =
   Boolean(process.env.UPSTASH_REDIS_REST_URL) &&
   Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
 
+if (process.env.NODE_ENV === "production" && !hasRedisCredentials) {
+  throw new Error("Upstash Redis credentials are missing in production.");
+}
+
 const preferMockInDev =
   process.env.NODE_ENV !== "production" &&
   process.env.UPSTASH_REDIS_FORCE_REMOTE !== "1";
-
-const shouldUseMock = preferMockInDev || !hasRedisCredentials;
+const shouldUseMock = !hasRedisCredentials || preferMockInDev;
 
 const redis: RedisLike = shouldUseMock ? createMockRedis() : (Redis.fromEnv() as RedisLike);
 
-if (shouldUseMock) {
+if (shouldUseMock && process.env.NODE_ENV !== "production") {
   if (!hasRedisCredentials) {
     console.warn(
       "Upstash Redis credentials not found. Using in-memory mock for development.",
