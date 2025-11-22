@@ -25,12 +25,7 @@ export function AudioPlayer({ src, title, subtitle, cover, children }: AudioPlay
           Your browser does not support the audio element.
         </audio>
         {children ? (
-          <div
-            className="text-xs text-slate-500 [&_p]:m-0 [&_p]:mt-2 first:[&_p]:mt-0"
-            // Avoid wrapping the slot in a <p>, because MDX often renders its
-            // own paragraphs. Nesting <p> tags is invalid HTML and will trigger
-            // hydration errors in React/Next.js.
-          >
+          <div className="text-xs text-slate-500 [&_p]:m-0 [&_p]:mt-2 first:[&_p]:mt-0">
             {children}
           </div>
         ) : null}
