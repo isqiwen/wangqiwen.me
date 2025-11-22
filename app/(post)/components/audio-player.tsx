@@ -24,7 +24,11 @@ export function AudioPlayer({ src, title, subtitle, cover, children }: AudioPlay
           <source src={src} />
           Your browser does not support the audio element.
         </audio>
-        {children ? <p className="text-xs text-slate-500">{children}</p> : null}
+        {children ? (
+          <div className="text-xs text-slate-500 [&_p]:m-0 [&_p]:mt-2 first:[&_p]:mt-0">
+            {children}
+          </div>
+        ) : null}
       </div>
     </div>
   );
