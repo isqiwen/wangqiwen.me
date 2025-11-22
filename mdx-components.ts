@@ -24,22 +24,45 @@ import { PullQuote } from "app/(post)/components/pull-quote";
 import { Gallery } from "app/(post)/components/gallery";
 import { Stats, Stat } from "app/(post)/components/stats";
 import { Table, THead, TBody, TR, TH, TD } from "app/(post)/components/table";
+import { Compare } from "app/(post)/components/compare";
+import { Timeline, TimelineItem } from "app/(post)/components/timeline";
+import { Accordion, AccordionItem } from "app/(post)/components/accordion";
+import { KeyValueList, KeyValueItem } from "app/(post)/components/key-value";
+import { VideoPlayer } from "app/(post)/components/video-player";
+import { AudioPlayer } from "app/(post)/components/audio-player";
+import { ImageGrid } from "app/(post)/components/image-grid";
+import { Playground } from "app/(post)/components/playground";
+import { StepPanel } from "app/(post)/components/step-panel";
+import { Diff } from "app/(post)/components/diff";
+import { StatGrid, KPI } from "app/(post)/components/stat-grid";
+import { QuoteCard } from "app/(post)/components/quote-card";
 
 export function useMDXComponents(components: {
   [component: string]: React.ComponentType;
 }) {
   return {
     ...components,
+    // 基础标签（同时提供大小写别名）
     a,
-    h1,
-    h2,
-    h3,
+    A: a,
     p,
+    P: p,
+    h1,
+    H1: h1,
+    h2,
+    H2: h2,
+    h3,
+    H3: h3,
     ol,
+    OL: ol,
     ul,
+    UL: ul,
     li,
+    LI: li,
     hr,
+    HR: hr,
     code,
+    Code: code,
     pre: Snippet,
     img: Image,
     blockquote,
@@ -62,11 +85,27 @@ export function useMDXComponents(components: {
     Gallery,
     Stats,
     Stat,
-    table: Table,
-    thead: THead,
-    tbody: TBody,
-    tr: TR,
-    th: TH,
-    td: TD,
+    Compare,
+    Timeline,
+    TimelineItem,
+    Accordion,
+    AccordionItem,
+    KeyValueList,
+    KeyValueItem,
+    VideoPlayer,
+    AudioPlayer,
+    ImageGrid,
+    Playground,
+    StepPanel,
+    Diff,
+    StatGrid,
+    KPI,
+    QuoteCard,
+    Table,
+    THead,
+    TBody,
+    TR,
+    TH,
+    TD,
   };
 }

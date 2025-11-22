@@ -5,6 +5,7 @@ export const metadata = {
   "id": "test_chinese"
 };
 
+
 # 未来写作体验实验室
 
 <Callout type="info">
@@ -64,6 +65,13 @@ export const summarize = (items: Stat[]): number =>
   </Tab>
 </Tabs>
 
+<Compare
+  leftTitle="本地预览"
+  rightTitle="部署预览"
+  left="MDX + 新组件在本地呈现的效果，便于写作时即看即改。"
+  right="Vercel 线上预览，确保字体、OG、Redis 等生产配置工作正常。"
+/>
+
 <Snippet caption="直接执行命令即可启动一个开发服务器">{`pnpm dev --filter blog`}</Snippet>
 
 <Snippet
@@ -81,6 +89,41 @@ double squared_sum(const std::vector<double>& values) {
   );
 }
 `}</Snippet>
+
+## 时间线 & FAQ
+
+<Timeline>
+  <TimelineItem title="写作模版完成" time="09:00">
+    起草页、目录、元数据字段全部准备好，中文主线先跑通。
+  </TimelineItem>
+  <TimelineItem title="生成英文稿" time="10:30">
+    通过脚本批量生成英文草稿，核对标题与发布时间。
+  </TimelineItem>
+  <TimelineItem title="发布 & 复查" time="14:00">
+    检查 OG 图、站点地图、Redis 视图数据是否更新，最后提交。
+  </TimelineItem>
+</Timeline>
+
+<Accordion>
+  <AccordionItem title="为什么不用第三方富文本编辑器？" open>
+    组件层面的自由度更高，MDX 本身就能写 React 组件，语义清晰且可版本控制。
+  </AccordionItem>
+  <AccordionItem title="多语言怎么保持同步？">
+    通过脚本批量生成英文草稿，后续人工校对；同时在 manifest 中记录发布时间与 ID，防止遗漏。
+  </AccordionItem>
+  <AccordionItem title="性能如何保障？">
+    列表页尽量避免 Redis 调用；OG 改为运行时生成；客户端轮询只在页面可见时触发。
+  </AccordionItem>
+</Accordion>
+
+## 关键参数
+
+<KeyValueList>
+  <KeyValueItem label="默认语言" value="自动检测 cookie 或 Accept-Language" />
+  <KeyValueItem label="缓存策略" value="列表页 SSG + Redis 缺省回退" />
+  <KeyValueItem label="OG 生成" value="运行时生成，60s revalidate" />
+  <KeyValueItem label="本地校验" value="pnpm lint:posts + tsc" />
+</KeyValueList>
 
 ## 图集
 

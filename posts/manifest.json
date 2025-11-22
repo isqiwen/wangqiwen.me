@@ -6,10 +6,18 @@
   "posts": {
     "zh": [
       {
+        "slug": "components-showcase",
+        "id": "components-showcase",
+        "title": "组件全家桶展示馆",
+        "description": "按 mdx-components.tsx 注册顺序逐个演示所有自定义组件，新增组件请在此追加示例。",
+        "publishedAt": "2025-11-22",
+        "path": "/zh/2025/components-showcase"
+      },
+      {
         "slug": "test_chinese",
         "id": "test_chinese",
-        "title": "test_chinese",
-        "description": "",
+        "title": "未来写作体验实验室",
+        "description": "用一篇文章把所有新的 MDX 组件都走一遍，看看多语言写作的可能性。",
         "publishedAt": "2025-11-20",
         "path": "/zh/2025/test_chinese"
       }
@@ -146,6 +154,9 @@
     ]
   },
   "translations": {
+    "components-showcase": {
+      "zh": "/zh/2025/components-showcase"
+    },
     "test_chinese": {
       "zh": "/zh/2025/test_chinese",
       "en": "/en/2025/test_chinese"
