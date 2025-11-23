@@ -18,9 +18,9 @@ async function collectPosts() {
       const yearDir = join(localeDir, year);
       if (!(await isDirectory(yearDir))) continue;
 
-      const slugs = await safeReadDir(yearDir);
-      for (const slug of slugs) {
-        const postDir = join(yearDir, slug);
+      const ids = await safeReadDir(yearDir);
+      for (const id of ids) {
+        const postDir = join(yearDir, id);
         if (!(await isDirectory(postDir))) continue;
 
         const pagePath = join(postDir, "page.mdx");
@@ -29,12 +29,12 @@ async function collectPosts() {
 
         const metadata = parseMetadata(source);
         const frontmatter = parseFrontmatter(source);
-        const key = `${year}/${slug}`;
+        const key = `${year}/${id}`;
 
         if (!entries.has(key)) {
           entries.set(key, {
             year,
-            slug,
+            id,
             locales: {},
           });
         }
@@ -63,7 +63,7 @@ function getFirstValue(entryLocales, getter) {
 }
 
 function buildNormalizedMetadata(data, defaults) {
-  const title = data.metadata.title || data.frontmatter.title || toTitle(defaults.slug);
+  const title = data.metadata.title || data.frontmatter.title || toTitle(defaults.id);
   const description =
     data.metadata.description ||
     data.metadata.summary ||

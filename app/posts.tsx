@@ -44,10 +44,9 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
       const response = await fetch(`/api/posts?locale=${locale}`, { cache: "no-store" });
       if (!response.ok) throw new Error("Failed to load posts metadata");
       const data = await response.json();
-      const items: Array<{ slug: string; id: string; title: string; publishedAt: string }> =
-        data.posts ?? [];
+      const items: Array<{ id: string; title: string; publishedAt: string }> = data.posts ?? [];
       return items.map(item => ({
-        id: item.slug,
+        id: item.id,
         postId: item.id,
         title: item.title,
         date: formatPublishedAt(item.publishedAt),

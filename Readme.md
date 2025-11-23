@@ -27,8 +27,8 @@ This repository contains the source code for [wangqiwen.me](https://wangqiwen.me
 ## Available scripts
 - `pnpm dev` – Start the local development server with Turbopack.
 - `pnpm lint` – Run ESLint with the configuration provided by Next.js.
-- `pnpm generate:english` – Translate Chinese MDX posts into the English content tree. Use `--force` to overwrite existing files or `--dry-run` to preview the changes. You can scope the run with `--year 2024`, `--slug foo`, or `--post 2024/foo`, and `--changed` will only process posts touched in `git status`.
-- `pnpm new:post --slug my-post [--date 2024-12-01] [--with-en]` – Scaffold a new article directory with boilerplate metadata. It creates the Chinese version by default and, when `--with-en` is provided, also seeds an English draft.
+- `pnpm generate:english` – Translate Chinese MDX posts into the English content tree. Use `--force` to overwrite existing files or `--dry-run` to preview the changes. You can scope the run with `--year 2024`, `--id foo`, or `--post 2024/foo`, and `--changed` will only process posts touched in `git status`.
+- `pnpm new:post --id my-post [--date 2024-12-01] [--with-en]` – Scaffold a new article directory with boilerplate metadata. It creates the Chinese version by default and, when `--with-en` is provided, also seeds an English draft.
 - `pnpm sync:posts` – Normalize every article’s metadata and rebuild `posts/manifest.json` so the runtime can load posts quickly without scanning MDX files.
 - `pnpm sync:posts -- --check` – Same as above but only verifies whether files/manifest are in sync (non-zero exit on diff); ideal for CI.
 - `pnpm lint:posts` – Validate that metadata exists (`title`, `id`, `publishedAt`) and that IDs are unique across languages; fails with a non-zero exit code when issues are found.
@@ -63,11 +63,46 @@ vercel --prod         # production deployment
 - `mdx-components.ts` – Mapping of MDX elements to React components used in blog posts.
 
 ## Writing workflow (Chinese-first)
-1. Use `pnpm new:post --slug my-post [--with-en]` to scaffold the folders and metadata. It creates `app/(post)/zh/<year>/<slug>/page.mdx` by default and can optionally add an English draft.
+1. Use `pnpm new:post --id my-post [--with-en]` to scaffold the folders and metadata. It creates `app/(post)/zh/<year>/<id>/page.mdx` by default and can optionally add an English draft.
 2. After editing, run `pnpm sync:posts` to normalize every article’s metadata and regenerate `posts/manifest.json`, so the runtime can load posts without re-scanning MDX files. In CI you can run `pnpm sync:posts -- --check` to ensure the manifest is up to date without modifying the tree.
 3. Before committing, run `pnpm lint:posts` to verify that `title`, `id`, and `publishedAt` exist and that IDs remain unique across languages.
-4. When the English version is ready, run `pnpm generate:english --post <year>/<slug>` (or use `--year`/`--slug`/`--changed`) to translate only the articles you touched.
+4. When the English version is ready, run `pnpm generate:english --post <year>/<id>` (or use `--year`/`--id`/`--changed`) to translate only the articles you touched.
 5. The translation script caches Google Translate responses in `.translation-cache.json`; the file is ignored by git and reused on the next run.
+
+## Local dev setup
+- macOS / Linux:
+  ```bash
+  bash scripts/setup-dev.sh
+  ```
+  This enables corepack (pnpm), installs dependencies, and copies `.env.example` to `.env.local` if missing.
+- Windows (PowerShell):
+  ```powershell
+  pwsh -File scripts/setup-dev.ps1
+  ```
+  Same steps as above, but tailored for Windows shells.
+
+After setup, start the dev server with:
+```bash
+pnpm dev --filter blog
+```
+
+### MDX editor
+Visit `/editor` while the dev server is running. It provides:
+- Metadata form (locale, title, description, publishedAt, id).
+- MDX textarea and generated MDX output.
+- One-click copy/download, plus a suggested target path (e.g., `app/(post)/zh/2025/id/page.mdx`).
+Use it as a helper; it does not write files automatically.
+
+## Ubuntu server deploy (self-hosted)
+If you deploy on your own Ubuntu box (Node 18+, corepack enabled, env vars ready), use:
+```bash
+bash scripts/deploy-ubuntu.sh
+```
+What it does:
+- `git pull --ff-only`
+- `corepack enable` + `pnpm install --frozen-lockfile`
+- `pnpm build`
+- Restarts via `pm2` if available (`pm2 restart wangqiwen-blog || pm2 start pnpm --name wangqiwen-blog -- start`); otherwise it will print a manual `pnpm start` hint.
 
 ## Future development ideas
 - Add automated checks that validate MDX front matter so the post index stays healthy.

@@ -6,7 +6,13 @@
   "posts": {
     "zh": [
       {
-        "slug": "components-showcase",
+        "id": "my-post",
+        "title": "未命名文章",
+        "description": "给文章加一句描述",
+        "publishedAt": "2025-11-23",
+        "path": "/zh/2025/my-post"
+      },
+      {
         "id": "components-showcase",
         "title": "组件全家桶展示馆",
         "description": "按 mdx-components.tsx 注册顺序逐个演示所有自定义组件，新增组件请在此追加示例。",
@@ -14,17 +20,22 @@
         "path": "/zh/2025/components-showcase"
       },
       {
-        "slug": "test_chinese",
         "id": "test_chinese",
         "title": "未来写作体验实验室",
         "description": "用一篇文章把所有新的 MDX 组件都走一遍，看看多语言写作的可能性。",
         "publishedAt": "2025-11-20",
         "path": "/zh/2025/test_chinese"
+      },
+      {
+        "id": "7-principles-of-rich-web-applications",
+        "title": "7 Principles of Rich Web Applications",
+        "description": "7 actionable principles for websites that want to make use of JavaScript to control their UI and deliver the best performance",
+        "publishedAt": "2014-11-04",
+        "path": "/zh/2014/7-principles-of-rich-web-applications"
       }
     ],
     "en": [
       {
-        "slug": "test_chinese",
         "id": "test_chinese",
         "title": "test_chinese",
         "description": "",
@@ -32,111 +43,13 @@
         "path": "/en/2025/test_chinese"
       },
       {
-        "slug": "7-principles-of-rich-web-applications",
-        "id": "7-principles-of-rich-web-applications",
-        "title": "7 Principles of Rich Web Applications",
-        "description": "7 actionable principles for websites that want to make use of JavaScript to control their UI and deliver the best performance",
-        "publishedAt": "2014-11-04",
-        "path": "/en/2014/7-principles-of-rich-web-applications"
+        "id": "workflow-test",
+        "title": "Chinese writing process test",
+        "description": "Record the recent experience after upgrading the writing process of wangqiwen.me to verify whether Chinese content can be read by the website without English manuscripts.",
+        "publishedAt": "2024-11-30",
+        "path": "/en/2024/workflow-test"
       },
       {
-        "slug": "ecmascript-6",
-        "id": "ecmascript-6",
-        "title": "ECMAScript 6",
-        "description": "An overview of some of the most interesting features of ECMAScript 6, the latest version of the JavaScript specification.",
-        "publishedAt": "2015-02-22",
-        "path": "/en/2015/ecmascript-6"
-      },
-      {
-        "slug": "pure-ui",
-        "id": "pure-ui",
-        "title": "Pure UI",
-        "description": "The growing convergence of the designer and programmer roles by way of React",
-        "publishedAt": "2015-07-13",
-        "path": "/en/2015/pure-ui"
-      },
-      {
-        "slug": "addressable-errors",
-        "id": "addressable-errors",
-        "title": "Addressable Errors",
-        "description": "How to improve DX by making errors shareable and collaborative.",
-        "publishedAt": "2016-02-04",
-        "path": "/en/2016/addressable-errors"
-      },
-      {
-        "slug": "2016-in-review",
-        "id": "2016-in-review",
-        "title": "2016 in Review",
-        "description": "A brief summary of my year organized by different categories.",
-        "publishedAt": "2017-01-06",
-        "path": "/en/2017/2016-in-review"
-      },
-      {
-        "slug": "its-hard-to-forego-efficiency",
-        "id": "its-hard-to-forego-efficiency",
-        "title": "It’s hard to forego efficiency",
-        "description": "Once you’ve grown accustomed to a certain level of efficiency provided by the system or environment you are in, it’s extraordinarily difficult to forego it.",
-        "publishedAt": "2017-03-28",
-        "path": "/en/2017/its-hard-to-forego-efficiency"
-      },
-      {
-        "slug": "2019-in-review",
-        "id": "2019-in-review",
-        "title": "2019 in Review",
-        "description": "A quick summary of the evolution of our company, our open-source work, interesting news and lessons in product design and engineering throughout 2019.",
-        "publishedAt": "2020-01-06",
-        "path": "/en/2020/2019-in-review"
-      },
-      {
-        "slug": "an-ode-to-code-golf",
-        "id": "an-ode-to-code-golf",
-        "title": "An ode to code golf",
-        "description": "Reflecting on the joy and lessons of code golf competitions and hacking challenges.",
-        "publishedAt": "2020-04-26",
-        "path": "/en/2020/an-ode-to-code-golf"
-      },
-      {
-        "slug": "books-people-reread",
-        "id": "books-people-reread",
-        "title": "Books people re-read",
-        "description": "A list of books people re-read, sorted by how frequently they were suggested on Twitter.",
-        "publishedAt": "2020-08-02",
-        "path": "/en/2020/books-people-reread"
-      },
-      {
-        "slug": "develop-preview-test",
-        "id": "develop-preview-test",
-        "title": "Develop, Preview, Test",
-        "description": "In this essay I want to make the case that prioritizing end-to-end (E2E) testing for the critical parts of your app will reduce risk and give you the best return. Further, I'll show how you can adopt this methodology in mere minutes.",
-        "publishedAt": "2020-06-11",
-        "path": "/en/2020/develop-preview-test"
-      },
-      {
-        "slug": "next-for-vercel",
-        "id": "next-for-vercel",
-        "title": "Next for Vercel",
-        "description": "Reflecting on the growth of our business, which in 2020 alone added the likes of Airbnb, The Washington Post, Trip Advisor, Scale and Hashicorp as flagship customers, I'm sharing 7 tailwinds behind our acceleration.",
-        "publishedAt": "2020-12-16",
-        "path": "/en/2020/next-for-vercel"
-      },
-      {
-        "slug": "static-hoisting",
-        "id": "static-hoisting",
-        "title": "Static Hoisting",
-        "description": "Exploring Static hoisting, the process of moving static assets to the edge, where they can be served with maximum speed and reliability.",
-        "publishedAt": "2020-05-02",
-        "path": "/en/2020/static-hoisting"
-      },
-      {
-        "slug": "vercel",
-        "id": "vercel",
-        "title": "Vercel",
-        "description": "Today we announced that we’ve re-branded as Vercel, alongside the news of $21M in funding from some of the best VCs (Accel, CRV) and individual investors we could have possibly imagined (Jordan Walke, Nat Friedman, Pete Hunt, Jessie Frazelle, Soleio, Naval Ravikant, and too many others to list).",
-        "publishedAt": "2020-04-21",
-        "path": "/en/2020/vercel"
-      },
-      {
-        "slug": "making-the-web-faster",
         "id": "making-the-web-faster",
         "title": "Making the Web. Faster",
         "description": "Our vision of the Web is a global realtime medium for both creators and consumers, where all friction and latency are eliminated",
@@ -144,25 +57,112 @@
         "path": "/en/2021/making-the-web-faster"
       },
       {
-        "slug": "workflow-test",
-        "id": "workflow-test",
-        "title": "Chinese writing process test",
-        "description": "Record the recent experience after upgrading the writing process of wangqiwen.me to verify whether Chinese content can be read by the website without English manuscripts.",
-        "publishedAt": "2024-11-30",
-        "path": "/en/2024/workflow-test"
+        "id": "next-for-vercel",
+        "title": "Next for Vercel",
+        "description": "Reflecting on the growth of our business, which in 2020 alone added the likes of Airbnb, The Washington Post, Trip Advisor, Scale and Hashicorp as flagship customers, I'm sharing 7 tailwinds behind our acceleration.",
+        "publishedAt": "2020-12-16",
+        "path": "/en/2020/next-for-vercel"
+      },
+      {
+        "id": "books-people-reread",
+        "title": "Books people re-read",
+        "description": "A list of books people re-read, sorted by how frequently they were suggested on Twitter.",
+        "publishedAt": "2020-08-02",
+        "path": "/en/2020/books-people-reread"
+      },
+      {
+        "id": "develop-preview-test",
+        "title": "Develop, Preview, Test",
+        "description": "In this essay I want to make the case that prioritizing end-to-end (E2E) testing for the critical parts of your app will reduce risk and give you the best return. Further, I'll show how you can adopt this methodology in mere minutes.",
+        "publishedAt": "2020-06-11",
+        "path": "/en/2020/develop-preview-test"
+      },
+      {
+        "id": "static-hoisting",
+        "title": "Static Hoisting",
+        "description": "Exploring Static hoisting, the process of moving static assets to the edge, where they can be served with maximum speed and reliability.",
+        "publishedAt": "2020-05-02",
+        "path": "/en/2020/static-hoisting"
+      },
+      {
+        "id": "an-ode-to-code-golf",
+        "title": "An ode to code golf",
+        "description": "Reflecting on the joy and lessons of code golf competitions and hacking challenges.",
+        "publishedAt": "2020-04-26",
+        "path": "/en/2020/an-ode-to-code-golf"
+      },
+      {
+        "id": "vercel",
+        "title": "Vercel",
+        "description": "Today we announced that we’ve re-branded as Vercel, alongside the news of $21M in funding from some of the best VCs (Accel, CRV) and individual investors we could have possibly imagined (Jordan Walke, Nat Friedman, Pete Hunt, Jessie Frazelle, Soleio, Naval Ravikant, and too many others to list).",
+        "publishedAt": "2020-04-21",
+        "path": "/en/2020/vercel"
+      },
+      {
+        "id": "2019-in-review",
+        "title": "2019 in Review",
+        "description": "A quick summary of the evolution of our company, our open-source work, interesting news and lessons in product design and engineering throughout 2019.",
+        "publishedAt": "2020-01-06",
+        "path": "/en/2020/2019-in-review"
+      },
+      {
+        "id": "its-hard-to-forego-efficiency",
+        "title": "It’s hard to forego efficiency",
+        "description": "Once you’ve grown accustomed to a certain level of efficiency provided by the system or environment you are in, it’s extraordinarily difficult to forego it.",
+        "publishedAt": "2017-03-28",
+        "path": "/en/2017/its-hard-to-forego-efficiency"
+      },
+      {
+        "id": "2016-in-review",
+        "title": "2016 in Review",
+        "description": "A brief summary of my year organized by different categories.",
+        "publishedAt": "2017-01-06",
+        "path": "/en/2017/2016-in-review"
+      },
+      {
+        "id": "addressable-errors",
+        "title": "Addressable Errors",
+        "description": "How to improve DX by making errors shareable and collaborative.",
+        "publishedAt": "2016-02-04",
+        "path": "/en/2016/addressable-errors"
+      },
+      {
+        "id": "pure-ui",
+        "title": "Pure UI",
+        "description": "The growing convergence of the designer and programmer roles by way of React",
+        "publishedAt": "2015-07-13",
+        "path": "/en/2015/pure-ui"
+      },
+      {
+        "id": "ecmascript-6",
+        "title": "ECMAScript 6",
+        "description": "An overview of some of the most interesting features of ECMAScript 6, the latest version of the JavaScript specification.",
+        "publishedAt": "2015-02-22",
+        "path": "/en/2015/ecmascript-6"
+      },
+      {
+        "id": "7-principles-of-rich-web-applications",
+        "title": "7 Principles of Rich Web Applications",
+        "description": "7 actionable principles for websites that want to make use of JavaScript to control their UI and deliver the best performance",
+        "publishedAt": "2014-11-04",
+        "path": "/en/2014/7-principles-of-rich-web-applications"
       }
     ]
   },
   "translations": {
+    "7-principles-of-rich-web-applications": {
+      "zh": "/zh/2014/7-principles-of-rich-web-applications",
+      "en": "/en/2014/7-principles-of-rich-web-applications"
+    },
     "components-showcase": {
       "zh": "/zh/2025/components-showcase"
+    },
+    "my-post": {
+      "zh": "/zh/2025/my-post"
     },
     "test_chinese": {
       "zh": "/zh/2025/test_chinese",
       "en": "/en/2025/test_chinese"
-    },
-    "7-principles-of-rich-web-applications": {
-      "en": "/en/2014/7-principles-of-rich-web-applications"
     },
     "ecmascript-6": {
       "en": "/en/2015/ecmascript-6"

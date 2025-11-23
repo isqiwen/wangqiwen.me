@@ -1,5 +1,5 @@
 import redis from "@/app/redis";
-import { getPostBySlug } from "@/app/get-posts";
+import { getPostById } from "@/app/get-posts";
 import commaNumber from "comma-number";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const post = await getPostBySlug(id);
+  const post = await getPostById(id);
 
   if (post == null) {
     return NextResponse.json(

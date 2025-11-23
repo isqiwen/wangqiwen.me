@@ -35,7 +35,6 @@ type Manifest = {
   posts?: Record<
     PostLocale,
     Array<{
-      slug: string;
       id: string;
       title: string;
       description?: string;
@@ -73,18 +72,18 @@ export const getPosts = async (locale: PostLocale = "zh") => {
   return metadata.map(post => buildPost(post, allViews));
 };
 
-export const getPostBySlug = async (slug: string): Promise<Post | null> => {
+export const getPostById = async (id: string): Promise<Post | null> => {
   const views = await loadViews();
   const manifest = await getManifest();
 
   if (manifest?.posts) {
     for (const locale of SUPPORTED_LOCALES) {
       const list = manifest.posts[locale] ?? [];
-      const match = list.find(post => post.slug === slug);
+      const match = list.find(post => post.id === id);
       if (match) {
         return buildPost(
           {
-            id: match.slug,
+            id: match.id,
             locale,
             title: match.title,
             date: DATE_FORMATTER.format(new Date(match.publishedAt)),
@@ -99,7 +98,7 @@ export const getPostBySlug = async (slug: string): Promise<Post | null> => {
 
   for (const locale of SUPPORTED_LOCALES) {
     const metadata = await loadPostsMetadata(locale);
-    const target = metadata.find(post => post.id === slug);
+    const target = metadata.find(post => post.id === id);
     if (target) {
       return buildPost(target, views);
     }
@@ -121,7 +120,7 @@ async function loadManifestMetadata(locale: PostLocale): Promise<PostMetadata[]>
   const manifest = await getManifest();
   if (manifest?.posts?.[locale]) {
     return manifest.posts[locale].map(post => ({
-      id: post.slug,
+      id: post.id,
       locale,
       title: post.title,
       date: DATE_FORMATTER.format(new Date(post.publishedAt)),
@@ -145,9 +144,9 @@ async function loadPostsMetadata(locale: PostLocale): Promise<PostMetadata[]> {
     const yearPath = join(getLocaleDir(locale), year);
     if (!(await isDirectory(yearPath))) continue;
 
-    const slugs = await safeReadDir(yearPath);
-    for (const slug of slugs) {
-      const postDir = join(yearPath, slug);
+    const ids = await safeReadDir(yearPath);
+    for (const postId of ids) {
+      const postDir = join(yearPath, postId);
       if (!(await isDirectory(postDir))) continue;
 
       const pagePath = join(postDir, "page.mdx");
@@ -155,21 +154,21 @@ async function loadPostsMetadata(locale: PostLocale): Promise<PostMetadata[]> {
       if (!file) continue;
 
       const metadata = parseFileMetadata(file);
-      const title = metadata.title ?? slug;
+      const title = metadata.title ?? postId;
       const publishedAtRaw = metadata.publishedAt;
       if (!publishedAtRaw) continue;
 
       const publishedAt = new Date(publishedAtRaw);
       if (Number.isNaN(publishedAt.getTime())) continue;
 
-      const postId = metadata.id ?? slug;
+      const finalId = metadata.id ?? postId;
 
       posts.push({
-        id: slug,
+        id: finalId,
         locale,
         title,
         date: DATE_FORMATTER.format(publishedAt),
-        postId,
+        postId: finalId,
         publishedAt,
       });
     }

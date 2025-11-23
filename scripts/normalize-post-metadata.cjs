@@ -27,7 +27,7 @@ async function main() {
   for (const entry of entries.values()) {
     const canonicalId =
       getFirstValue(entry.locales, data => data.metadata.id || data.frontmatter.id) ||
-      entry.slug;
+      entry.id;
     const canonicalPublishedAt =
       getFirstValue(entry.locales, data => data.metadata.publishedAt || data.frontmatter.publishedAt) ||
       `${entry.year}-01-01`;
@@ -39,7 +39,7 @@ async function main() {
       const normalized = buildNormalizedMetadata(data, {
         postId: canonicalId,
         publishedAt: canonicalPublishedAt,
-        slug: entry.slug,
+        id: entry.id,
       });
 
       const newSource = replaceMetadataBlock(data.source, normalized);
@@ -52,19 +52,26 @@ async function main() {
       }
 
       manifest.posts[locale].push({
-        slug: entry.slug,
         id: normalized.id,
         title: normalized.title,
         description: normalized.description ?? "",
         publishedAt: normalized.publishedAt,
-        path: `/${locale}/${entry.year}/${entry.slug}`,
+        path: `/${locale}/${entry.year}/${entry.id}`,
       });
 
       if (!manifest.translations[normalized.id]) {
         manifest.translations[normalized.id] = {};
       }
-      manifest.translations[normalized.id][locale] = `/${locale}/${entry.year}/${entry.slug}`;
+      manifest.translations[normalized.id][locale] = `/${locale}/${entry.year}/${entry.id}`;
     }
+  }
+
+  // 按发布时间倒序排序，确保 manifest 列表从新到旧
+  for (const locale of SUPPORTED_LOCALES) {
+    manifest.posts[locale].sort((a, b) => {
+      if (a.publishedAt === b.publishedAt) return 0;
+      return a.publishedAt > b.publishedAt ? -1 : 1;
+    });
   }
 
   const manifestJSON = JSON.stringify(manifest, null, 2);
