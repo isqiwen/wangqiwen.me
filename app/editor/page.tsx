@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { componentsPalette, type ComponentSnippet } from "./snippets";
 
 type Locale = "zh" | "en";
@@ -22,6 +22,8 @@ export default function EditorPage() {
   const [saveHint, setSaveHint] = useState("");
   const [loadHint, setLoadHint] = useState("");
   const [pickerMessage, setPickerMessage] = useState("");
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const [cursorPos, setCursorPos] = useState<number>(body.length);
 
   async function publishPost() {
     try {
@@ -146,6 +148,29 @@ ${body.trim()}\n`;
 
     const bodyContent = content.replace(/export const metadata =[\s\S]*?;\s*/, "").trimStart();
     setBody(bodyContent || content);
+    setCursorPos((bodyContent || content).length);
+  };
+
+  const insertSnippet = (snippet: string) => {
+    const el = editorRef.current;
+    const pos = el?.selectionStart ?? cursorPos ?? body.length;
+    const before = body.slice(0, pos);
+    const after = body.slice(pos);
+    const needsPrefix = before.length > 0 && !before.endsWith("\n\n");
+    const prefix = needsPrefix ? "\n\n" : "";
+    const suffix = after.startsWith("\n") ? "" : "\n\n";
+    const next = `${before}${prefix}${snippet}${suffix}${after}`;
+    setBody(next);
+    const nextPos = (before + prefix + snippet).length;
+    setCursorPos(nextPos);
+    // restore cursor
+    requestAnimationFrame(() => {
+      const textarea = editorRef.current;
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = nextPos;
+        textarea.focus();
+      }
+    });
   };
 
   return (
@@ -230,8 +255,16 @@ ${body.trim()}\n`;
             <label className="text-xs font-semibold text-slate-600">Body (MDX)</label>
           </div>
           <textarea
+            ref={editorRef}
             value={body}
-            onChange={e => setBody(e.target.value)}
+            onChange={e => {
+              setBody(e.target.value);
+              setCursorPos(e.target.selectionStart ?? e.target.value.length);
+            }}
+            onSelect={e => {
+              const target = e.target as HTMLTextAreaElement;
+              setCursorPos(target.selectionStart ?? 0);
+            }}
             className="min-h-[800px] w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm"
             spellCheck={false}
           />
@@ -239,11 +272,7 @@ ${body.trim()}\n`;
 
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-700">组件列表</h2>
-          <ComponentPalette
-            onInsert={snippet => {
-              setBody(prev => `${prev.trimEnd()}\n\n${snippet}\n`);
-            }}
-          />
+          <ComponentPalette onInsert={insertSnippet} />
         </div>
       </section>
 
@@ -376,35 +405,56 @@ function FolderTree({
   selectedPath: string;
   onSelect: (path: string) => void;
 }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggleLocale = (key: string) => {
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="space-y-1">
-      {tree.map(localeNode => (
-        <div key={localeNode.name} className="rounded-md border border-slate-200 bg-white p-2">
-          <div className="font-semibold text-slate-700">{localeNode.name}</div>
-          <div className="mt-1 space-y-1 pl-2">
-            {localeNode.children?.map(yearNode => (
-              <div key={yearNode.name}>
-                <div className="text-slate-600">{yearNode.name}</div>
-                <div className="mt-1 grid grid-cols-1 gap-1 pl-2">
-                  {yearNode.children?.map(slugNode => (
-                    <button
-                      key={slugNode.path}
-                      onClick={() => slugNode.path && onSelect(slugNode.path)}
-                      className={`rounded border px-2 py-1 text-left text-[12px] transition ${
-                        slugNode.path === selectedPath
-                          ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
-                      }`}
-                    >
-                      {slugNode.name}
-                    </button>
-                  ))}
-                </div>
+      {tree.map(localeNode => {
+        const localeKey = localeNode.name;
+        const isLocaleOpen = !!expanded[localeKey];
+        return (
+          <div key={localeKey} className="rounded-md border border-slate-200 bg-white p-2">
+            <button
+              type="button"
+              onClick={() => toggleLocale(localeKey)}
+              className="flex w-full items-center justify-between text-left font-semibold text-slate-700"
+            >
+              <span>{localeNode.name}</span>
+              <span className="text-[11px] text-slate-500">{isLocaleOpen ? "收起" : "展开"}</span>
+            </button>
+            {isLocaleOpen && (
+              <div className="mt-1 space-y-1 pl-2">
+                {localeNode.children?.map(yearNode => (
+                  <div key={`${localeKey}/${yearNode.name}`} className="rounded-md border border-slate-100 bg-white/60 p-1">
+                    <div className="flex w-full items-center justify-between text-left text-slate-600">
+                      <span>{yearNode.name}</span>
+                    </div>
+                    <div className="mt-1 grid grid-cols-1 gap-1 pl-2">
+                      {yearNode.children?.map(slugNode => (
+                        <button
+                          key={slugNode.path}
+                          onClick={() => slugNode.path && onSelect(slugNode.path)}
+                          className={`rounded border px-2 py-1 text-left text-[12px] transition ${
+                            slugNode.path === selectedPath
+                              ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+                          }`}
+                        >
+                          {slugNode.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

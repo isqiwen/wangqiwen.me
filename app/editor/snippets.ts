@@ -6,6 +6,22 @@ export type ComponentSnippet = {
 
 export const componentsPalette: ComponentSnippet[] = [
   {
+    label: "Heading & Paragraph",
+    hint: "h1/h2/p 示例",
+    snippet: `# 一级标题
+
+## 二级标题
+
+这是一个段落，包含行内代码 \`const ready = true;\`。`,
+  },
+  {
+    label: "Link / Blockquote",
+    hint: "基础文本组件",
+    snippet: `这里有一个[外部链接](https://nextjs.org)。
+
+> 自定义 Blockquote 示例，支持暗色模式。`,
+  },
+  {
     label: "Snippet",
     hint: "Code block with caption",
     snippet: `<Snippet caption="示例代码块">
@@ -25,9 +41,54 @@ export const componentsPalette: ComponentSnippet[] = [
 </Tabs>`,
   },
   {
+    label: "Stats",
+    hint: "指标卡片",
+    snippet: `<Stats>
+  <Stat value="20+" label="组件数量" trend="持续增加" />
+  <Stat value="100%" label="MDX 支持" trend="写作即渲染" />
+</Stats>`,
+  },
+  {
+    label: "Table",
+    hint: "表格组件",
+    snippet: `<Table>
+  <THead>
+    <TR>
+      <TH>组件</TH>
+      <TH>用途</TH>
+      <TH>SSR</TH>
+    </TR>
+  </THead>
+  <TBody>
+    <TR>
+      <TD>Tabs / Snippet</TD>
+      <TD>展示代码与多语言切换</TD>
+      <TD>是</TD>
+    </TR>
+  </TBody>
+</Table>`,
+  },
+  {
     label: "Callout",
     hint: "Info / warning / success",
     snippet: `<Callout type="info">提示内容</Callout>`,
+  },
+  {
+    label: "Image / Figure",
+    hint: "带说明的图片",
+    snippet: `<Figure>
+  <Image src="/images/rauchg-3d4cecf.gray.jpg" alt="示例图片" width={null} height={null} />
+</Figure>`,
+  },
+  {
+    label: "YouTube",
+    hint: "嵌入视频",
+    snippet: `<YouTube id="dQw4w9WgXcQ" />`,
+  },
+  {
+    label: "Footnotes",
+    hint: "脚注与引用",
+    snippet: `带脚注的文本<Ref id={1}/>，以及第二个脚注<Ref id={2}/>\n\n<FootNotes>\n  <FootNote id={1}>脚注 1 内容</FootNote>\n  <FootNote id={2}>脚注 2 内容</FootNote>\n</FootNotes>`,
   },
   {
     label: "QuoteCard",
