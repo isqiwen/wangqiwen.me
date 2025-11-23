@@ -17,22 +17,21 @@ interface TweetArgs {
 }
 
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
-  // we first prioritize getting a fresh tweet
-  try {
-    const tweet = await getTweet(id);
-
-    // @ts-ignore
-    if (tweet && !tweet.tombstone) {
-      // we populate the cache if we have a fresh tweet
-      try {
-        await redis.set(`tweet:${id}`, tweet);
-      } catch (error) {
-        console.warn("tweet cache write error", error);
-      }
-      return tweet;
-    }
-  } catch (error) {
+  // we first prioritize getting a fresh tweet; swallow fetch errors to avoid SSR crashes
+  const tweet = await getTweet(id).catch(error => {
     console.error("tweet fetch error", error);
+    return undefined;
+  });
+
+  // @ts-ignore
+  if (tweet && !tweet.tombstone) {
+    // we populate the cache if we have a fresh tweet
+    try {
+      await redis.set(`tweet:${id}`, tweet);
+    } catch (error) {
+      console.warn("tweet cache write error", error);
+    }
+    return tweet;
   }
 
   try {
