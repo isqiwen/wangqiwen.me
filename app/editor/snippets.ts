@@ -31,12 +31,25 @@ export const componentsPalette: ComponentSnippet[] = [
   {
     label: "Tabs",
     hint: "Tabbed code blocks",
-    snippet: `<Tabs caption="多语言示例">
+    snippet: `<Tabs caption="同一逻辑的不同语言写法">
   <Tab title="JavaScript">
-{ \`console.log("JS");\` }
+
+\`\`\`js
+export function formatViews(value) {
+  return new Intl.NumberFormat("zh-CN").format(value);
+}
+\`\`\`
+
   </Tab>
   <Tab title="TypeScript">
-{ \`console.log("TS");\` }
+
+\`\`\`ts
+type Stat = { label: string; value: number };
+
+export const summarize = (items: Stat[]): number =>
+  items.reduce((sum, item) => sum + item.value, 0);
+\`\`\`
+
   </Tab>
 </Tabs>`,
   },

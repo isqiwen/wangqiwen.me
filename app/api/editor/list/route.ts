@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "no-store" };
+
 const ROOT = process.cwd();
 const BASE_DIR = path.join(ROOT, "app", "(post)");
 const ALLOWED_SUBDIRS = new Set(["zh", "en"]);
@@ -9,9 +12,9 @@ const ALLOWED_SUBDIRS = new Set(["zh", "en"]);
 export async function GET() {
   try {
     const entries = await collectFiles();
-    return NextResponse.json({ files: entries });
+    return NextResponse.json({ files: entries }, { headers: NO_STORE });
   } catch (error) {
-    return NextResponse.json({ error: "failed to list files" }, { status: 500 });
+    return NextResponse.json({ error: "failed to list files" }, { status: 500, headers: NO_STORE });
   }
 }
 

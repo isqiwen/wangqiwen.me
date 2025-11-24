@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ClipboardEvent, DragEvent } from "react";
 import { componentsPalette, type ComponentSnippet } from "./snippets";
 
 type Locale = "zh" | "en";
@@ -21,6 +22,8 @@ export default function EditorPage() {
   const [showPicker, setShowPicker] = useState(false);
   const [saveHint, setSaveHint] = useState("");
   const [loadHint, setLoadHint] = useState("");
+  const [uploadHint, setUploadHint] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const [pickerMessage, setPickerMessage] = useState("");
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const [cursorPos, setCursorPos] = useState<number>(body.length);
@@ -116,15 +119,21 @@ ${body.trim()}\n`;
 
   useEffect(() => {
     if (!saveHint) return;
-    const timer = setTimeout(() => setSaveHint(""), 2000);
+    const timer = setTimeout(() => setSaveHint(""), 500);
     return () => clearTimeout(timer);
   }, [saveHint]);
 
   useEffect(() => {
     if (!loadHint) return;
-    const timer = setTimeout(() => setLoadHint(""), 2000);
+    const timer = setTimeout(() => setLoadHint(""), 500);
     return () => clearTimeout(timer);
   }, [loadHint]);
+
+  useEffect(() => {
+    if (!uploadHint) return;
+    const timer = setTimeout(() => setUploadHint(""), 500);
+    return () => clearTimeout(timer);
+  }, [uploadHint]);
 
   const applyContent = (content: string) => {
     const metadataMatch = content.match(/export const metadata =\s*\{([\s\S]*?)\};?/);
@@ -171,6 +180,60 @@ ${body.trim()}\n`;
         textarea.focus();
       }
     });
+  };
+
+  const handleImageFile = async (file: File) => {
+    if (!file || !file.type.startsWith("image/")) {
+      setUploadHint("仅支持图片文件");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("id", id);
+      const res = await fetch("/api/editor/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        throw new Error(data?.error || "upload failed");
+      }
+
+      const snippet = buildImageSnippet({
+        src: data.path as string,
+        width: data.width as number | null | undefined,
+        height: data.height as number | null | undefined,
+        alt: stripExtension(file.name),
+      });
+      insertSnippet(snippet);
+      setUploadHint(`已插入图片 ${data.path}`);
+    } catch (error) {
+      console.error(error);
+      setUploadHint("上传失败，请重试");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLTextAreaElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length > 0) {
+      void handleImageFile(files[0]);
+    }
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData?.files ?? []);
+    const imageFile = files.find(file => file.type.startsWith("image/"));
+    if (imageFile) {
+      event.preventDefault();
+      void handleImageFile(imageFile);
+    }
   };
 
   return (
@@ -265,6 +328,9 @@ ${body.trim()}\n`;
               const target = e.target as HTMLTextAreaElement;
               setCursorPos(target.selectionStart ?? 0);
             }}
+            onDrop={handleDrop}
+            onDragOver={e => e.preventDefault()}
+            onPaste={handlePaste}
             className="min-h-[800px] w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm"
             spellCheck={false}
           />
@@ -276,7 +342,7 @@ ${body.trim()}\n`;
         </div>
       </section>
 
-      {(saveHint || loadHint) && (
+      {(saveHint || loadHint || uploadHint) && (
         <div className="pointer-events-none fixed top-4 right-4 z-40 space-y-2">
           {saveHint && (
             <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg">
@@ -288,6 +354,11 @@ ${body.trim()}\n`;
               {loadHint}
             </div>
           )}
+          {uploadHint && (
+            <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg">
+              {uploadHint}
+            </div>
+          )}
         </div>
       )}
 
@@ -297,7 +368,6 @@ ${body.trim()}\n`;
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">选择文件</h3>
-                <p className="text-xs text-slate-500">限定在 app/(post)/zh 或 en 下的 page.mdx</p>
               </div>
               <button
                 onClick={() => setShowPicker(false)}
@@ -314,7 +384,6 @@ ${body.trim()}\n`;
               )}
             </div>
             {pickerMessage && <div className="mt-2 text-[11px] text-rose-500">{pickerMessage}</div>}
-            <div className="mt-3 text-right text-[11px] text-slate-500">路径被限制在 app/(post) 下</div>
           </div>
         </div>
       )}
@@ -324,6 +393,40 @@ ${body.trim()}\n`;
 
 function escapeValue(value: string) {
   return value.replace(/"/g, '\\"');
+}
+
+function buildImageSnippet({
+  src,
+  width,
+  height,
+  alt,
+}: {
+  src: string;
+  width?: number | null;
+  height?: number | null;
+  alt?: string;
+}) {
+  const lines = [
+    "<Image",
+    `  src="${src}"`,
+  ];
+
+  if (width && width > 0) {
+    lines.push(`  width={${width}}`);
+  }
+
+  if (height && height > 0) {
+    lines.push(`  height={${height}}`);
+  }
+
+  lines.push(`  alt="${escapeValue(alt ?? "")}"`);
+  lines.push("/>");
+
+  return lines.join("\n");
+}
+
+function stripExtension(name: string) {
+  return name.replace(/\.[^.]+$/, "");
 }
 
 function Field({
