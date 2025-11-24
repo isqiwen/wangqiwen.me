@@ -71,8 +71,15 @@ async function walk(dir: string, bucket: Array<{ path: string; label: string }>)
       await walk(abs, bucket);
     } else if (entry.isFile() && entry.name === "page.mdx") {
       const rel = path.relative(ROOT, abs);
-      const label = rel.replace(/^app\/\(post\)\//, "");
-      bucket.push({ path: rel, label });
+      const normalizedRel = rel.replace(/\\/g, "/");
+      const label = normalizedRel.replace(/^app\/\(post\)\//, "");
+
+      // Debug logging to trace path normalization issues (especially on Windows).
+      if (label === normalizedRel) {
+        console.log("[api/editor/list] skipped prefix trim", { rel, normalizedRel });
+      }
+
+      bucket.push({ path: normalizedRel, label });
     }
   }
 }
