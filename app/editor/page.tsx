@@ -186,19 +186,19 @@ ${body.trim()}\n`;
         <div className="flex flex-wrap gap-2">
           <button
             onClick={publishPost}
-            className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+            className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
           >
             发布
           </button>
           <button
             onClick={saveToDisk}
-            className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+            className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
           >
             保存
           </button>
           <button
             onClick={() => setShowPicker(true)}
-            className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+            className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
           >
             加载
           </button>

@@ -1,4 +1,3 @@
-import { Demo, Demos } from './demo'
 export const metadata = {
   "title": "Pure UI",
   "description": "The growing convergence of the designer and programmer roles by way of React",
@@ -6,24 +5,7 @@ export const metadata = {
   "id": "pure-ui"
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import { Demo, Demos } from './demo'
 
 I recently redesigned and implemented a new version of [VideoPress](https://videopress.com), the [WordPress](https://wordpress.com) video platform.
 
@@ -128,17 +110,17 @@ With this paradigm in mind, I set out to realize the different main states of th
 
 These answer the questions of what the player would look like when
 
-… the video is converting on the backend and not ready for playback yet  
-… the video has been removed due to DMCA  
-… a connection or server error occured  
-… the video is not G rated and the person is asked to enter their age  
-… the video was playing but no further data was received  
-… the user hovers the progress bar  
+… the video is converting on the backend and not ready for playback yet
+… the video has been removed due to DMCA
+… a connection or server error occured
+… the video is not G rated and the person is asked to enter their age
+… the video was playing but no further data was received
+… the user hovers the progress bar
 
 The main issue, however, is that underestimating the size of the state space is actually very easy. In other words, it’s difficult to come up with the complete list of questions that your UI needs to answer.
 
 It’s easy because the experience we’re discussing fundamentally revolves around just watching video. Every other state can be seen as exceptional in the same way errors are. Without careful consideration, it could be wrongly reduced to “just `<video>` and a few extra divs”.
-  
+
 Through this lens, one can hazard an explanation for the age-old problem of poor software development estimates. When the *magnitude* of the undertaking is not clear for the developer or designer, let alone for the people removed from the creation process, it’s simply impossible to make any accurate predictions.
 
 Unlike other projects I’d worked on in the past, the next step of the implementation almost perfectly matched the design workflow. I broke down the initial design into even smaller functions that would be rendered into HTML artboards.

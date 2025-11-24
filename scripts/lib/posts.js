@@ -91,18 +91,15 @@ function replaceMetadataBlock(source, metadataObject) {
   const literalStart = source.indexOf("{", index);
   let end = literalStart + literal.length;
 
-  while (end < source.length && /\s/.test(source[end])) {
-    end += 1;
-  }
-
-  if (source[end] === ";") {
-    end += 1;
-  }
-
-  if (source[end] === "\r" && source[end + 1] === "\n") {
-    end += 2;
-  } else if (source[end] === "\n") {
-    end += 1;
+  // Consume optional trailing whitespace/newlines/semicolon after the metadata block
+  // so repeated runs stay idempotent (exactly two newlines are added below).
+  while (end < source.length) {
+    const char = source[end];
+    if (char === ";" || /\s/.test(char)) {
+      end += 1;
+      continue;
+    }
+    break;
   }
 
   const newBlock = `export const metadata = ${JSON.stringify(metadataObject, null, 2)};\n\n`;
