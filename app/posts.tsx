@@ -182,9 +182,9 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
             className={`w-12 h-9 text-left ${
               sort[0] === "date" ? "text-gray-700 dark:text-gray-400" : ""
             }`}
+            aria-label={`Sort by ${dict.post.date}`}
           >
             {dict.post.date}
-            {sort[0] === "date" ? (sort[1] === "asc" ? " ^" : " v") : ""}
           </button>
           <span className="grow pl-2">{dict.post.title}</span>
           <button
@@ -192,9 +192,9 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
             className={`h-9 pl-4 ${
               sort[0] === "views" ? "text-gray-700 dark:text-gray-400" : ""
             }`}
+            aria-label={`Sort by ${dict.post.views}`}
           >
             {dict.post.views}
-            {sort[0] === "views" ? (sort[1] === "asc" ? " ^" : " v") : ""}
           </button>
         </header>
 
