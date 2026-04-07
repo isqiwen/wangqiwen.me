@@ -1,32 +1,43 @@
 import { ThemeToggle } from "./themes/theme-toggle";
 import { Logo } from "./logo";
 import Link from "next/link";
-import { LanguageSwitcher } from './language-switcher';
+import { LanguageSwitcher } from "./language-switcher";
+import type { Locale } from "@/locales/config";
+import { getFollowLabel, getNavigationLinks, siteConfig } from "@/utils/site-config";
 
-export function Header({ dict, language }: { dict: any; language: "zh" | "en" }) {
+export function Header({ language }: { dict: any; language: Locale }) {
+  const navigationLinks = getNavigationLinks(language);
+  const followLabel = getFollowLabel(language);
+
   return (
     <header className="flex mb-5 md:mb-10 items-center">
-      <Logo />
+      <Logo language={language} />
 
       <nav className="font-mono text-xs grow justify-end items-center flex gap-1 md:gap-3">
         <ThemeToggle />
 
         <LanguageSwitcher currentLanguage={language} />
 
-        <Link
-          href="/about"
-          className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] rounded-sm p-2 transition-[background-color]"
-        >
-          { dict.about }
-        </Link>
-        <a
-          href="https://twitter.com/QiWenWang1"
-          target="_blank"
-          className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] items-center p-2 rounded-sm transition-[background-color] whitespace-nowrap -mr-2"
-        >
-          <TweetIcon style={{ marginRight: 4 }} />
-          { dict.follow }
-        </a>
+        {navigationLinks.map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] rounded-sm p-2 transition-[background-color]"
+          >
+            {item.label}
+          </Link>
+        ))}
+        {siteConfig.social.primary.url ? (
+          <a
+            href={siteConfig.social.primary.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] items-center p-2 rounded-sm transition-[background-color] whitespace-nowrap -mr-2"
+          >
+            <TweetIcon style={{ marginRight: 4 }} />
+            {followLabel}
+          </a>
+        ) : null}
       </nav>
     </header>
   );

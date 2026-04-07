@@ -1,9 +1,11 @@
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 import { ImageResponse } from "next/og";
 import { getPosts } from "@/app/get-posts";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { siteConfig } from "@/utils/site-config";
 
 const fontsDir = join(process.cwd(), "public", "fonts");
 
@@ -30,10 +32,10 @@ export async function GET() {
       >
         <header tw="flex text-[36px] w-full">
           <div tw="font-bold" style={font("Inter 600")}>
-            Wang Qiwen
+            {siteConfig.site.name}
           </div>
           <div tw="grow" />
-          <div tw="text-[28px]">wangqiwen.me</div>
+          <div tw="text-[28px]">{siteConfig.site.domain}</div>
         </header>
 
         <main tw="flex mt-10 flex-col w-full" style={font("Roboto Mono 400")}>

@@ -1,33 +1,32 @@
 import "@/styles/globals.css";
-import { Suspense } from "react";
-import { getLanguageFromCookies } from '@/utils/server/get-language';
+import { getLanguageFromCookies } from "@/utils/server/get-language";
 import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
-import ProgressBar from "./progress-bar"
-import { getDictionary } from '@/locales/dictionary'
-import DictionaryProvider from '@/locales/DictionaryProvider'
+import ProgressBar from "./progress-bar";
+import { getDictionary } from "@/locales/dictionary";
+import DictionaryProvider from "@/locales/DictionaryProvider";
+import { siteConfig } from "@/utils/site-config";
+import { ensureEnvironmentWarnings } from "@/utils/server/env-warnings";
 
 export const metadata = {
-  title: "Wang Qiwen's blog",
-  description:
-    "Wang Qiwen is the CEO and founder of Vercel, a software engineer, and the creator of Next.js, Mongoose, Socket.io and other open source libraries.",
+  title: siteConfig.site.title,
+  description: siteConfig.site.description,
   openGraph: {
-    title: "Wang Qiwen's blog",
-    description:
-      "Guillermo Rauch is the CEO and founder of Vercel, a software engineer, and the creator of Next.js, Mongoose, Socket.io and other open source libraries.",
-    url: "https://rauchg.com",
-    siteName: "Wang Qiwen's blog",
+    title: siteConfig.site.title,
+    description: siteConfig.site.description,
+    url: siteConfig.site.url,
+    siteName: siteConfig.site.title,
     images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@Wang Qiwen",
-    creator: "@Wang Qiwen",
+    site: `@${siteConfig.social.primary.handle}`,
+    creator: `@${siteConfig.social.primary.handle}`,
   },
-  metadataBase: new URL("https://wangqiwen.me"),
+  metadataBase: new URL(siteConfig.site.url),
 };
 
 export const viewport = {
@@ -39,8 +38,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  ensureEnvironmentWarnings();
   const language = await getLanguageFromCookies();
-  const dictionary = await getDictionary()
+  const dictionary = await getDictionary();
 
   return (
     <html
@@ -63,7 +63,7 @@ export default async function RootLayout({
             {children}
           </main>
 
-          <Footer dict={dictionary} />
+          <Footer dict={dictionary} language={language} />
         </DictionaryProvider>
         <Analytics />
       </body>

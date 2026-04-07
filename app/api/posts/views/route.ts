@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import redis from "@/app/redis";
+import { logger } from "@/utils/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json(views);
   } catch (error) {
-    console.warn("Failed to load views", error);
+    logger.warn("Failed to load views", error);
     return NextResponse.json({}, { status: 200 });
   }
 }

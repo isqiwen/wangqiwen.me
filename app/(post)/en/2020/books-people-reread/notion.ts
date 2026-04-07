@@ -1,3 +1,5 @@
+import { logger } from "@/utils/logger";
+
 const API_ENDPOINT = "https://www.notion.so/api/v3";
 
 export default async function rpc(fnName, body) {
@@ -13,9 +15,9 @@ export default async function rpc(fnName, body) {
 
   if (res.ok) {
     return res.json();
-  } else {
-    throw new Error(await getError(url, res));
   }
+
+  throw new Error(await getError(url, res));
 }
 
 function getJSONHeaders(res) {
@@ -25,7 +27,7 @@ function getJSONHeaders(res) {
 function getBodyOrNull(res) {
   try {
     return res.text();
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -35,9 +37,7 @@ export function getCollectionSchemaNameIndex(collectionSchema) {
   for (const id in collectionSchema) {
     const nameKey = collectionSchema[id].name;
     if (nameKey in names) {
-      console.warn(
-        `duplicate key "${nameKey}" in schema index – make sure column names are unique`
-      );
+      logger.warn(`duplicate key "${nameKey}" in schema index; make sure column names are unique`);
     }
     names[nameKey] = id;
   }

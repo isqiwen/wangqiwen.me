@@ -3,6 +3,7 @@
 const { join } = require("path");
 const { mkdir, writeFile, stat } = require("fs/promises");
 const { spawnSync } = require("child_process");
+const { normalizeTags } = require("./lib/posts");
 
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 
@@ -13,11 +14,11 @@ function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--slug" && argv[i + 1]) {
+    if ((arg === "--slug" || arg === "--id") && argv[i + 1]) {
       options.slug = argv[i + 1];
       i += 1;
-    } else if (arg.startsWith("--slug=")) {
-      options.slug = arg.slice(7);
+    } else if (arg.startsWith("--slug=") || arg.startsWith("--id=")) {
+      options.slug = arg.slice(arg.indexOf("=") + 1);
     } else if (arg === "--title" && argv[i + 1]) {
       options.title = argv[i + 1];
       i += 1;
@@ -28,15 +29,44 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg.startsWith("--description=")) {
       options.description = arg.slice(15);
+    } else if (arg === "--summary" && argv[i + 1]) {
+      options.summary = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--summary=")) {
+      options.summary = arg.slice(10);
     } else if (arg === "--date" && argv[i + 1]) {
       options.date = argv[i + 1];
       i += 1;
     } else if (arg.startsWith("--date=")) {
       options.date = arg.slice(7);
+    } else if (arg === "--updated-at" && argv[i + 1]) {
+      options.updatedAt = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--updated-at=")) {
+      options.updatedAt = arg.slice(13);
+    } else if (arg === "--tags" && argv[i + 1]) {
+      options.tags = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--tags=")) {
+      options.tags = arg.slice(7);
+    } else if (arg === "--series" && argv[i + 1]) {
+      options.series = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--series=")) {
+      options.series = arg.slice(9);
+    } else if (arg === "--cover" && argv[i + 1]) {
+      options.cover = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith("--cover=")) {
+      options.cover = arg.slice(8);
+    } else if (arg === "--featured") {
+      options.featured = true;
     } else if (arg === "--with-en") {
       if (!options.locales.includes("en")) {
         options.locales.push("en");
       }
+    } else if (arg === "--published") {
+      options.published = true;
     } else if (arg === "--help") {
       options.help = true;
     }
@@ -61,7 +91,7 @@ async function exists(path) {
 async function createPostFile(locale, year, slug, metadata, description) {
   const dir = join(POSTS_ROOT, locale, year, slug);
   await ensureDir(dir);
-  const body = description ? `\n${description}\n` : "\n开始写作吧。\n";
+  const body = description ? `\n${description}\n` : "\nStart writing here.\n";
   const contents = `export const metadata = ${JSON.stringify(metadata, null, 2)};\n${body}`;
   await writeFile(join(dir, "page.mdx"), contents, "utf8");
 }
@@ -70,38 +100,72 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (args.help || !args.slug) {
-    console.log(`用法: pnpm new:post --slug my-post [--title 标题] [--description 描述] [--date 2024-12-01] [--with-en]\n默认仅创建中文文章，可添加 --with-en 同时生成英文草稿。`);
+    console.log(`Usage: pnpm new:post --slug my-post [options]
+
+Options:
+  --title "My title"
+  --description "Short summary"
+  --summary "Homepage summary"
+  --date 2024-12-01
+  --updated-at 2024-12-05
+  --tags "react,nextjs"
+  --series "Editor Workflow"
+  --cover "/images/my-post/cover.jpg"
+  --featured
+  --with-en
+  --published
+
+By default, new posts are created as drafts.`);
     return;
   }
 
   const slug = args.slug.trim();
   const dateValue = args.date ? new Date(args.date) : new Date();
   if (Number.isNaN(dateValue.getTime())) {
-    throw new Error("无效的日期，请使用 YYYY-MM-DD 格式。");
+    throw new Error("Invalid date. Use YYYY-MM-DD.");
   }
+
   const publishedAt = dateValue.toISOString().slice(0, 10);
   const year = publishedAt.slice(0, 4);
-  const baseMetadata = {
+  const metadata = {
     title: args.title || slug,
     description: args.description || "",
+    summary: args.summary || "",
     publishedAt,
+    status: args.published ? "published" : "draft",
     id: slug,
+    tags: normalizeTags(args.tags),
   };
 
+  if (args.updatedAt) {
+    metadata.updatedAt = args.updatedAt;
+  }
+
+  if (args.series) {
+    metadata.series = args.series;
+  }
+
+  if (args.cover) {
+    metadata.cover = args.cover;
+  }
+
+  if (args.featured) {
+    metadata.featured = true;
+  }
+
   for (const locale of args.locales) {
-    const metadata = { ...baseMetadata };
     const targetPath = join(POSTS_ROOT, locale, year, slug, "page.mdx");
     if (await exists(targetPath)) {
-      throw new Error(`${locale}/${year}/${slug} 已存在，无法覆盖。`);
+      throw new Error(`${locale}/${year}/${slug} already exists.`);
     }
     await createPostFile(locale, year, slug, metadata, "");
-    console.log(`已创建 ${locale} 文章: ${locale}/${year}/${slug}`);
+    console.log(`Created ${locale} post: ${locale}/${year}/${slug}`);
   }
 
   spawnSync("node", ["scripts/normalize-post-metadata.cjs", "--silent"], {
     stdio: "inherit",
   });
-  console.log("已同步文章元数据并更新 manifest。");
+  console.log("Post metadata synchronized and manifest updated.");
 }
 
 main().catch(error => {

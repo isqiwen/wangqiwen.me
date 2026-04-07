@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { RawImage } from "./raw-image";
 
 type ImageItem = {
   src: string;
@@ -22,10 +23,11 @@ export function ImageGrid({ images }: ImageGridProps) {
         {images.map((img, idx) => (
           <button
             key={idx}
+            type="button"
             onClick={() => setActive(img)}
             className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-sm transition hover:scale-[1.01] hover:shadow-lg"
           >
-            <img src={img.src} alt={img.alt ?? ""} className="h-full w-full object-cover" />
+            <RawImage src={img.src} alt={img.alt ?? ""} className="h-full w-full object-cover" />
             {img.caption ? (
               <div className="px-3 py-2 text-left text-xs text-slate-500 group-hover:text-slate-700">
                 {img.caption}
@@ -45,12 +47,18 @@ export function ImageGrid({ images }: ImageGridProps) {
             onClick={e => e.stopPropagation()}
           >
             <button
+              type="button"
               className="absolute right-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs text-white shadow"
               onClick={() => setActive(null)}
             >
-              关闭
+              Close
             </button>
-            <img src={active.src} alt={active.alt ?? ""} className="max-h-[70vh] w-full object-contain" />
+            <RawImage
+              src={active.src}
+              alt={active.alt ?? ""}
+              loading="eager"
+              className="max-h-[70vh] w-full object-contain"
+            />
             {active.caption ? (
               <div className="mt-3 text-center text-sm text-slate-600">{active.caption}</div>
             ) : null}

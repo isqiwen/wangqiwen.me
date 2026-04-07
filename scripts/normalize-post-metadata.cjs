@@ -25,20 +25,22 @@ async function main() {
   };
 
   for (const entry of entries.values()) {
-    const canonicalId =
+    const sharedId =
       getFirstValue(entry.locales, data => data.metadata.id || data.frontmatter.id) ||
       entry.id;
-    const canonicalPublishedAt =
-      getFirstValue(entry.locales, data => data.metadata.publishedAt || data.frontmatter.publishedAt) ||
-      `${entry.year}-01-01`;
+    const sharedPublishedAt =
+      getFirstValue(
+        entry.locales,
+        data => data.metadata.publishedAt || data.frontmatter.publishedAt,
+      ) || `${entry.year}-01-01`;
 
     for (const locale of SUPPORTED_LOCALES) {
       const data = entry.locales[locale];
       if (!data) continue;
 
       const normalized = buildNormalizedMetadata(data, {
-        postId: canonicalId,
-        publishedAt: canonicalPublishedAt,
+        postId: sharedId,
+        publishedAt: sharedPublishedAt,
         id: entry.id,
       });
 
@@ -55,7 +57,15 @@ async function main() {
         id: normalized.id,
         title: normalized.title,
         description: normalized.description ?? "",
+        summary: normalized.summary ?? "",
+        series: normalized.series ?? null,
         publishedAt: normalized.publishedAt,
+        updatedAt: normalized.updatedAt ?? null,
+        status: normalized.status ?? "published",
+        featured: normalized.featured ?? false,
+        tags: normalized.tags ?? [],
+        cover: normalized.cover ?? null,
+        readingTimeMinutes: normalized.readingTimeMinutes ?? 1,
         path: `/${locale}/${entry.year}/${entry.id}`,
       });
 
@@ -66,7 +76,6 @@ async function main() {
     }
   }
 
-  // 按发布时间倒序排序，确保 manifest 列表从新到旧
   for (const locale of SUPPORTED_LOCALES) {
     manifest.posts[locale].sort((a, b) => {
       if (a.publishedAt === b.publishedAt) return 0;
@@ -81,7 +90,7 @@ async function main() {
     try {
       existing = await readFile(POSTS_MANIFEST_PATH, "utf8");
     } catch {
-      // missing manifest counts as change
+      // Missing manifest counts as a change in check mode.
     }
 
     if (existing !== manifestJSON) {

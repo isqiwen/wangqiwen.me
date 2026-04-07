@@ -9,6 +9,7 @@ import {
 } from "react-tweet";
 import redis from "@/app/redis";
 import { Caption } from "./caption";
+import { logger } from "@/utils/logger";
 import "./tweet.css";
 
 interface TweetArgs {
@@ -19,7 +20,7 @@ interface TweetArgs {
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
   // we first prioritize getting a fresh tweet; swallow fetch errors to avoid SSR crashes
   const tweet = await getTweet(id).catch(error => {
-    console.error("tweet fetch error", error);
+    logger.error("tweet fetch error", error);
     return undefined;
   });
 
@@ -29,7 +30,7 @@ async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
     try {
       await redis.set(`tweet:${id}`, tweet);
     } catch (error) {
-      console.warn("tweet cache write error", error);
+      logger.warn("tweet cache write error", error);
     }
     return tweet;
   }
@@ -43,7 +44,7 @@ async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
 
     return cachedTweet;
   } catch (error) {
-    console.warn("tweet cache read error", error);
+    logger.warn("tweet cache read error", error);
     return undefined;
   }
 }

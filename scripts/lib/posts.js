@@ -57,27 +57,77 @@ function getFirstValue(entryLocales, getter) {
     const data = entryLocales[locale];
     if (!data) continue;
     const value = getter(data);
-    if (value) return value;
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
   }
   return null;
 }
 
 function buildNormalizedMetadata(data, defaults) {
-  const title = data.metadata.title || data.frontmatter.title || toTitle(defaults.id);
-  const description =
-    data.metadata.description ||
-    data.metadata.summary ||
-    data.metadata.excerpt ||
-    data.frontmatter.description ||
-    data.frontmatter.summary ||
-    data.frontmatter.excerpt;
+  const title =
+    normalizeOptionalString(data.metadata.title) ||
+    normalizeOptionalString(data.frontmatter.title) ||
+    toTitle(defaults.id);
 
-  return {
+  const description = getDescription(data);
+  const summary =
+    normalizeOptionalString(data.metadata.summary) ||
+    normalizeOptionalString(data.frontmatter.summary) ||
+    "";
+  const series =
+    normalizeOptionalString(data.metadata.series) ||
+    normalizeOptionalString(data.frontmatter.series) ||
+    "";
+  const updatedAt = normalizeDateString(data.metadata.updatedAt || data.frontmatter.updatedAt);
+  const tags = normalizeTags(data.metadata.tags ?? data.frontmatter.tags);
+  const cover =
+    normalizeOptionalString(data.metadata.cover) ||
+    normalizeOptionalString(data.metadata.coverImage) ||
+    normalizeOptionalString(data.frontmatter.cover) ||
+    normalizeOptionalString(data.frontmatter.coverImage) ||
+    null;
+  const status = normalizeStatus(
+    data.metadata.status ?? data.frontmatter.status,
+    data.metadata.draft ?? data.frontmatter.draft,
+    data.metadata.archived ?? data.frontmatter.archived,
+  );
+  const featured = normalizeBoolean(data.metadata.featured ?? data.frontmatter.featured);
+  const readingTimeMinutes =
+    normalizePositiveInteger(data.metadata.readingTimeMinutes) ||
+    estimateReadingTimeMinutes(getBodySource(data.source));
+
+  const metadata = {
     title,
-    description: description ?? "",
+    description,
     publishedAt: defaults.publishedAt,
     id: defaults.postId,
+    status,
+    tags,
+    readingTimeMinutes,
   };
+
+  if (summary) {
+    metadata.summary = summary;
+  }
+
+  if (series) {
+    metadata.series = series;
+  }
+
+  if (updatedAt) {
+    metadata.updatedAt = updatedAt;
+  }
+
+  if (featured) {
+    metadata.featured = true;
+  }
+
+  if (cover) {
+    metadata.cover = cover;
+  }
+
+  return metadata;
 }
 
 function replaceMetadataBlock(source, metadataObject) {
@@ -91,8 +141,6 @@ function replaceMetadataBlock(source, metadataObject) {
   const literalStart = source.indexOf("{", index);
   let end = literalStart + literal.length;
 
-  // Consume optional trailing whitespace/newlines/semicolon after the metadata block
-  // so repeated runs stay idempotent (exactly two newlines are added below).
   while (end < source.length) {
     const char = source[end];
     if (char === ";" || /\s/.test(char)) {
@@ -209,6 +257,131 @@ function extractObjectLiteral(source, exportIndex) {
   return null;
 }
 
+function getDescription(data) {
+  return (
+    normalizeOptionalString(data.metadata.description) ||
+    normalizeOptionalString(data.metadata.summary) ||
+    normalizeOptionalString(data.metadata.excerpt) ||
+    normalizeOptionalString(data.frontmatter.description) ||
+    normalizeOptionalString(data.frontmatter.summary) ||
+    normalizeOptionalString(data.frontmatter.excerpt) ||
+    ""
+  );
+}
+
+function normalizeOptionalString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+}
+
+function normalizeDateString(value) {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    return "";
+  }
+
+  return Number.isNaN(new Date(normalized).getTime()) ? "" : normalized;
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+
+  return false;
+}
+
+function normalizeStatus(value, legacyDraft, legacyArchived) {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+      return normalized;
+    }
+  }
+
+  if (normalizeBoolean(legacyArchived)) {
+    return "archived";
+  }
+
+  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
+    return "draft";
+  }
+
+  return "published";
+}
+
+function normalizeTags(value) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  return Array.from(
+    new Set(
+      source
+        .map(item => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function normalizePositiveInteger(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.round(parsed);
+    }
+  }
+
+  return 0;
+}
+
+function getBodySource(source) {
+  let output = source.replace(/^---\n[\s\S]*?\n---\s*/u, "");
+  output = output.replace(
+    /export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u,
+    "",
+  );
+  return output;
+}
+
+function estimateReadingTimeMinutes(source) {
+  const text = source
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#>*_~[\](){}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const latinWords = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) ?? [];
+  const cjkChars = text.match(/[\u3400-\u9fff]/g) ?? [];
+  const totalUnits = latinWords.length + cjkChars.length;
+
+  if (totalUnits === 0) {
+    return 1;
+  }
+
+  // Mixed Chinese/English content is common here, so use a simple unit-based
+  // estimate instead of language-specific branching.
+  return Math.max(1, Math.ceil(totalUnits / 220));
+}
+
 async function safeReadDir(path) {
   try {
     return await readdir(path);
@@ -252,4 +425,8 @@ module.exports = {
   writeManifest,
   parseMetadata,
   parseFrontmatter,
+  normalizeTags,
+  normalizeBoolean,
+  normalizePositiveInteger,
+  normalizeStatus,
 };

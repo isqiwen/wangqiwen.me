@@ -3,8 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import useDictionary from "@/locales/dictionary-hook";
+import { type Locale } from "@/locales/config";
 
-type Locale = "en" | "zh";
 const DEFAULT_LOCALE_ORDER: Locale[] = ["zh", "en"];
 
 const TRANSLATION_DATA: Record<string, Partial<Record<Locale, string>>> = (() => {
@@ -15,6 +15,8 @@ const TRANSLATION_DATA: Record<string, Partial<Record<Locale, string>>> = (() =>
   }
 })();
 
+// We index translations by path so the switcher can jump between localized
+// article routes without guessing slugs or year folders on the client.
 const POST_TRANSLATIONS_BY_PATH = buildPathToTranslationMap(TRANSLATION_DATA);
 
 interface LanguageSwitcherProps {

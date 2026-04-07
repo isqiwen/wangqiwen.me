@@ -83,6 +83,8 @@
     "new:post": "node scripts/new-post.cjs",
     "sync:posts": "node scripts/normalize-post-metadata.cjs",
     "lint:posts": "node scripts/lint-posts.cjs",
+    "backup:content": "node scripts/backup-content.cjs",
+    "reset:content": "node scripts/reset-site-content.cjs",
     "postinstall": "node ./fonts/init.mjs"
   },
   "prettier": {

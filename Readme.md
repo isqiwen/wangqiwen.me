@@ -2,6 +2,8 @@
 
 This repository contains the source code for [wangqiwen.me](https://wangqiwen.me), a multilingual personal blog built with the Next.js App Router, React 19 RC builds, Tailwind CSS, MDX, SWR, and Upstash Redis.
 
+If you want to turn this repository into your own site, read [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md) first. It now documents the white-label flow, which parts are controlled by `site.config.js`, and which values must stay in environment variables.
+
 ## Prerequisites
 - Node.js 18.18 or higher (matching the version supported by Next.js 15)
 - [pnpm](https://pnpm.io/) 8+
@@ -32,6 +34,8 @@ This repository contains the source code for [wangqiwen.me](https://wangqiwen.me
 - `pnpm sync:posts` – Normalize every article’s metadata and rebuild `posts/manifest.json` so the runtime can load posts quickly without scanning MDX files.
 - `pnpm sync:posts -- --check` – Same as above but only verifies whether files/manifest are in sync (non-zero exit on diff); ideal for CI.
 - `pnpm lint:posts` – Validate that metadata exists (`title`, `id`, `publishedAt`) and that IDs are unique across languages; fails with a non-zero exit code when issues are found.
+- `pnpm backup:content` – Create a timestamped content backup covering posts, manifest, public images, site config, and links.
+- `pnpm reset:content -- --force` – Back up the current content and reset the repository to a blank starter state.
 - `pnpm build` – Produce an optimized production build.
 - `pnpm start` – Serve the production build locally after running `pnpm build`.
 
@@ -53,6 +57,7 @@ vercel --prod         # production deployment
 | `UPSTASH_REDIS_REST_TOKEN` | Authentication token paired with the endpoint above. |
 | `UPSTASH_REDIS_FORCE_REMOTE` | Optional. Set to `1` in development if you want to hit the real Upstash instance instead of the default in-memory mock. |
 | `GEO_IP_API_KEY` | Optional key for the demo endpoint at `app/api/geo/route.ts`. |
+| `EDITOR_ACCESS_TOKEN` | Optional password protecting `/editor` and its write APIs. |
 
 ## Project structure
 - `app/` – App Router routes. `layout.tsx` sets up global theming, language detection, analytics, and scripts. `page.tsx` renders the homepage, while `app/(post)/` contains article layouts and MDX content by locale.
@@ -88,10 +93,20 @@ pnpm dev --filter blog
 
 ### MDX editor
 Visit `/editor` while the dev server is running. It provides:
-- Metadata form (locale, title, description, publishedAt, id).
-- MDX textarea and generated MDX output.
-- One-click copy/download, plus a suggested target path (e.g., `app/(post)/zh/2025/id/page.mdx`).
-Use it as a helper; it does not write files automatically.
+- Metadata form (locale, title, description, summary, series, publishedAt, updatedAt, id, featured, status).
+- MDX textarea with direct save/load support.
+- Image asset panel with upload, preview, copy-path, insert, cover selection, and delete actions.
+- Optional unlock flow when `EDITOR_ACCESS_TOKEN` is configured.
+- Local autosave, unsaved-change warnings, recent draft restore, and archived post management.
+The editor can write files through the local API routes, so it is best treated as an authoring tool rather than a public CMS.
+
+## White-labeling
+- Update public identity and About copy in `site.config.js`.
+- Keep Redis, Geo API, and editor secrets in `.env.local` or your hosting provider's secret manager.
+- Replace old posts, links, and media assets if you want a fully clean personal rebrand.
+- Use [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md) as the full checklist before launch.
+- Use [INIT.md](E:/wangqiwen.me/INIT.md) to start from a blank personal-site template.
+- Use [OPERATIONS.md](E:/wangqiwen.me/OPERATIONS.md) for health checks, editor guardrails, backups, and restore steps.
 
 ## Ubuntu server deploy (self-hosted)
 If you deploy on your own Ubuntu box (Node 18+, corepack enabled, env vars ready), use:
@@ -107,5 +122,5 @@ What it does:
 ## Future development ideas
 - Add automated checks that validate MDX front matter so the post index stays healthy.
 - Add visual regression tests or Storybook stories for `app/(post)/components` to safeguard design changes.
-- Expand the CI pipeline with `pnpm lint` and `pnpm build` to catch issues before merging pull requests.
+- Expand the CI pipeline beyond the current lint/build/post checks with test and preview validation.
 - Implement local mocks for the `/api/view` endpoint so contributors can test analytics features without an Upstash account.

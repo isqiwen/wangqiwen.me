@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { ReactNode } from "react";
+import { RawImage } from "./raw-image";
 
 type AudioPlayerProps = {
   src: string;
@@ -16,7 +17,7 @@ export function AudioPlayer({ src, title, subtitle, cover, children }: AudioPlay
 
   return (
     <div className="my-4 flex items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.1)]">
-      {cover ? <img src={cover} alt="" className="h-16 w-16 rounded-2xl object-cover" /> : null}
+      {cover ? <RawImage src={cover} alt="" className="h-16 w-16 rounded-2xl object-cover" /> : null}
       <div className="flex-1 space-y-1">
         {title && <p className="text-sm font-semibold text-slate-900">{title}</p>}
         {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}

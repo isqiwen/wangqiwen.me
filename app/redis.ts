@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { logger } from "@/utils/logger";
 
 type RedisLike = {
   hgetall: (key: string) => Promise<Record<string, string> | null>;
@@ -8,13 +9,13 @@ type RedisLike = {
   get: (key: string) => Promise<unknown | null>;
 };
 
+const globalForRedisWarnings = globalThis as typeof globalThis & {
+  __redisMockWarningShown?: boolean;
+};
+
 const hasRedisCredentials =
   Boolean(process.env.UPSTASH_REDIS_REST_URL) &&
   Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
-
-if (process.env.NODE_ENV === "production" && !hasRedisCredentials) {
-  throw new Error("Upstash Redis credentials are missing in production.");
-}
 
 const preferMockInDev =
   process.env.NODE_ENV !== "production" &&
@@ -23,15 +24,16 @@ const shouldUseMock = !hasRedisCredentials || preferMockInDev;
 
 const redis: RedisLike = shouldUseMock ? createMockRedis() : (Redis.fromEnv() as RedisLike);
 
-if (shouldUseMock && process.env.NODE_ENV !== "production") {
-  if (!hasRedisCredentials) {
-    console.warn(
-      "Upstash Redis credentials not found. Using in-memory mock for development.",
-    );
-  } else {
-    console.warn(
-      "Using in-memory Redis mock in development. Set UPSTASH_REDIS_FORCE_REMOTE=1 to hit Upstash.",
-    );
+if (shouldUseMock) {
+  const message = !hasRedisCredentials
+    ? process.env.NODE_ENV === "production"
+      ? "Upstash Redis credentials are missing. Falling back to an in-memory mock so builds and runtime rendering can still complete."
+      : "Upstash Redis credentials not found. Using in-memory mock for development."
+    : "Using in-memory Redis mock in development. Set UPSTASH_REDIS_FORCE_REMOTE=1 to hit Upstash.";
+
+  if (!globalForRedisWarnings.__redisMockWarningShown) {
+    logger.warn(message);
+    globalForRedisWarnings.__redisMockWarningShown = true;
   }
 }
 

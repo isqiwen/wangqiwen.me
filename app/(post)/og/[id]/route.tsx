@@ -1,13 +1,11 @@
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 import { ImageResponse } from "next/og";
-import { getPosts } from "@/app/get-posts";
+import { getPostById } from "@/app/get-posts";
 import { readFileSync } from "fs";
 import { join } from "path";
-
-export async function generateStaticParams() {
-  return (await getPosts("en")).map(post => ({ id: post.id }));
-}
+import { siteConfig } from "@/utils/site-config";
 
 // fonts
 const fontsDir = join(process.cwd(), "public", "fonts");
@@ -33,8 +31,7 @@ export async function GET(_req: Request, props) {
 
   const { id } = params;
 
-  const posts = await getPosts("en");
-  const post = posts.find(p => p.id === id);
+  const post = await getPostById(id);
   if (!post) {
     return new Response("Not found", { status: 404 });
   }
@@ -47,10 +44,10 @@ export async function GET(_req: Request, props) {
       >
         <header tw="flex text-[36px] w-full">
           <div tw="font-bold" style={font("Inter 600")}>
-            Wang Qiwen
+            {siteConfig.site.name}
           </div>
           <div tw="grow" />
-          <div tw="text-[28px]">wangqiwen.me</div>
+          <div tw="text-[28px]">{siteConfig.site.domain}</div>
         </header>
 
         <main tw="flex grow pb-3 flex-col items-center justify-center">

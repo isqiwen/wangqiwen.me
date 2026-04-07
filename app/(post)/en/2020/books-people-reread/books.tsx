@@ -4,6 +4,7 @@ import {
   queryCollection,
   getCollectionSchemaNameIndex,
 } from "./notion";
+import { logger } from "@/utils/logger";
 
 export async function Books() {
   const books = await getData();
@@ -104,7 +105,7 @@ async function getData() {
           }
           return indexedData;
         } else {
-          console.warn(`missing block data for "${blockId}"`);
+          logger.warn(`missing block data for "${blockId}"`);
           return null;
         }
       })

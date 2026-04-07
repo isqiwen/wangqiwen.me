@@ -1,17 +1,20 @@
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 import { ImageResponse } from "next/og";
 import { getPosts } from "@/app/get-posts";
 import { readFileSync } from "fs";
 import { join } from "path";
 import commaNumber from "comma-number";
+import { defaultLocale } from "@/locales/config";
+import {
+  getAuthorName,
+  getProfileHighlights,
+  getPublicAssetPath,
+  isAbsoluteUrl,
+  siteConfig,
+} from "@/utils/site-config";
 
-// Image
-const rauchgPhoto = toArrayBuffer(
-  readFileSync(join(process.cwd(), "public/images/rauchg-3d4cecf.gray.jpg"))
-);
-
-// Fonts
 const fontsDir = join(process.cwd(), "public", "fonts");
 
 const inter300 = readFileSync(
@@ -29,6 +32,9 @@ const robotoMono400 = readFileSync(
 export async function GET() {
   const posts = await getPosts("en");
   const viewsSum = posts.reduce((sum, post) => sum + post.views, 0);
+  const portrait = await loadPortrait();
+  const authorName = getAuthorName(defaultLocale);
+  const highlights = getProfileHighlights(defaultLocale);
 
   return new ImageResponse(
     (
@@ -39,31 +45,33 @@ export async function GET() {
         <main tw="flex grow pt-4 w-full justify-center items-center">
           <div tw="flex flex-row">
             <div tw="flex">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                tw="rounded-full h-74"
-                alt="Wang Qiwen"
-                // @ts-ignore
-                src={rauchgPhoto}
-              />
+              {portrait ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  tw="rounded-full h-74 w-74 object-cover"
+                  alt={authorName}
+                  // @ts-ignore
+                  src={portrait}
+                />
+              ) : (
+                <div
+                  tw="rounded-full h-74 w-74 bg-gray-100 items-center justify-center text-6xl text-gray-500"
+                  style={font("Inter 500")}
+                >
+                  {authorName.slice(0, 1)}
+                </div>
+              )}
             </div>
 
             <div tw="flex flex-col px-10 grow text-[28px] h-70 justify-center">
               <div tw="text-[64px] mb-7" style={font("Inter 500")}>
-                Wang Qiwen
+                {authorName}
               </div>
-              <div tw="flex mb-5" style={font("Roboto Mono 400")}>
-                <span tw="text-gray-400 mr-3">&mdash;</span> CEO and Founder of
-                Vercel
-              </div>
-              <div tw="flex mb-5" style={font("Roboto Mono 400")}>
-                <span tw="text-gray-400 mr-3">&mdash;</span> Creator of Next.js,
-                Socket.IO, Mongoose
-              </div>
-              <div tw="flex" style={font("Roboto Mono 400")}>
-                <span tw="text-gray-400 mr-3">&mdash;</span> Lives in San
-                Francisco, CA
-              </div>
+              {highlights.map(highlight => (
+                <div key={highlight} tw="flex mb-5" style={font("Roboto Mono 400")}>
+                  <span tw="text-gray-400 mr-3">&mdash;</span> {highlight}
+                </div>
+              ))}
             </div>
           </div>
         </main>
@@ -97,7 +105,6 @@ export async function GET() {
   );
 }
 
-// lil helper for more succinct styles
 function font(fontFamily: string) {
   return { fontFamily };
 }
@@ -107,4 +114,29 @@ function toArrayBuffer(buffer) {
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength
   );
+}
+
+async function loadPortrait() {
+  const portraitPath =
+    siteConfig.author.images.avatarMuted || siteConfig.author.images.avatar;
+
+  if (!portraitPath) {
+    return null;
+  }
+
+  if (isAbsoluteUrl(portraitPath)) {
+    const res = await fetch(portraitPath);
+    if (!res.ok) {
+      return null;
+    }
+    return await res.arrayBuffer();
+  }
+
+  try {
+    return toArrayBuffer(
+      readFileSync(join(process.cwd(), "public", getPublicAssetPath(portraitPath)))
+    );
+  } catch {
+    return null;
+  }
 }

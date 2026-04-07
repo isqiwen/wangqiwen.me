@@ -1,3 +1,5 @@
+import { siteConfig } from "@/utils/site-config";
+
 export type ComponentSnippet = {
   label: string;
   hint: string;
@@ -90,7 +92,7 @@ export const summarize = (items: Stat[]): number =>
     label: "Image / Figure",
     hint: "带说明的图片",
     snippet: `<Figure>
-  <Image src="/images/rauchg-3d4cecf.gray.jpg" alt="示例图片" width={null} height={null} />
+  <Image src="${siteConfig.author.images.avatarMuted}" alt="示例图片" width={null} height={null} />
 </Figure>`,
   },
   {

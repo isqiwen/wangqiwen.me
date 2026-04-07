@@ -7,16 +7,15 @@
   "post": {
     "date": "date",
     "title": "title",
-    "views": "views"
+    "views": "views",
+    "readingTime": "min read"
   },
   "language": {
     "english": "English",
     "chinese": "Chinese"
   },
   "about": "About",
-  "wangqiwen": "Wang Qiwen",
   "follow": "Follow",
-  "me": "me",
   "source": "Source",
   "previous": "Previous",
   "next": "Next",

@@ -3,6 +3,10 @@
 const {
   SUPPORTED_LOCALES,
   collectPosts,
+  normalizeBoolean,
+  normalizePositiveInteger,
+  normalizeStatus,
+  normalizeTags,
 } = require("./lib/posts");
 
 async function main() {
@@ -19,50 +23,123 @@ async function main() {
       if (!data) continue;
 
       const { metadata, frontmatter } = data;
+      const title = metadata.title || frontmatter.title;
       const id = metadata.id || frontmatter.id;
       const publishedAt = metadata.publishedAt || frontmatter.publishedAt;
-      const title = metadata.title || frontmatter.title;
+      const description =
+        metadata.description ||
+        metadata.summary ||
+        metadata.excerpt ||
+        frontmatter.description ||
+        frontmatter.summary ||
+        frontmatter.excerpt ||
+        "";
+      const summary = metadata.summary || frontmatter.summary || "";
+      const series = metadata.series || frontmatter.series || "";
+      const updatedAt = metadata.updatedAt || frontmatter.updatedAt || "";
+      const statusValue = metadata.status ?? frontmatter.status;
+      const rawTags = metadata.tags ?? frontmatter.tags;
+      const tags = normalizeTags(rawTags);
+      const status = normalizeStatus(
+        statusValue,
+        metadata.draft ?? frontmatter.draft,
+        metadata.archived ?? frontmatter.archived,
+      );
+      const featuredRaw = metadata.featured ?? frontmatter.featured;
+      const readingTimeMinutes = metadata.readingTimeMinutes;
 
       if (!title) {
-        errors.push(`${locale}:${key} 缺少 title`);
+        errors.push(`${locale}:${key} is missing title`);
       }
+
       if (!id) {
-        errors.push(`${locale}:${key} 缺少 id`);
+        errors.push(`${locale}:${key} is missing id`);
       } else {
         ids.add(id);
       }
+
       if (!publishedAt) {
-        errors.push(`${locale}:${key} 缺少 publishedAt`);
+        errors.push(`${locale}:${key} is missing publishedAt`);
       } else {
         publishedAtValues.add(publishedAt);
+      }
+
+      if (
+        statusValue != null &&
+        (typeof statusValue !== "string" ||
+          !["draft", "published", "archived"].includes(statusValue.trim().toLowerCase()))
+      ) {
+        errors.push(`${locale}:${key} has an invalid status value`);
+      }
+
+      if (status === "published" && !description) {
+        errors.push(`${locale}:${key} is published but missing description`);
+      }
+
+      if (summary && typeof summary !== "string") {
+        errors.push(`${locale}:${key} has an invalid summary value`);
+      }
+
+      if (series && typeof series !== "string") {
+        errors.push(`${locale}:${key} has an invalid series value`);
+      }
+
+      if (
+        updatedAt &&
+        (typeof updatedAt !== "string" || Number.isNaN(new Date(updatedAt).getTime()))
+      ) {
+        errors.push(`${locale}:${key} has an invalid updatedAt value`);
+      }
+
+      if (
+        featuredRaw != null &&
+        !["boolean", "string"].includes(typeof featuredRaw)
+      ) {
+        errors.push(`${locale}:${key} has an invalid featured value`);
+      }
+
+      const hasNonEmptyRawTags =
+        (Array.isArray(rawTags) && rawTags.length > 0) ||
+        (typeof rawTags === "string" && rawTags.trim().length > 0);
+
+      if (hasNonEmptyRawTags && tags.length === 0) {
+        errors.push(`${locale}:${key} has tags but none could be parsed`);
+      }
+
+      if (readingTimeMinutes != null && normalizePositiveInteger(readingTimeMinutes) === 0) {
+        errors.push(`${locale}:${key} has an invalid readingTimeMinutes value`);
       }
     }
 
     if (ids.size > 1) {
-      errors.push(`${key} 多语言使用了不同的 id: ${Array.from(ids).join(", ")}`);
+      errors.push(`${key} uses different ids across locales: ${Array.from(ids).join(", ")}`);
     }
 
     const [firstId] = ids;
     if (firstId) {
       if (seenIds.has(firstId) && seenIds.get(firstId) !== key) {
-        errors.push(`id "${firstId}" 重复（${seenIds.get(firstId)} 与 ${key}）`);
+        errors.push(`id "${firstId}" is duplicated by ${seenIds.get(firstId)} and ${key}`);
       } else {
         seenIds.set(firstId, key);
       }
     }
 
     if (publishedAtValues.size > 1) {
-      errors.push(`${key} 多语言 publishedAt 不一致: ${Array.from(publishedAtValues).join(", ")}`);
+      errors.push(
+        `${key} uses different publishedAt values across locales: ${Array.from(
+          publishedAtValues,
+        ).join(", ")}`,
+      );
     }
   }
 
   if (errors.length > 0) {
-    console.error("文章元数据校验失败:\n" + errors.map(msg => ` - ${msg}`).join("\n"));
+    console.error("Post metadata validation failed.\n" + errors.map(msg => ` - ${msg}`).join("\n"));
     process.exitCode = 1;
     return;
   }
 
-  console.log("所有文章元数据校验通过。");
+  console.log("All post metadata checks passed.");
 }
 
 main().catch(error => {

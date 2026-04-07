@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RawImage } from "./raw-image";
 
 type QuoteCardProps = {
   quote: ReactNode;
@@ -21,10 +22,10 @@ export function QuoteCard({ quote, author, role, avatar, background }: QuoteCard
           : undefined
       }
     >
-      <div className="text-5xl leading-none text-white/40">“</div>
+      <div className="text-5xl leading-none text-white/40">&ldquo;</div>
       <div className="mt-2 text-lg leading-relaxed text-white">{quote}</div>
       <div className="mt-4 flex items-center gap-3 text-sm text-white/80">
-        {avatar ? <img src={avatar} alt={author} className="h-10 w-10 rounded-full object-cover" /> : null}
+        {avatar ? <RawImage src={avatar} alt={author} className="h-10 w-10 rounded-full object-cover" /> : null}
         <div>
           <div className="font-semibold text-white">{author}</div>
           {role ? <div className="text-xs text-white/70">{role}</div> : null}

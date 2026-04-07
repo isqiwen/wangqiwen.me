@@ -3,32 +3,68 @@ import commaNumber from "comma-number";
 import { join } from "path";
 import { readdir, readFile, stat } from "fs/promises";
 import { runInNewContext } from "vm";
+import { supportedLocales, type Locale } from "@/locales/config";
+import { logger } from "@/utils/logger";
 
-export type PostLocale = "zh" | "en";
+export type PostLocale = Locale;
+export type PostStatus = "draft" | "published" | "archived";
 
 export type Post = {
   id: string;
   postId: string;
   title: string;
+  description: string;
+  summary: string;
+  series: string | null;
   date: string;
+  publishedAt: string;
+  updatedAt: string | null;
   locale: PostLocale;
+  status: PostStatus;
+  featured: boolean;
+  tags: string[];
+  cover: string | null;
+  readingTimeMinutes: number;
   views: number;
   viewsFormatted: string;
 };
 
 type Frontmatter = {
   title?: string;
+  description?: string;
+  summary?: string;
+  excerpt?: string;
+  series?: string;
   publishedAt?: string;
+  updatedAt?: string;
   id?: string;
+  status?: PostStatus | string;
+  draft?: boolean | string;
+  archived?: boolean | string;
+  featured?: boolean | string;
+  tags?: string[] | string;
+  cover?: string;
+  coverImage?: string;
+  readingTimeMinutes?: number | string;
 };
 
 type PostMetadata = {
   id: string;
   locale: PostLocale;
   title: string;
+  description: string;
+  summary: string;
+  series: string | null;
   date: string;
+  publishedAt: string;
+  updatedAt: string | null;
+  publishedAtTimestamp: number;
   postId: string;
-  publishedAt: Date;
+  status: PostStatus;
+  featured: boolean;
+  tags: string[];
+  cover: string | null;
+  readingTimeMinutes: number;
 };
 
 type Manifest = {
@@ -38,16 +74,34 @@ type Manifest = {
       id: string;
       title: string;
       description?: string;
+      summary?: string;
+      series?: string | null;
       publishedAt: string;
+      updatedAt?: string | null;
+      status?: PostStatus | string;
+      draft?: boolean;
+      archived?: boolean;
+      featured?: boolean;
+      tags?: string[];
+      cover?: string | null;
+      readingTimeMinutes?: number;
       path: string;
     }>
   >;
 };
 
+type Views = {
+  [key: string]: string;
+};
+
+type GetPostsOptions = {
+  includeDrafts?: boolean;
+};
+
 const POSTS_ROOT_DIR = join(process.cwd(), "app", "(post)");
 const POSTS_MANIFEST_PATH = join(process.cwd(), "posts", "manifest.json");
-const SUPPORTED_LOCALES: PostLocale[] = ["zh", "en"];
-const METADATA_CACHE_TTL_MS = 60 * 1000; // 1 minute cache for expensive disk scans
+const SUPPORTED_LOCALES: PostLocale[] = [...supportedLocales];
+const METADATA_CACHE_TTL_MS = 60 * 1000;
 
 type MetadataCache = {
   timestamp: number;
@@ -63,41 +117,68 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export const getPosts = async (locale: PostLocale = "zh") => {
+export const getPosts = async (
+  locale: PostLocale = "zh",
+  options: GetPostsOptions = {},
+) => {
   const [metadata, allViews] = await Promise.all([
-    loadManifestMetadata(locale),
+    loadManifestMetadata(locale, options),
     loadViews(),
   ]);
 
   return metadata.map(post => buildPost(post, allViews));
 };
 
-export const getPostById = async (id: string): Promise<Post | null> => {
+export const getPostById = async (
+  id: string,
+  locale?: PostLocale,
+  options: GetPostsOptions = {},
+): Promise<Post | null> => {
   const views = await loadViews();
   const manifest = await getManifest();
+  const localeOrder = locale
+    ? [locale, ...SUPPORTED_LOCALES.filter(candidate => candidate !== locale)]
+    : SUPPORTED_LOCALES;
 
   if (manifest?.posts) {
-    for (const locale of SUPPORTED_LOCALES) {
-      const list = manifest.posts[locale] ?? [];
+    for (const candidateLocale of localeOrder) {
+      const list = manifest.posts[candidateLocale] ?? [];
       const match = list.find(post => post.id === id);
-      if (match) {
-        return buildPost(
-          {
-            id: match.id,
-            locale,
-            title: match.title,
-            date: DATE_FORMATTER.format(new Date(match.publishedAt)),
-            postId: match.id,
-            publishedAt: new Date(match.publishedAt),
-          },
-          views,
-        );
+      if (!match) {
+        continue;
       }
+
+      const status = normalizeStatus(match.status, match.draft, match.archived);
+      if (status === "archived" || (!options.includeDrafts && status === "draft")) {
+        continue;
+      }
+
+      return buildPost(
+        {
+          id: match.id,
+          locale: candidateLocale,
+          title: match.title,
+          description: match.description ?? "",
+          summary: match.summary ?? match.description ?? "",
+          series: normalizeOptionalString(match.series) || null,
+          date: DATE_FORMATTER.format(new Date(match.publishedAt)),
+          publishedAt: match.publishedAt,
+          updatedAt: normalizeDateString(match.updatedAt) || null,
+          publishedAtTimestamp: new Date(match.publishedAt).getTime(),
+          postId: match.id,
+          status,
+          featured: Boolean(match.featured),
+          tags: normalizeTags(match.tags),
+          cover: normalizeOptionalString(match.cover) || null,
+          readingTimeMinutes: normalizePositiveInteger(match.readingTimeMinutes) || 1,
+        },
+        views,
+      );
     }
   }
 
-  for (const locale of SUPPORTED_LOCALES) {
-    const metadata = await loadPostsMetadata(locale);
+  for (const candidateLocale of localeOrder) {
+    const metadata = await loadPostsMetadata(candidateLocale, options);
     const target = metadata.find(post => post.id === id);
     if (target) {
       return buildPost(target, views);
@@ -111,35 +192,61 @@ async function loadViews(): Promise<Views> {
   try {
     return (await redis.hgetall("views")) ?? {};
   } catch (error) {
-    console.warn("Failed to load view counts from Redis, defaulting to zeros.", error);
+    logger.warn("Failed to load view counts from Redis, defaulting to zeros.", error);
     return {};
   }
 }
 
-async function loadManifestMetadata(locale: PostLocale): Promise<PostMetadata[]> {
+async function loadManifestMetadata(
+  locale: PostLocale,
+  options: GetPostsOptions,
+): Promise<PostMetadata[]> {
   const manifest = await getManifest();
   if (manifest?.posts?.[locale]) {
-    return manifest.posts[locale].map(post => ({
-      id: post.id,
-      locale,
-      title: post.title,
-      date: DATE_FORMATTER.format(new Date(post.publishedAt)),
-      postId: post.id,
-      publishedAt: new Date(post.publishedAt),
-    }));
+    return manifest.posts[locale]
+      .map(post => {
+        const status = normalizeStatus(post.status, post.draft, post.archived);
+        return { ...post, status };
+      })
+      .filter(post => post.status !== "archived")
+      .filter(post => options.includeDrafts || post.status !== "draft")
+      .map(post => ({
+        id: post.id,
+        locale,
+        title: post.title,
+        description: post.description ?? "",
+        summary: post.summary ?? post.description ?? "",
+        series: normalizeOptionalString(post.series) || null,
+        date: DATE_FORMATTER.format(new Date(post.publishedAt)),
+        publishedAt: post.publishedAt,
+        updatedAt: normalizeDateString(post.updatedAt) || null,
+        publishedAtTimestamp: new Date(post.publishedAt).getTime(),
+        postId: post.id,
+        status: post.status,
+        featured: Boolean(post.featured),
+        tags: normalizeTags(post.tags),
+        cover: normalizeOptionalString(post.cover) || null,
+        readingTimeMinutes: normalizePositiveInteger(post.readingTimeMinutes) || 1,
+      }));
   }
 
-  return loadPostsMetadata(locale);
+  return loadPostsMetadata(locale, options);
 }
 
-async function loadPostsMetadata(locale: PostLocale): Promise<PostMetadata[]> {
+async function loadPostsMetadata(
+  locale: PostLocale,
+  options: GetPostsOptions,
+): Promise<PostMetadata[]> {
   const cached = metadataCache.get(locale);
   if (cached && Date.now() - cached.timestamp < METADATA_CACHE_TTL_MS) {
-    return cached.data;
+    return filterDrafts(cached.data, options);
   }
+
   const posts: PostMetadata[] = [];
   const years = await safeReadDir(getLocaleDir(locale));
 
+  // The generated manifest is the fast path. This scan stays as a resilient
+  // fallback so local drafts still render even if metadata has not been synced.
   for (const year of years) {
     const yearPath = join(getLocaleDir(locale), year);
     if (!(await isDirectory(yearPath))) continue;
@@ -167,17 +274,29 @@ async function loadPostsMetadata(locale: PostLocale): Promise<PostMetadata[]> {
         id: finalId,
         locale,
         title,
+        description: metadata.description ?? "",
+        summary: metadata.summary || metadata.description || "",
+        series: normalizeOptionalString(metadata.series) || null,
         date: DATE_FORMATTER.format(publishedAt),
+        publishedAt: publishedAtRaw,
+        updatedAt: normalizeDateString(metadata.updatedAt) || null,
+        publishedAtTimestamp: publishedAt.getTime(),
         postId: finalId,
-        publishedAt,
+        status: normalizeStatus(metadata.status, metadata.draft, metadata.archived),
+        featured: normalizeBoolean(metadata.featured),
+        tags: normalizeTags(metadata.tags),
+        cover: normalizeOptionalString(metadata.cover ?? metadata.coverImage) || null,
+        readingTimeMinutes:
+          normalizePositiveInteger(metadata.readingTimeMinutes) ||
+          estimateReadingTimeMinutes(stripMetadataAndFrontmatter(file)),
       });
     }
   }
 
-  posts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+  posts.sort((a, b) => b.publishedAtTimestamp - a.publishedAtTimestamp);
 
   metadataCache.set(locale, { timestamp: Date.now(), data: posts });
-  return posts;
+  return filterDrafts(posts, options);
 }
 
 export async function getManifest(): Promise<Manifest | null> {
@@ -202,8 +321,18 @@ function buildPost(metadata: PostMetadata, views: Views): Post {
     id: metadata.id,
     postId: metadata.postId,
     title: metadata.title,
+    description: metadata.description,
+    summary: metadata.summary || metadata.description,
+    series: metadata.series,
     date: metadata.date,
+    publishedAt: metadata.publishedAt,
+    updatedAt: metadata.updatedAt,
     locale: metadata.locale,
+    status: metadata.status,
+    featured: metadata.featured,
+    tags: metadata.tags,
+    cover: metadata.cover,
+    readingTimeMinutes: metadata.readingTimeMinutes,
     views: viewValue,
     viewsFormatted: commaNumber(viewValue),
   };
@@ -213,14 +342,49 @@ function getLocaleDir(locale: PostLocale): string {
   return join(POSTS_ROOT_DIR, locale);
 }
 
+function filterDrafts(posts: PostMetadata[], options: GetPostsOptions): PostMetadata[] {
+  return posts.filter(post => {
+    if (post.status === "archived") {
+      return false;
+    }
+
+    if (!options.includeDrafts && post.status === "draft") {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 function parseFileMetadata(fileContents: string): Frontmatter {
   const metadata = parseExportedMetadata(fileContents);
   const frontmatter = parseFrontmatter(fileContents);
 
   return {
     title: metadata.title ?? frontmatter.title,
+    description:
+      metadata.description ??
+      metadata.summary ??
+      metadata.excerpt ??
+      frontmatter.description ??
+      frontmatter.summary ??
+      frontmatter.excerpt,
+    summary: metadata.summary ?? frontmatter.summary,
+    series: metadata.series ?? frontmatter.series,
     publishedAt: metadata.publishedAt ?? frontmatter.publishedAt,
+    updatedAt: metadata.updatedAt ?? frontmatter.updatedAt,
     id: metadata.id ?? frontmatter.id,
+    status:
+      metadata.status ??
+      frontmatter.status ??
+      normalizeStatus(undefined, metadata.draft ?? frontmatter.draft, metadata.archived ?? frontmatter.archived),
+    draft: metadata.draft ?? frontmatter.draft,
+    archived: metadata.archived ?? frontmatter.archived,
+    featured: metadata.featured ?? frontmatter.featured,
+    tags: metadata.tags ?? frontmatter.tags,
+    cover: metadata.cover ?? frontmatter.cover,
+    coverImage: metadata.coverImage ?? frontmatter.coverImage,
+    readingTimeMinutes: metadata.readingTimeMinutes ?? frontmatter.readingTimeMinutes,
   };
 }
 
@@ -241,48 +405,13 @@ function parseExportedMetadata(fileContents: string): Frontmatter {
       return {};
     }
 
-    const result: Frontmatter = {};
-
-    const title = getTitleValue((metadata as Record<string, unknown>).title);
-    if (title) {
-      result.title = title;
-    }
-
-    const publishedAt = (metadata as Record<string, unknown>).publishedAt;
-    if (typeof publishedAt === "string") {
-      result.publishedAt = publishedAt;
-    }
-
-    const id = (metadata as Record<string, unknown>).id;
-    if (typeof id === "string") {
-      result.id = id;
-    }
-
-    return result;
+    return metadata as Frontmatter;
   } catch {
     return {};
   }
 }
 
-function getTitleValue(value: unknown): string | undefined {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (typeof record.default === "string") {
-      return record.default;
-    }
-  }
-
-  return undefined;
-}
-
-function extractObjectLiteral(
-  source: string,
-  exportIndex: number,
-): string | null {
+function extractObjectLiteral(source: string, exportIndex: number): string | null {
   const braceStart = source.indexOf("{", exportIndex);
   if (braceStart === -1) {
     return null;
@@ -350,8 +479,6 @@ function parseFrontmatter(fileContents: string): Frontmatter {
     const key = trimmed.slice(0, separatorIndex).trim();
     let value = trimmed.slice(separatorIndex + 1).trim();
 
-    if (!key) continue;
-
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
@@ -363,6 +490,114 @@ function parseFrontmatter(fileContents: string): Frontmatter {
   }
 
   return data;
+}
+
+function normalizeOptionalString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeDateString(value: unknown): string {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    return "";
+  }
+
+  return Number.isNaN(new Date(normalized).getTime()) ? "" : normalized;
+}
+
+function normalizeBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+
+  return false;
+}
+
+function normalizeStatus(
+  value: unknown,
+  legacyDraft?: unknown,
+  legacyArchived?: unknown,
+): PostStatus {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+      return normalized;
+    }
+  }
+
+  if (normalizeBoolean(legacyArchived)) {
+    return "archived";
+  }
+
+  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
+    return "draft";
+  }
+
+  return "published";
+}
+
+function normalizeTags(value: unknown): string[] {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  return Array.from(
+    new Set(
+      source
+        .map(item => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizePositiveInteger(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.round(parsed);
+    }
+  }
+
+  return 0;
+}
+
+function stripMetadataAndFrontmatter(source: string): string {
+  return source
+    .replace(/^---\n[\s\S]*?\n---\s*/u, "")
+    .replace(/export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u, "");
+}
+
+function estimateReadingTimeMinutes(source: string): number {
+  const text = source
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#>*_~[\](){}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const latinWords = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) ?? [];
+  const cjkChars = text.match(/[\u3400-\u9fff]/g) ?? [];
+  const totalUnits = latinWords.length + cjkChars.length;
+
+  if (totalUnits === 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(totalUnits / 220));
 }
 
 async function readFileSafe(path: string): Promise<string | null> {
@@ -389,8 +624,3 @@ async function isDirectory(path: string): Promise<boolean> {
     return false;
   }
 }
-
-// shape of the HSET in redis
-type Views = {
-  [key: string]: string;
-};

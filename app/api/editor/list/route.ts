@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { requireEditorAccess } from "@/utils/server/editor-auth";
+import {
+  createEditorJsonError,
+  enforceEditorRateLimit,
+  logEditorInfo,
+} from "@/utils/server/editor-api";
 
 export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -8,18 +14,41 @@ const NO_STORE = { "Cache-Control": "no-store" };
 const ROOT = process.cwd();
 const BASE_DIR = path.join(ROOT, "app", "(post)");
 const ALLOWED_SUBDIRS = new Set(["zh", "en"]);
+const METADATA_PATTERN = /export const metadata =\s*\{([\s\S]*?)\};?/;
 
-export async function GET() {
+type EditorFileEntry = {
+  path: string;
+  label: string;
+  status: "draft" | "published" | "archived";
+  updatedAt: number;
+};
+
+export async function GET(req: Request) {
+  const rateLimited = enforceEditorRateLimit(req, {
+    action: "list-files",
+    limit: 180,
+    windowMs: 60 * 1000,
+  });
+  if (rateLimited) {
+    return rateLimited;
+  }
+
+  const denied = await requireEditorAccess();
+  if (denied) {
+    return denied;
+  }
+
   try {
     const entries = await collectFiles();
+    logEditorInfo("list-files", "Loaded editor file list.", { count: entries.length });
     return NextResponse.json({ files: entries }, { headers: NO_STORE });
   } catch (error) {
-    return NextResponse.json({ error: "failed to list files" }, { status: 500, headers: NO_STORE });
+    return createEditorJsonError("list-files", "failed to list files", 500, error);
   }
 }
 
 async function collectFiles() {
-  const result: Array<{ path: string; label: string }> = [];
+  const result: EditorFileEntry[] = [];
 
   for (const locale of ALLOWED_SUBDIRS) {
     const localeDir = path.join(BASE_DIR, locale);
@@ -31,7 +60,7 @@ async function collectFiles() {
   return result;
 }
 
-async function walk(dir: string, bucket: Array<{ path: string; label: string }>) {
+async function walk(dir: string, bucket: EditorFileEntry[]) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   const enriched = await Promise.all(
@@ -69,22 +98,79 @@ async function walk(dir: string, bucket: Array<{ path: string; label: string }>)
     return b.mtime - a.mtime;
   });
 
-  for (const { entry, abs } of enriched) {
+  for (const { entry, abs, mtime } of enriched) {
     if (entry.isDirectory()) {
       await walk(abs, bucket);
     } else if (entry.isFile() && entry.name === "page.mdx") {
       const rel = path.relative(ROOT, abs);
       const normalizedRel = rel.replace(/\\/g, "/");
       const label = normalizedRel.replace(/^app\/\(post\)\//, "");
+      const content = await fs.readFile(abs, "utf8");
+      const metadata = extractMetadata(content);
 
-      // Debug logging to trace path normalization issues (especially on Windows).
-      if (label === normalizedRel) {
-        console.log("[api/editor/list] skipped prefix trim", { rel, normalizedRel });
-      }
-
-      bucket.push({ path: normalizedRel, label });
+      bucket.push({
+        path: normalizedRel,
+        label,
+        status: normalizeStatus(metadata?.status, metadata?.draft, metadata?.archived),
+        updatedAt: mtime,
+      });
     }
   }
+}
+
+function extractMetadata(content: string) {
+  const match = content.match(METADATA_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    // Reuse the same loose metadata shape as the editor. Files are trusted local MDX.
+    // eslint-disable-next-line no-new-func
+    return new Function(`return ({${match[1]}});`)() as Partial<{
+      status: "draft" | "published" | "archived";
+      draft: boolean;
+      archived: boolean;
+    }>;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStatus(
+  value: unknown,
+  legacyDraft?: unknown,
+  legacyArchived?: unknown,
+): "draft" | "published" | "archived" {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+      return normalized;
+    }
+  }
+
+  if (normalizeBoolean(legacyArchived)) {
+    return "archived";
+  }
+
+  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
+    return "draft";
+  }
+
+  return "published";
+}
+
+function normalizeBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+
+  return false;
 }
 
 async function safeExists(target: string) {

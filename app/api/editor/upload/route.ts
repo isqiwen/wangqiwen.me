@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sizeOf from "image-size";
+import { assertPathInside } from "@/utils/server/path-safety";
+import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { logger } from "@/utils/logger";
+import { enforceEditorRateLimit, logEditorInfo } from "@/utils/server/editor-api";
 
 export const runtime = "nodejs";
 
@@ -26,6 +30,20 @@ const EXT_FALLBACK: Record<string, string> = {
 const MAX_SIZE = 15 * 1024 * 1024; // 15MB
 
 export async function POST(req: Request) {
+  const rateLimited = enforceEditorRateLimit(req, {
+    action: "upload-asset",
+    limit: 30,
+    windowMs: 60 * 1000,
+  });
+  if (rateLimited) {
+    return rateLimited;
+  }
+
+  const denied = await requireEditorAccess();
+  if (denied) {
+    return denied;
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file");
@@ -63,6 +81,10 @@ export async function POST(req: Request) {
     const dimensions = sizeOf(buffer);
     const width = dimensions.width ?? null;
     const height = dimensions.height ?? null;
+    logEditorInfo("upload-asset", "Uploaded image asset.", {
+      path: `/images/${safeId}/${filename}`,
+      bytes: buffer.byteLength,
+    });
 
     return NextResponse.json({
       path: `/images/${safeId}/${filename}`,
@@ -70,7 +92,7 @@ export async function POST(req: Request) {
       height,
     });
   } catch (error) {
-    console.error("[api/editor/upload] failed to upload image", error);
+    logger.error("[api/editor/upload] failed to upload image", error);
     return NextResponse.json({ error: "upload failed" }, { status: 500 });
   }
 }
@@ -87,12 +109,4 @@ function normalizeId(value: string) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return cleaned || "misc";
-}
-
-function assertPathInside(rootDir: string, target: string) {
-  const resolvedRoot = path.resolve(rootDir);
-  const resolvedTarget = path.resolve(target);
-  if (!resolvedTarget.startsWith(resolvedRoot)) {
-    throw new Error("Invalid path");
-  }
 }
