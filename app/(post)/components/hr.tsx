@@ -1,5 +1,7 @@
 export function HR() {
   return (
-    <div className="my-8 text-center after:content-['﹡﹡﹡'] after:text-sm after:text-center after:inline" />
+    <div aria-hidden="true" className="my-10 text-center text-sm text-slate-300 dark:text-slate-600">
+      * * *
+    </div>
   );
 }

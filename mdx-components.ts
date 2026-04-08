@@ -36,13 +36,40 @@ import { StepPanel } from "app/(post)/components/step-panel";
 import { Diff } from "app/(post)/components/diff";
 import { StatGrid, KPI } from "app/(post)/components/stat-grid";
 import { QuoteCard } from "app/(post)/components/quote-card";
+import { InlineMath, MathBlock, EquationRef } from "app/(post)/components/math";
+import { PaperCard } from "app/(post)/components/paper-card";
+import {
+  Citation,
+  Bibliography,
+  BibliographyItem,
+} from "app/(post)/components/citation";
+import { Chart } from "app/(post)/components/chart";
+import { AblationTable } from "app/(post)/components/ablation-table";
+import { TheoremBlock } from "app/(post)/components/theorem-block";
+import { MermaidDiagram } from "app/(post)/components/mermaid-diagram";
+import { ArchitectureDiagram } from "app/(post)/components/architecture-diagram";
+import { FileTree } from "app/(post)/components/file-tree";
+import { TerminalBlock } from "app/(post)/components/terminal-block";
+import { BacktestChart } from "app/(post)/components/backtest-chart";
+import { ProofBlock } from "app/(post)/components/proof-block";
+import { DerivationBlock } from "app/(post)/components/derivation-block";
+import { EquationGroup } from "app/(post)/components/equation-group";
+import { AutoEquationRef } from "app/(post)/components/auto-equation-ref";
+import { TaskSpecCard } from "app/(post)/components/task-spec-card";
+import { ExperimentSetup } from "app/(post)/components/experiment-setup";
+import { Heatmap } from "app/(post)/components/heatmap";
+import { ConfusionMatrix } from "app/(post)/components/confusion-matrix";
+import { MultiPanelFigure } from "app/(post)/components/multi-panel-figure";
+import { KSpaceViewer } from "app/(post)/components/kspace-viewer";
+import { MetricTable } from "app/(post)/components/metric-table";
+import { LeaderboardTable } from "app/(post)/components/leaderboard-table";
 
 export function useMDXComponents(components: {
   [component: string]: React.ComponentType;
 }) {
   return {
     ...components,
-    // 基础标签（同时提供大小写别名）
+    // Base HTML tags plus matching uppercase aliases for hand-written MDX.
     a,
     A: a,
     p,
@@ -101,6 +128,33 @@ export function useMDXComponents(components: {
     StatGrid,
     KPI,
     QuoteCard,
+    InlineMath,
+    MathBlock,
+    EquationRef,
+    PaperCard,
+    Citation,
+    Bibliography,
+    BibliographyItem,
+    Chart,
+    AblationTable,
+    TheoremBlock,
+    MermaidDiagram,
+    ArchitectureDiagram,
+    FileTree,
+    TerminalBlock,
+    BacktestChart,
+    ProofBlock,
+    DerivationBlock,
+    EquationGroup,
+    AutoEquationRef,
+    TaskSpecCard,
+    ExperimentSetup,
+    Heatmap,
+    ConfusionMatrix,
+    MultiPanelFigure,
+    KSpaceViewer,
+    MetricTable,
+    LeaderboardTable,
     Table,
     THead,
     TBody,

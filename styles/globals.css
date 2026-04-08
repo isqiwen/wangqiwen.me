@@ -27,3 +27,55 @@ figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] {
   color: rgba(226, 232, 240, 0.7);
   margin-bottom: 0.5rem;
 }
+
+.mdx-inline-math {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.mdx-inline-math .katex,
+.mdx-inline-math .katex * {
+  white-space: nowrap;
+}
+
+.mdx-inline-math .katex-display {
+  display: inline-block;
+  margin: 0;
+}
+
+.mdx-inline-math .katex-display > .katex {
+  display: inline-block;
+}
+
+.mdx-math-block {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.mdx-math-block .katex-display {
+  display: inline-block;
+  margin: 0;
+  min-width: max-content;
+  padding: 0.25rem 0;
+}
+
+.mdx-math-block .katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.mdx-mermaid {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mdx-mermaid svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}

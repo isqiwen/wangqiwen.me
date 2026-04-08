@@ -21,21 +21,6 @@
         "path": "/zh/2025/my-post"
       },
       {
-        "id": "components-showcase",
-        "title": "组件全家桶展示馆",
-        "description": "按 mdx-components.tsx 注册顺序逐个演示所有自定义组件，新增组件请在此追加示例。",
-        "summary": "",
-        "series": null,
-        "publishedAt": "2025-11-22",
-        "updatedAt": null,
-        "status": "archived",
-        "featured": false,
-        "tags": [],
-        "cover": null,
-        "readingTimeMinutes": 3,
-        "path": "/zh/2025/components-showcase"
-      },
-      {
         "id": "test_chinese",
         "title": "test_chinese",
         "description": "给文章加一句描述",
@@ -126,21 +111,6 @@
         "cover": null,
         "readingTimeMinutes": 7,
         "path": "/en/2020/next-for-vercel"
-      },
-      {
-        "id": "books-people-reread",
-        "title": "Books people re-read",
-        "description": "A list of books people re-read, sorted by how frequently they were suggested on Twitter.",
-        "summary": "",
-        "series": null,
-        "publishedAt": "2020-08-02",
-        "updatedAt": null,
-        "status": "published",
-        "featured": false,
-        "tags": [],
-        "cover": null,
-        "readingTimeMinutes": 1,
-        "path": "/en/2020/books-people-reread"
       },
       {
         "id": "develop-preview-test",
@@ -314,9 +284,6 @@
       "zh": "/zh/2014/7-principles-of-rich-web-applications",
       "en": "/en/2014/7-principles-of-rich-web-applications"
     },
-    "components-showcase": {
-      "zh": "/zh/2025/components-showcase"
-    },
     "my-post": {
       "zh": "/zh/2025/my-post"
     },
@@ -344,9 +311,6 @@
     },
     "an-ode-to-code-golf": {
       "en": "/en/2020/an-ode-to-code-golf"
-    },
-    "books-people-reread": {
-      "en": "/en/2020/books-people-reread"
     },
     "develop-preview-test": {
       "en": "/en/2020/develop-preview-test"

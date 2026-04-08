@@ -12,6 +12,13 @@ import {
 import type { Language } from "prism-react-renderer";
 import { Snippet } from "./snippet";
 import { Caption } from "./caption";
+import {
+  mdxEmptyStateClass,
+  mdxInsetClass,
+  mdxMutedTextClass,
+  mdxPanelClass,
+  mdxPillButtonClass,
+} from "./surface";
 
 type TabProps = {
   title: string;
@@ -38,46 +45,66 @@ export function Tabs({
   const id = useId();
   const activeTab = tabs[active];
 
-  const renderedContent = useMemo(() => {
-    if (!activeTab) return null;
+  const renderedState = useMemo(() => {
+    if (!activeTab) {
+      return {
+        content: <div className={mdxEmptyStateClass}>No tabs are available in this block.</div>,
+        isSnippet: false,
+      };
+    }
+
     const cleanedChildren = cleanChildren(activeTab.props.children);
     const highlightInfo = findCodeSnippet(cleanedChildren);
 
     if (!highlightInfo) {
-      return cleanedChildren.length > 0 ? cleanedChildren : activeTab.props.children;
+      const content =
+        cleanedChildren.length > 0 ? cleanedChildren : activeTab.props.children;
+
+      return {
+        content: <div className={`${mdxInsetClass} p-4 ${mdxMutedTextClass}`}>{content}</div>,
+        isSnippet: false,
+      };
     }
 
     const { code, language } = highlightInfo;
 
-    return (
-      <Snippet scroll caption={caption} className="my-2">
-        <code className={`language-${language}`}>{code}</code>
-      </Snippet>
-    );
+    return {
+      content: (
+        <Snippet scroll caption={caption} className="my-0">
+          <code className={`language-${language}`}>{code}</code>
+        </Snippet>
+      ),
+      isSnippet: true,
+    };
   }, [activeTab, caption]);
 
   return (
-    <div className="my-4 w-full space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className={`${mdxPanelClass} w-full space-y-3`}>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Code or content tabs">
         {tabs.map((tab, index) => (
           <button
             key={tab.props.title + index}
+            type="button"
             onClick={() => setActive(index)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-[0.2em] transition ${
-              index === active
-                ? "bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-[0_10px_30px_rgba(79,118,255,0.45)]"
-                : "border border-white/10 text-slate-300 hover:border-white/40 hover:text-white"
-            }`}
-            aria-pressed={index === active}
+            className={mdxPillButtonClass(index === active)}
+            role="tab"
+            aria-selected={index === active}
+            aria-controls={`${id}-panel-${index}`}
+            id={`${id}-tab-${index}`}
           >
             {tab.props.title}
           </button>
         ))}
       </div>
-      <div id={`${id}-panel-${active}`} className="w-full">
-        {renderedContent}
+      <div
+        id={`${id}-panel-${active}`}
+        role="tabpanel"
+        aria-labelledby={`${id}-tab-${active}`}
+        className="w-full"
+      >
+        {renderedState.content}
       </div>
-      {!findCodeSnippet(activeTab?.props.children) && caption ? <Caption className="mt-1">{caption}</Caption> : null}
+      {!renderedState.isSnippet && caption ? <Caption className="mt-1">{caption}</Caption> : null}
     </div>
   );
 }

@@ -3,7 +3,20 @@
 import NextImage from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, DragEvent, FormEvent, ReactNode } from "react";
-import { componentsPalette, type ComponentSnippet } from "./snippets";
+import {
+  componentsPalette,
+  getComponentCategories,
+  getComponentDefaultValues,
+  renderComponentInsert,
+  type ComponentSnippet,
+  type ComponentSnippetField,
+  type ComponentSnippetFormValues,
+  type ComponentSnippetInsert,
+} from "./snippets";
+import {
+  parsePendingEditorSnippet,
+  PENDING_EDITOR_SNIPPET_KEY,
+} from "./pending-snippet";
 
 type Locale = "zh" | "en";
 
@@ -462,8 +475,10 @@ function EditorWorkspace({
   const assetInputRef = useRef<HTMLInputElement | null>(null);
   const restoredDraftRef = useRef(false);
   const pendingAutosaveRef = useRef<EditorLocalAutosave | null>(null);
+  const handledPendingSnippetRef = useRef<number | null>(null);
   const confirmationResolveRef = useRef<((value: boolean) => void) | null>(null);
   const [cursorPos, setCursorPos] = useState<number>(body.length);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const workspaceSnapshot = useMemo(
     () =>
@@ -1097,7 +1112,10 @@ function EditorWorkspace({
 
     // Restore the newest saved draft once so unfinished work reopens automatically.
     restoredDraftRef.current = true;
-    void refreshFileList({ autoRestoreLatestDraft: true });
+    void (async () => {
+      await refreshFileList({ autoRestoreLatestDraft: true });
+      setInitialLoadComplete(true);
+    })();
   }, [refreshFileList]);
 
   useEffect(() => {
@@ -1109,31 +1127,113 @@ function EditorWorkspace({
     void refreshAssets({ silent: true });
   }, [refreshAssets]);
 
-  function insertSnippet(snippet: string) {
-    if (isReadOnly) {
+  const insertSnippet = useCallback(
+    (snippet: string | ComponentSnippetInsert) => {
+      if (isReadOnly) {
+        return;
+      }
+
+      const resolvedSnippet =
+        typeof snippet === "string"
+          ? {
+              content: snippet,
+              selectionStart: null,
+              selectionEnd: null,
+            }
+          : snippet;
+      const el = editorRef.current;
+      const pos = el?.selectionStart ?? cursorPos ?? body.length;
+      const before = body.slice(0, pos);
+      const after = body.slice(pos);
+      const needsPrefix = before.length > 0 && !before.endsWith("\n\n");
+      const prefix = needsPrefix ? "\n\n" : "";
+      const suffix = after.startsWith("\n") ? "" : "\n\n";
+      const next = `${before}${prefix}${resolvedSnippet.content}${suffix}${after}`;
+      setBody(next);
+      const insertStart = (before + prefix).length;
+      const fallbackCursor = insertStart + resolvedSnippet.content.length;
+      const selectionStart =
+        resolvedSnippet.selectionStart == null
+          ? fallbackCursor
+          : insertStart + resolvedSnippet.selectionStart;
+      const selectionEnd =
+        resolvedSnippet.selectionEnd == null
+          ? selectionStart
+          : insertStart + resolvedSnippet.selectionEnd;
+      setCursorPos(selectionEnd);
+
+      requestAnimationFrame(() => {
+        const textarea = editorRef.current;
+        if (textarea) {
+          textarea.selectionStart = selectionStart;
+          textarea.selectionEnd = selectionEnd;
+          textarea.focus();
+        }
+      });
+    },
+    [body, cursorPos, isReadOnly],
+  );
+
+  const consumePendingEditorSnippet = useCallback(
+    (rawValue: string | null, options: { removeAfterRead?: boolean } = {}) => {
+      const pendingSnippet = parsePendingEditorSnippet(rawValue);
+      if (!pendingSnippet) {
+        return false;
+      }
+
+      if (handledPendingSnippetRef.current === pendingSnippet.createdAt) {
+        return false;
+      }
+
+      if (isReadOnly) {
+        handledPendingSnippetRef.current = pendingSnippet.createdAt;
+        if (options.removeAfterRead !== false && typeof window !== "undefined") {
+          window.localStorage.removeItem(PENDING_EDITOR_SNIPPET_KEY);
+        }
+        showFeedback(
+          "The current post is read-only, so the queued component snippet was not inserted.",
+          "error",
+        );
+        return false;
+      }
+
+      handledPendingSnippetRef.current = pendingSnippet.createdAt;
+      insertSnippet(pendingSnippet.snippet);
+
+      if (options.removeAfterRead !== false && typeof window !== "undefined") {
+        window.localStorage.removeItem(PENDING_EDITOR_SNIPPET_KEY);
+      }
+
+      showFeedback("Inserted component snippet from the guide.", "success");
+      return true;
+    },
+    [insertSnippet, isReadOnly, showFeedback],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !initialLoadComplete) {
       return;
     }
 
-    const el = editorRef.current;
-    const pos = el?.selectionStart ?? cursorPos ?? body.length;
-    const before = body.slice(0, pos);
-    const after = body.slice(pos);
-    const needsPrefix = before.length > 0 && !before.endsWith("\n\n");
-    const prefix = needsPrefix ? "\n\n" : "";
-    const suffix = after.startsWith("\n") ? "" : "\n\n";
-    const next = `${before}${prefix}${snippet}${suffix}${after}`;
-    setBody(next);
-    const nextPos = (before + prefix + snippet).length;
-    setCursorPos(nextPos);
+    consumePendingEditorSnippet(window.localStorage.getItem(PENDING_EDITOR_SNIPPET_KEY));
+  }, [consumePendingEditorSnippet, initialLoadComplete]);
 
-    requestAnimationFrame(() => {
-      const textarea = editorRef.current;
-      if (textarea) {
-        textarea.selectionStart = textarea.selectionEnd = nextPos;
-        textarea.focus();
+  useEffect(() => {
+    if (typeof window === "undefined" || !initialLoadComplete) {
+      return;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== PENDING_EDITOR_SNIPPET_KEY) {
+        return;
       }
-    });
-  }
+
+      consumePendingEditorSnippet(event.newValue);
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [consumePendingEditorSnippet, initialLoadComplete]);
 
   async function handleImageFile(file: File) {
     if (isReadOnly) {
@@ -1562,6 +1662,7 @@ function EditorWorkspace({
             ) : null}
           </div>
           <textarea
+            id="editor-body"
             ref={editorRef}
             value={body}
             onChange={event => {
@@ -2238,27 +2339,340 @@ function ComponentPalette({
   onInsert,
   disabled,
 }: {
-  onInsert: (snippet: string) => void;
+  onInsert: (snippet: string | ComponentSnippetInsert) => void;
   disabled?: boolean;
 }) {
+  const categories = useMemo(() => ["All", ...getComponentCategories()], []);
+  const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<ComponentSnippetFormValues>({});
+
+  const filteredEntries = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return componentsPalette.filter(entry => {
+      if (activeCategory !== "All" && entry.category !== activeCategory) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [entry.label, entry.hint, entry.category, ...(entry.searchTerms ?? [])]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [activeCategory, query]);
+  const grouped = useMemo(() => groupComponentSnippets(filteredEntries), [filteredEntries]);
+  const selectedEntry = useMemo(
+    () => componentsPalette.find(entry => entry.id === selectedComponentId) ?? null,
+    [selectedComponentId],
+  );
+  const configuredSnippet = useMemo(() => {
+    if (!selectedEntry) {
+      return null;
+    }
+
+    return renderComponentInsert(selectedEntry, formValues);
+  }, [formValues, selectedEntry]);
+
+  function handleConfigure(entry: ComponentSnippet) {
+    setSelectedComponentId(entry.id);
+    setFormValues(getComponentDefaultValues(entry));
+  }
+
+  function handleQuickInsert(entry: ComponentSnippet) {
+    onInsert(renderComponentInsert(entry));
+  }
+
+  function updateFormValue(fieldId: string, value: string | boolean) {
+    setFormValues(current => ({
+      ...current,
+      [fieldId]: value,
+    }));
+  }
+
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold text-slate-600">Insert component</div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {componentsPalette.map((item: ComponentSnippet) => (
-          <button
-            key={item.label}
-            onClick={() => onInsert(item.snippet)}
-            disabled={disabled}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 shadow-sm transition hover:border-indigo-400 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
-          >
-            <div className="font-semibold">{item.label}</div>
-            <div className="text-[11px] text-slate-500">{item.hint}</div>
-          </button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="text-xs font-semibold text-slate-600">Insert component</div>
+          <div className="text-[11px] text-slate-500">
+            Search by name, filter by category, or configure supported props before inserting.
+          </div>
+        </div>
+        <a
+          href="/editor/components"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-500"
+        >
+          Open component guide
+        </a>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+        <input
+          type="search"
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          placeholder="Search components, patterns, or props"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400"
+        />
+        <div className="flex flex-wrap gap-2">
+          {categories.map(category => {
+            const isActive = category === activeCategory;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] transition ${
+                  isActive
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                }`}
+              >
+                {category}
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[11px] text-slate-500">
+          {filteredEntries.length} component{filteredEntries.length === 1 ? "" : "s"} match the current filters.
+        </div>
+      </div>
+
+      {selectedEntry?.fields?.length && configuredSnippet ? (
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="font-semibold text-slate-900">{selectedEntry.label}</div>
+              <div className="mt-1 text-sm text-slate-600">{selectedEntry.hint}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedComponentId(null)}
+              className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600 hover:bg-white"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {selectedEntry.fields.map(field => (
+              <ComponentConfiguratorField
+                key={field.id}
+                field={field}
+                value={formValues[field.id]}
+                disabled={disabled}
+                onChange={value => updateFormValue(field.id, value)}
+              />
+            ))}
+          </div>
+
+          {selectedEntry.notes?.length ? (
+            <ul className="space-y-2 text-xs text-slate-500">
+              {selectedEntry.notes.map(note => (
+                <li
+                  key={note}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 leading-6"
+                >
+                  {note}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              Insert Preview
+            </div>
+            <pre className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-950 p-4 text-xs leading-6 text-slate-100 shadow-inner">
+              <code>{configuredSnippet.content}</code>
+            </pre>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onInsert(configuredSnippet)}
+              disabled={disabled}
+              className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              Insert into body
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormValues(getComponentDefaultValues(selectedEntry))}
+              disabled={disabled}
+              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              Reset defaults
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        {filteredEntries.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            No components match the current search. Try another keyword or switch categories.
+          </div>
+        ) : null}
+
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category} className="space-y-2">
+            <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
+              {category}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((item: ComponentSnippet) => {
+                const isSelected = item.id === selectedComponentId;
+                const hasConfigurator = Boolean(item.fields?.length);
+
+                return (
+                <div
+                  key={item.id}
+                  className={`rounded-2xl border px-3 py-3 text-left text-sm shadow-sm transition ${
+                    isSelected
+                      ? "border-indigo-300 bg-indigo-50/80"
+                      : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-slate-900">{item.label}</div>
+                      <div className="mt-1 text-[11px] text-slate-500">{item.hint}</div>
+                    </div>
+                    {hasConfigurator ? (
+                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
+                        Form
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {hasConfigurator ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleConfigure(item)}
+                          disabled={disabled}
+                          className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                        >
+                          Configure
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickInsert(item)}
+                          disabled={disabled}
+                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                        >
+                          Quick insert
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onInsert(renderComponentInsert(item))}
+                        disabled={disabled}
+                        className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        Insert
+                      </button>
+                    )}
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </div>
     </div>
   );
+}
+
+function ComponentConfiguratorField({
+  field,
+  value,
+  disabled,
+  onChange,
+}: {
+  field: ComponentSnippetField;
+  value: string | boolean | undefined;
+  disabled?: boolean;
+  onChange: (value: string | boolean) => void;
+}) {
+  const baseInputClass =
+    "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400";
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-semibold text-slate-600">{field.label}</label>
+
+      {field.type === "textarea" ? (
+        <textarea
+          value={typeof value === "string" ? value : ""}
+          onChange={event => onChange(event.target.value)}
+          rows={field.rows ?? 4}
+          placeholder={field.placeholder}
+          disabled={disabled}
+          className={`${baseInputClass} resize-y`}
+        />
+      ) : field.type === "select" ? (
+        <select
+          value={typeof value === "string" ? value : ""}
+          onChange={event => onChange(event.target.value)}
+          disabled={disabled}
+          className={baseInputClass}
+        >
+          {field.options?.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : field.type === "boolean" ? (
+        <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={event => onChange(event.target.checked)}
+            disabled={disabled}
+            className="h-4 w-4 rounded border-slate-300 text-slate-900"
+          />
+          <span>Enabled</span>
+        </label>
+      ) : (
+        <input
+          type="text"
+          value={typeof value === "string" ? value : ""}
+          onChange={event => onChange(event.target.value)}
+          placeholder={field.placeholder}
+          disabled={disabled}
+          className={baseInputClass}
+        />
+      )}
+
+      {field.help ? <p className="text-[11px] text-slate-500">{field.help}</p> : null}
+    </div>
+  );
+}
+
+function groupComponentSnippets(entries: ComponentSnippet[]) {
+  return entries.reduce<Record<string, ComponentSnippet[]>>((groups, entry) => {
+    if (!groups[entry.category]) {
+      groups[entry.category] = [];
+    }
+
+    groups[entry.category].push(entry);
+    return groups;
+  }, {});
 }
 
 type TreeNode = {

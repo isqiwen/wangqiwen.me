@@ -35,8 +35,8 @@ export const Snippet: SnippetComponent = ({
       <Highlight theme={themes.nightOwl} code={code} language={language}>
         {({ className: highlightClass, style, tokens, getLineProps, getTokenProps }) => (
           <pre
-            className={`p-4 text-sm bg-gray-800 text-white dark:bg-[#222] dark:text-gray-300 ${
-              scroll ? "overflow-scroll" : "whitespace-pre-wrap break-all overflow-hidden"
+            className={`overflow-x-auto rounded-2xl p-4 text-sm bg-gray-800 text-white dark:bg-[#222] dark:text-gray-300 ${
+              scroll ? "overflow-y-hidden" : "whitespace-pre-wrap break-words overflow-hidden"
             } ${highlightClass}`}
             style={style}
           >

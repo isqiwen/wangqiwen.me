@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
 import type { ReactNode } from "react";
 import { RawImage } from "./raw-image";
+import { mdxInsetClass, mdxMutedTextClass, mdxPanelClass, mdxSubtleTextClass } from "./surface";
 
 type AudioPlayerProps = {
   src: string;
@@ -13,23 +13,25 @@ type AudioPlayerProps = {
 };
 
 export function AudioPlayer({ src, title, subtitle, cover, children }: AudioPlayerProps) {
-  const ref = useRef<HTMLAudioElement | null>(null);
-
   return (
-    <div className="my-4 flex items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.1)]">
-      {cover ? <RawImage src={cover} alt="" className="h-16 w-16 rounded-2xl object-cover" /> : null}
-      <div className="flex-1 space-y-1">
-        {title && <p className="text-sm font-semibold text-slate-900">{title}</p>}
-        {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
-        <audio ref={ref} controls className="w-full">
-          <source src={src} />
-          Your browser does not support the audio element.
-        </audio>
-        {children ? (
-          <div className="text-xs text-slate-500 [&_p]:m-0 [&_p]:mt-2 first:[&_p]:mt-0">
-            {children}
-          </div>
-        ) : null}
+    <div className={`${mdxPanelClass} flex flex-col gap-4 sm:flex-row sm:items-center`}>
+      {cover ? (
+        <RawImage src={cover} alt={title ?? "Audio cover"} className="h-20 w-20 rounded-2xl object-cover" />
+      ) : (
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200/70 bg-slate-100 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          Audio
+        </div>
+      )}
+      <div className="min-w-0 flex-1 space-y-2">
+        {title ? <p className="text-base font-semibold text-slate-900 dark:text-white">{title}</p> : null}
+        {subtitle ? <p className={mdxSubtleTextClass}>{subtitle}</p> : null}
+        <div className={`${mdxInsetClass} p-3`}>
+          <audio controls className="w-full">
+            <source src={src} />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+        {children ? <div className={`[&_p]:m-0 ${mdxMutedTextClass}`}>{children}</div> : null}
       </div>
     </div>
   );

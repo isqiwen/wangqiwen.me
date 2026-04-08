@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import "katex/dist/katex.min.css";
 import { getLanguageFromCookies } from "@/utils/server/get-language";
 import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";

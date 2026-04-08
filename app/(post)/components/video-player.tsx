@@ -1,7 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import {
+  mdxInsetClass,
+  mdxMutedTextClass,
+  mdxPanelClass,
+  mdxPillButtonClass,
+  mdxSubtleTextClass,
+} from "./surface";
 
 type Chapter = { label: string; time: number };
 type Danmaku = { time: number; text: string };
@@ -19,53 +26,76 @@ export function VideoPlayer({ src, poster, title, chapters = [], danmaku = [], c
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [now, setNow] = useState(0);
 
+  const activeDanmaku = useMemo(
+    () =>
+      [...danmaku]
+        .filter(item => item.time <= now)
+        .sort((a, b) => b.time - a.time)[0],
+    [danmaku, now],
+  );
+
+  const activeChapterIndex = useMemo(() => {
+    if (chapters.length === 0) {
+      return -1;
+    }
+
+    return chapters.reduce((activeIndex, chapter, index) => {
+      if (chapter.time <= now) {
+        return index;
+      }
+      return activeIndex;
+    }, -1);
+  }, [chapters, now]);
+
   const handleChapterClick = (time: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = time;
-      videoRef.current.play();
+      void videoRef.current.play();
     }
   };
 
-  const activeDanmaku = [...danmaku]
-    .filter(item => item.time <= now)
-    .sort((a, b) => b.time - a.time)[0];
-
   return (
-    <div className="my-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_80px_rgba(15,23,42,0.12)]">
-      {title && <div className="px-4 pt-4 text-sm font-semibold text-slate-900">{title}</div>}
-      <div className="relative px-4 pb-4">
+    <div className={`${mdxPanelClass} overflow-hidden`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        {title ? <p className="text-base font-semibold text-slate-900 dark:text-white">{title}</p> : null}
+        {chapters.length > 0 ? <span className={mdxSubtleTextClass}>{chapters.length} chapter markers</span> : null}
+      </div>
+
+      <div className="relative mt-3">
         <video
           ref={videoRef}
-          className="mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-black"
+          className={`${mdxInsetClass} w-full overflow-hidden bg-black`}
           src={src}
           poster={poster}
           controls
           onTimeUpdate={e => setNow(e.currentTarget.currentTime)}
         />
-        {activeDanmaku && (
-          <div className="pointer-events-none absolute bottom-6 left-1/2 w-[80%] max-w-2xl -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-center text-sm text-white shadow-lg backdrop-blur">
+        {activeDanmaku ? (
+          <div className="pointer-events-none absolute bottom-4 left-1/2 w-[80%] max-w-2xl -translate-x-1/2 rounded-full bg-black/65 px-4 py-2 text-center text-sm text-white shadow-lg backdrop-blur">
             {activeDanmaku.text}
           </div>
-        )}
+        ) : null}
       </div>
-      {(chapters.length > 0 || children) && (
-        <div className="flex flex-col gap-2 border-t border-white/10 bg-white/2 px-4 py-3 text-sm text-slate-700">
-          {chapters.length > 0 && (
+
+      {(chapters.length > 0 || children) ? (
+        <div className="mt-4 space-y-3">
+          {chapters.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {chapters.map((item, index) => (
                 <button
-                  key={index}
+                  key={`${item.label}-${item.time}`}
+                  type="button"
                   onClick={() => handleChapterClick(item.time)}
-                  className="rounded-full border border-white/20 bg-white/40 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-400 hover:text-blue-600"
+                  className={mdxPillButtonClass(index === activeChapterIndex)}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
-          )}
-          {children ? <div className="text-xs text-slate-500">{children}</div> : null}
+          ) : null}
+          {children ? <div className={mdxMutedTextClass}>{children}</div> : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

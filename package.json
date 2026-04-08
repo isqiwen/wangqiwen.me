@@ -11,6 +11,7 @@
     "@fontsource/roboto-mono": "^5.1.1",
     "@formatjs/intl-localematcher": "^0.5.4",
     "@mdx-js/react": "^2.3.0",
+    "@mdx-js/runtime": "^2.0.0",
     "@next/mdx": "15.0.2",
     "@react-three/drei": "^9.120.5",
     "@react-three/fiber": "^9.0.0-rc.1",
@@ -23,7 +24,9 @@
     "i": "^0.3.7",
     "image-size": "^1.0.2",
     "js-cookie": "^3.0.5",
+    "katex": "^0.16.45",
     "load-script": "^1.0.0",
+    "mermaid": "^10.9.1",
     "negotiator": "^0.6.3",
     "next": "15.1.2",
     "next-nprogress-bar": "^2.3.13",
@@ -39,8 +42,7 @@
     "three": "^0.172.0",
     "time-ago": "^0.2.1",
     "vercel": "^39.2.6",
-    "word-wrap": "^1.2.5",
-    "@mdx-js/runtime": "^2.0.0"
+    "word-wrap": "^1.2.5"
   },
   "devDependencies": {
     "@types/comma-number": "^2.1.0",
