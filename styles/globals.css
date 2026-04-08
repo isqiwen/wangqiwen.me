@@ -29,9 +29,8 @@ figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] {
 }
 
 .mdx-inline-math {
-  display: inline-block;
-  max-width: 100%;
-  vertical-align: middle;
+  display: inline;
+  vertical-align: baseline;
 }
 
 .mdx-inline-math .katex,
@@ -40,7 +39,7 @@ figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] {
 }
 
 .mdx-inline-math .katex-display {
-  display: inline-block;
+  display: inline;
   margin: 0;
 }
 

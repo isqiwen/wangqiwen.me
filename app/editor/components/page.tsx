@@ -53,12 +53,10 @@ import { MultiPanelFigure } from "@/app/(post)/components/multi-panel-figure";
 import { KSpaceViewer } from "@/app/(post)/components/kspace-viewer";
 import { MetricTable } from "@/app/(post)/components/metric-table";
 import { LeaderboardTable } from "@/app/(post)/components/leaderboard-table";
-import { CopySnippetButton } from "./copy-snippet-button";
 import {
   GuideNavigation,
   type GuideNavigationSection,
 } from "./guide-navigation";
-import { SendToEditorButton } from "./send-to-editor-button";
 import {
   componentsPalette,
   type ComponentSnippet,
@@ -338,10 +336,6 @@ function ComponentGuideCard({ entry }: { entry: ComponentSnippet }) {
         </GuideSection>
 
         <GuideSection title="Snippet">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <SendToEditorButton snippet={entry.snippet} />
-            <CopySnippetButton snippet={entry.snippet} />
-          </div>
           <Snippet className="my-0" scroll={false}>
             <code className="language-mdx">{entry.snippet}</code>
           </Snippet>
@@ -717,12 +711,10 @@ function renderPreview(id: string) {
       );
     case "inline-math":
       return (
-        <div className="space-y-4 text-slate-700">
-          <p className="leading-7">
-            A reconstruction objective can stay inline when the surrounding explanation is
-            more important than the derivation, like{" "}
-            <InlineMath tex="\\mathcal{L}(x, y) = \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)" />.
-          </p>
+        <div className="text-slate-700">
+          <InlineMath
+            tex={"\\mathcal{L}(x, y) = \\lVert Ax - y \\rVert_2^2"}
+          />
         </div>
       );
     case "math-block":
@@ -733,7 +725,7 @@ function renderPreview(id: string) {
           </p>
           <MathBlock
             id="guide-eq-varnet"
-            tex="\\hat{x} = \\arg\\min_x \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)"
+            tex={"\\hat{x} = \\arg\\min_x \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)"}
             caption="The page-level numbering system fills the label automatically."
           />
         </div>
