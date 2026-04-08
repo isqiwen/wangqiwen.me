@@ -37,6 +37,18 @@ pnpm dev
 http://localhost:3000
 ```
 
+If you want a one-command local setup first, use:
+
+```bash
+bash scripts/setup-dev.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+pwsh ./scripts/setup-dev.ps1
+```
+
 ## Environment Variables
 
 | Variable | Required | Purpose |
@@ -144,6 +156,12 @@ pnpm start
 ```
 
 can host it.
+
+For a simple Ubuntu self-hosted deploy helper:
+
+```bash
+APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+```
 
 For deployment and operational details, use:
 - [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md)

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Cross-platform dev setup for macOS/Linux (bash)
-# - Installs pnpm via corepack (without changing global npm)
+# Development setup for macOS/Linux (bash)
+# - Ensures pnpm via corepack
 # - Installs dependencies
 # - Copies .env.example if missing
+# - Synchronizes post metadata so the local manifest is ready
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -30,5 +31,10 @@ if [[ -f ".env.example" && ! -f ".env.local" ]]; then
   echo "Created .env.local from .env.example"
 fi
 
+echo "==> Synchronizing post metadata"
+pnpm sync:posts -- --silent
+
 echo "==> Done. Next steps:"
-echo "    pnpm dev --filter blog   # start dev server"
+echo "    1. Update .env.local if needed"
+echo "    2. Run: pnpm dev"
+echo "    3. Open: http://localhost:3000"

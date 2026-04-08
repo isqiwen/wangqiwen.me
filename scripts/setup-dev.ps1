@@ -1,8 +1,9 @@
 #!/usr/bin/env pwsh
-# Cross-platform dev setup for Windows (PowerShell)
+# Development setup for Windows (PowerShell)
 # - Ensures corepack/pnpm is available
 # - Installs dependencies
 # - Copies .env.example if missing
+# - Synchronizes post metadata so the local manifest is ready
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
@@ -19,9 +20,14 @@ pnpm install
 
 Write-Host "==> Preparing env file"
 if (Test-Path ".env.example" -and -not (Test-Path ".env.local")) {
-  Copy-Item ".env.example" ".env.local"
-  Write-Host "Created .env.local from .env.example"
+    Copy-Item ".env.example" ".env.local"
+    Write-Host "Created .env.local from .env.example"
 }
 
+Write-Host "==> Synchronizing post metadata"
+pnpm sync:posts -- --silent
+
 Write-Host "==> Done. Next steps:"
-Write-Host "    pnpm dev --filter blog   # start dev server"
+Write-Host "    1. Update .env.local if needed"
+Write-Host "    2. Run: pnpm dev"
+Write-Host "    3. Open: http://localhost:3000"

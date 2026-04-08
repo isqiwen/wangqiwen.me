@@ -137,7 +137,15 @@ Any Node 18+ environment that can run `pnpm install && pnpm build && pnpm start`
 On Ubuntu, you can use:
 
 ```bash
-bash scripts/deploy-ubuntu.sh
+APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
 ```
+
+The script will:
+
+- pull the latest code
+- install dependencies with pnpm
+- synchronize and validate post metadata
+- build the app
+- restart a PM2 process named by `APP_NAME`
 
 Make sure your production environment variables are set before running the script.

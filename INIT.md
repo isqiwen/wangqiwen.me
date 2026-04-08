@@ -67,6 +67,16 @@ Optional variables:
 - `GEO_IP_API_KEY`
 - `UPSTASH_REDIS_FORCE_REMOTE`
 
+If you prefer a scripted local setup first, run one of these:
+
+```bash
+bash scripts/setup-dev.sh
+```
+
+```powershell
+pwsh ./scripts/setup-dev.ps1
+```
+
 ## 5. Create Your First Content
 
 Create a starter article:
