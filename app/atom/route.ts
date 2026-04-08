@@ -2,7 +2,7 @@ import { getPosts } from "@/app/get-posts";
 import { getSiteUrl, siteConfig } from "@/utils/site-config";
 
 export async function GET() {
-  const posts = await getPosts("en");
+  const posts = await getPosts();
   const max = 100; // max returned posts
   const updated = posts[0]?.date ?? new Date().toISOString();
   const authorEmail = siteConfig.author.email

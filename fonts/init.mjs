@@ -1,5 +1,5 @@
-// this script is run by the npm postinstall hook to copy the font
-// files from the node_modules directory to the public directory
+// This script runs on postinstall and copies the required font files from
+// node_modules into the public directory used by the app.
 
 import fs from "fs";
 import path from "path";
@@ -8,23 +8,17 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 
-// Define the source paths
 const fontPaths = [
   "node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2",
   "node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2",
   "node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2",
   "node_modules/@fontsource/roboto-mono/files/roboto-mono-latin-400-normal.woff2",
-  "node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2",
-  "node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-700-normal.woff2",
   "node_modules/@fontsource/inter/files/inter-latin-300-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-500-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-600-normal.woff",
   "node_modules/@fontsource/roboto-mono/files/roboto-mono-latin-400-normal.woff",
-  "node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff",
-  "node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-700-normal.woff",
   "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   "node_modules/@fontsource-variable/roboto-mono/files/roboto-mono-latin-wght-normal.woff2",
-  "node_modules/@fontsource-variable/noto-sans-sc/files/noto-sans-sc-latin-wght-normal.woff2",
 ];
 
 const missingFonts = [];
@@ -67,6 +61,6 @@ if (missingFonts.length > 0) {
       "paths in fonts/init.mjs accordingly.",
       "Missing files:",
       ...missingFonts.map(fontPath => ` - ${fontPath}`),
-    ].join("\n")
+    ].join("\n"),
   );
 }

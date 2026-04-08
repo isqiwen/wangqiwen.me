@@ -13,7 +13,6 @@ const NO_STORE = { "Cache-Control": "no-store" };
 
 const ROOT = process.cwd();
 const BASE_DIR = path.join(ROOT, "app", "(post)");
-const ALLOWED_SUBDIRS = new Set(["zh", "en"]);
 const METADATA_PATTERN = /export const metadata =\s*\{([\s\S]*?)\};?/;
 
 type EditorFileEntry = {
@@ -49,13 +48,11 @@ export async function GET(req: Request) {
 
 async function collectFiles() {
   const result: EditorFileEntry[] = [];
-
-  for (const locale of ALLOWED_SUBDIRS) {
-    const localeDir = path.join(BASE_DIR, locale);
-    const exists = await safeExists(localeDir);
-    if (!exists) continue;
-    await walk(localeDir, result);
+  const exists = await safeExists(BASE_DIR);
+  if (!exists) {
+    return result;
   }
+  await walk(BASE_DIR, result);
 
   return result;
 }
@@ -100,17 +97,21 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
 
   for (const { entry, abs, mtime } of enriched) {
     if (entry.isDirectory()) {
+      if (dir === BASE_DIR && !/^\d{4}$/.test(entry.name)) {
+        continue;
+      }
       await walk(abs, bucket);
     } else if (entry.isFile() && entry.name === "page.mdx") {
       const rel = path.relative(ROOT, abs);
       const normalizedRel = rel.replace(/\\/g, "/");
       const label = normalizedRel.replace(/^app\/\(post\)\//, "");
+      const cleanLabel = label.replace(/\/page\.mdx$/, "");
       const content = await fs.readFile(abs, "utf8");
       const metadata = extractMetadata(content);
 
       bucket.push({
         path: normalizedRel,
-        label,
+        label: cleanLabel,
         status: normalizeStatus(metadata?.status, metadata?.draft, metadata?.archived),
         updatedAt: mtime,
       });

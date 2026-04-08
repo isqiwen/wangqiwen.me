@@ -4,15 +4,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import commaNumber from "comma-number";
-import useDictionary from "@/locales/dictionary-hook";
 import { formatString } from "@/utils/common/string-helper";
-import type { Post, PostLocale } from "./get-posts";
+import { uiCopy } from "@/utils/ui-copy";
+import type { Post } from "./get-posts";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
 interface PostsProps {
   posts: Post[];
-  language: PostLocale;
 }
 
 type BasePost = {
@@ -25,7 +24,6 @@ type BasePost = {
   date: string;
   publishedAt: string;
   updatedAt: string | null;
-  locale: PostLocale;
   status: Post["status"];
   featured: boolean;
   tags: string[];
@@ -41,17 +39,16 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function Posts({ posts: initialPosts, language }: PostsProps) {
-  const dict = useDictionary();
+export function Posts({ posts: initialPosts }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1);
   const initialBasePosts = useMemo(() => initialPosts.map(stripPost), [initialPosts]);
   const initialViewsMap = useMemo(() => buildViewsMap(initialPosts), [initialPosts]);
 
   const { data: basePosts = initialBasePosts } = useSWR(
-    ["/api/posts", language],
-    async ([, locale]) => {
-      const response = await fetch(`/api/posts?locale=${locale}`, { cache: "no-store" });
+    "/api/posts",
+    async url => {
+      const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) {
         throw new Error("Failed to load posts metadata");
       }
@@ -82,7 +79,6 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
         date: formatPublishedAt(item.publishedAt),
         publishedAt: item.publishedAt,
         updatedAt: item.updatedAt ?? null,
-        locale,
         status: item.status ?? "published",
         featured: item.featured ?? false,
         tags: item.tags ?? [],
@@ -175,33 +171,33 @@ export function Posts({ posts: initialPosts, language }: PostsProps) {
 
   return (
     <Suspense fallback={null}>
-      <main className="max-w-2xl font-mono m-auto mb-10 text-sm">
-        <header className="text-gray-500 dark:text-gray-600 flex items-center text-xs">
+      <main className="m-auto mb-10 max-w-2xl font-mono text-sm">
+        <header className="flex items-center text-xs text-gray-500 dark:text-gray-600">
           <button
             onClick={sortDate}
-            className={`w-12 h-9 text-left ${
+            className={`h-9 w-12 text-left ${
               sort[0] === "date" ? "text-gray-700 dark:text-gray-400" : ""
             }`}
-            aria-label={`Sort by ${dict.post.date}`}
+            aria-label={`Sort by ${uiCopy.post.date}`}
           >
-            {dict.post.date}
+            {uiCopy.post.date}
           </button>
-          <span className="grow pl-2">{dict.post.title}</span>
+          <span className="grow pl-2">{uiCopy.post.title}</span>
           <button
             onClick={sortViews}
             className={`h-9 pl-4 ${
               sort[0] === "views" ? "text-gray-700 dark:text-gray-400" : ""
             }`}
-            aria-label={`Sort by ${dict.post.views}`}
+            aria-label={`Sort by ${uiCopy.post.views}`}
           >
-            {dict.post.views}
+            {uiCopy.post.views}
           </button>
         </header>
 
         <List posts={paginatedPosts} />
 
-        <p className="text-gray-500 dark:text-gray-400 text-xs text-center mt-4">
-          {formatString(dict.pagination, {
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+          {formatString(uiCopy.pagination, {
             start: posts.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1,
             end: Math.min(currentPage * ITEMS_PER_PAGE, posts.length),
             total: posts.length,
@@ -225,8 +221,6 @@ interface PaginationProps {
 }
 
 function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
-  const dict = useDictionary();
-
   const pageItems = useMemo(() => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -282,17 +276,14 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   };
 
   return (
-    <nav
-      className="flex justify-center items-center gap-2 mt-4"
-      aria-label={dict.pagination ?? "Pagination"}
-    >
+    <nav className="mt-4 flex items-center justify-center gap-2" aria-label={uiCopy.pagination}>
       <button
         type="button"
         onClick={() => changePage(currentPage - 1)}
         disabled={currentPage === 1}
-        className="flex justify-center items-center px-4 py-2 w-20 bg-gray-200 dark:bg-[#313131] rounded text-sm disabled:opacity-50"
+        className="flex w-20 items-center justify-center rounded bg-gray-200 px-4 py-2 text-sm disabled:opacity-50 dark:bg-[#313131]"
       >
-        {dict.previous}
+        {uiCopy.previous}
       </button>
 
       {pageItems.map((item, index) => {
@@ -310,7 +301,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
             key={item}
             type="button"
             onClick={() => changePage(item)}
-            className={`px-4 py-2 rounded w-12 ${
+            className={`w-12 rounded px-4 py-2 ${
               isActive ? "bg-blue-500 text-white" : "bg-gray-200 dark:bg-[#313131]"
             }`}
             aria-current={isActive ? "page" : undefined}
@@ -324,9 +315,9 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
         type="button"
         onClick={() => changePage(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="flex justify-center items-center px-4 py-2 w-20 bg-gray-200 dark:bg-[#313131] rounded text-sm disabled:opacity-50"
+        className="flex w-20 items-center justify-center rounded bg-gray-200 px-4 py-2 text-sm disabled:opacity-50 dark:bg-[#313131]"
       >
-        {dict.next}
+        {uiCopy.next}
       </button>
     </nav>
   );
@@ -346,23 +337,21 @@ function List({ posts }: { posts: Post[] }) {
           <li key={post.id}>
             <Link href={`/${year}/${post.id}`}>
               <span
-                className={`flex transition-[background-color] hover:bg-gray-100 dark:hover:bg-[#242424] active:bg-gray-200 dark:active:bg-[#222] border-y border-gray-200 dark:border-[#313131]
+                className={`flex border-y border-gray-200 transition-[background-color] hover:bg-gray-100 active:bg-gray-200 dark:border-[#313131] dark:hover:bg-[#242424] dark:active:bg-[#222]
                 ${!firstOfYear ? "border-t-0" : ""}
                 ${lastOfYear ? "border-b-0" : ""}
               `}
               >
-                <span
-                  className={`py-3 flex grow items-center ${!firstOfYear ? "ml-14" : ""}`}
-                >
+                <span className={`flex grow items-center py-3 ${!firstOfYear ? "ml-14" : ""}`}>
                   {firstOfYear && (
-                    <span className="w-14 inline-block self-start shrink-0 text-gray-500 dark:text-gray-500">
+                    <span className="inline-block w-14 shrink-0 self-start text-gray-500 dark:text-gray-500">
                       {year}
                     </span>
                   )}
 
                   <span className="grow dark:text-gray-100">{post.title}</span>
 
-                  <span className="text-gray-500 dark:text-gray-500 text-xs">
+                  <span className="text-xs text-gray-500 dark:text-gray-500">
                     {post.viewsFormatted}
                   </span>
                 </span>
@@ -390,7 +379,6 @@ function stripPost(post: Post): BasePost {
     date: post.date,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
-    locale: post.locale,
     status: post.status,
     featured: post.featured,
     tags: post.tags,

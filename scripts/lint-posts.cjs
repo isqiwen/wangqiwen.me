@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 const {
-  SUPPORTED_LOCALES,
   collectPosts,
-  normalizeBoolean,
   normalizePositiveInteger,
   normalizeStatus,
   normalizeTags,
@@ -15,121 +13,96 @@ async function main() {
   const seenIds = new Map();
 
   for (const [key, entry] of entries) {
-    const ids = new Set();
-    const publishedAtValues = new Set();
+    const { metadata, frontmatter } = entry;
+    const title = metadata.title || frontmatter.title;
+    const id = metadata.id || frontmatter.id;
+    const publishedAt = metadata.publishedAt || frontmatter.publishedAt;
+    const description =
+      metadata.description ||
+      metadata.summary ||
+      metadata.excerpt ||
+      frontmatter.description ||
+      frontmatter.summary ||
+      frontmatter.excerpt ||
+      "";
+    const summary = metadata.summary || frontmatter.summary || "";
+    const series = metadata.series || frontmatter.series || "";
+    const updatedAt = metadata.updatedAt || frontmatter.updatedAt || "";
+    const statusValue = metadata.status ?? frontmatter.status;
+    const rawTags = metadata.tags ?? frontmatter.tags;
+    const tags = normalizeTags(rawTags);
+    const status = normalizeStatus(
+      statusValue,
+      metadata.draft ?? frontmatter.draft,
+      metadata.archived ?? frontmatter.archived,
+    );
+    const featuredRaw = metadata.featured ?? frontmatter.featured;
+    const readingTimeMinutes = metadata.readingTimeMinutes;
 
-    for (const locale of SUPPORTED_LOCALES) {
-      const data = entry.locales[locale];
-      if (!data) continue;
-
-      const { metadata, frontmatter } = data;
-      const title = metadata.title || frontmatter.title;
-      const id = metadata.id || frontmatter.id;
-      const publishedAt = metadata.publishedAt || frontmatter.publishedAt;
-      const description =
-        metadata.description ||
-        metadata.summary ||
-        metadata.excerpt ||
-        frontmatter.description ||
-        frontmatter.summary ||
-        frontmatter.excerpt ||
-        "";
-      const summary = metadata.summary || frontmatter.summary || "";
-      const series = metadata.series || frontmatter.series || "";
-      const updatedAt = metadata.updatedAt || frontmatter.updatedAt || "";
-      const statusValue = metadata.status ?? frontmatter.status;
-      const rawTags = metadata.tags ?? frontmatter.tags;
-      const tags = normalizeTags(rawTags);
-      const status = normalizeStatus(
-        statusValue,
-        metadata.draft ?? frontmatter.draft,
-        metadata.archived ?? frontmatter.archived,
-      );
-      const featuredRaw = metadata.featured ?? frontmatter.featured;
-      const readingTimeMinutes = metadata.readingTimeMinutes;
-
-      if (!title) {
-        errors.push(`${locale}:${key} is missing title`);
-      }
-
-      if (!id) {
-        errors.push(`${locale}:${key} is missing id`);
-      } else {
-        ids.add(id);
-      }
-
-      if (!publishedAt) {
-        errors.push(`${locale}:${key} is missing publishedAt`);
-      } else {
-        publishedAtValues.add(publishedAt);
-      }
-
-      if (
-        statusValue != null &&
-        (typeof statusValue !== "string" ||
-          !["draft", "published", "archived"].includes(statusValue.trim().toLowerCase()))
-      ) {
-        errors.push(`${locale}:${key} has an invalid status value`);
-      }
-
-      if (status === "published" && !description) {
-        errors.push(`${locale}:${key} is published but missing description`);
-      }
-
-      if (summary && typeof summary !== "string") {
-        errors.push(`${locale}:${key} has an invalid summary value`);
-      }
-
-      if (series && typeof series !== "string") {
-        errors.push(`${locale}:${key} has an invalid series value`);
-      }
-
-      if (
-        updatedAt &&
-        (typeof updatedAt !== "string" || Number.isNaN(new Date(updatedAt).getTime()))
-      ) {
-        errors.push(`${locale}:${key} has an invalid updatedAt value`);
-      }
-
-      if (
-        featuredRaw != null &&
-        !["boolean", "string"].includes(typeof featuredRaw)
-      ) {
-        errors.push(`${locale}:${key} has an invalid featured value`);
-      }
-
-      const hasNonEmptyRawTags =
-        (Array.isArray(rawTags) && rawTags.length > 0) ||
-        (typeof rawTags === "string" && rawTags.trim().length > 0);
-
-      if (hasNonEmptyRawTags && tags.length === 0) {
-        errors.push(`${locale}:${key} has tags but none could be parsed`);
-      }
-
-      if (readingTimeMinutes != null && normalizePositiveInteger(readingTimeMinutes) === 0) {
-        errors.push(`${locale}:${key} has an invalid readingTimeMinutes value`);
-      }
+    if (!title) {
+      errors.push(`${key} is missing title`);
     }
 
-    if (ids.size > 1) {
-      errors.push(`${key} uses different ids across locales: ${Array.from(ids).join(", ")}`);
+    if (!id) {
+      errors.push(`${key} is missing id`);
     }
 
-    const [firstId] = ids;
-    if (firstId) {
-      if (seenIds.has(firstId) && seenIds.get(firstId) !== key) {
-        errors.push(`id "${firstId}" is duplicated by ${seenIds.get(firstId)} and ${key}`);
+    if (!publishedAt) {
+      errors.push(`${key} is missing publishedAt`);
+    }
+
+    if (
+      statusValue != null &&
+      (typeof statusValue !== "string" ||
+        !["draft", "published", "archived"].includes(statusValue.trim().toLowerCase()))
+    ) {
+      errors.push(`${key} has an invalid status value`);
+    }
+
+    if (status === "published" && !description) {
+      errors.push(`${key} is published but missing description`);
+    }
+
+    if (summary && typeof summary !== "string") {
+      errors.push(`${key} has an invalid summary value`);
+    }
+
+    if (series && typeof series !== "string") {
+      errors.push(`${key} has an invalid series value`);
+    }
+
+    if (
+      updatedAt &&
+      (typeof updatedAt !== "string" || Number.isNaN(new Date(updatedAt).getTime()))
+    ) {
+      errors.push(`${key} has an invalid updatedAt value`);
+    }
+
+    if (
+      featuredRaw != null &&
+      !["boolean", "string"].includes(typeof featuredRaw)
+    ) {
+      errors.push(`${key} has an invalid featured value`);
+    }
+
+    const hasNonEmptyRawTags =
+      (Array.isArray(rawTags) && rawTags.length > 0) ||
+      (typeof rawTags === "string" && rawTags.trim().length > 0);
+
+    if (hasNonEmptyRawTags && tags.length === 0) {
+      errors.push(`${key} has tags but none could be parsed`);
+    }
+
+    if (readingTimeMinutes != null && normalizePositiveInteger(readingTimeMinutes) === 0) {
+      errors.push(`${key} has an invalid readingTimeMinutes value`);
+    }
+
+    if (id) {
+      if (seenIds.has(id) && seenIds.get(id) !== key) {
+        errors.push(`id "${id}" is duplicated by ${seenIds.get(id)} and ${key}`);
       } else {
-        seenIds.set(firstId, key);
+        seenIds.set(id, key);
       }
-    }
-
-    if (publishedAtValues.size > 1) {
-      errors.push(
-        `${key} uses different publishedAt values across locales: ${Array.from(
-          publishedAtValues,
-        ).join(", ")}`,
-      );
     }
   }
 

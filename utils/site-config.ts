@@ -1,7 +1,4 @@
-import type { Locale } from "@/locales/config";
 import rawSiteConfig from "@/site.config";
-
-type LocalizedString = Record<Locale, string>;
 
 type AboutSection = {
   title: string;
@@ -16,13 +13,14 @@ type AboutContent = {
   contact: string;
 };
 
-type LocalizedLink = {
+type Link = {
   href: string;
-  label: LocalizedString;
+  label: string;
 };
 
 export type SiteConfig = {
   site: {
+    language: string;
     name: string;
     title: string;
     domain: string;
@@ -30,9 +28,9 @@ export type SiteConfig = {
     description: string;
   };
   author: {
-    name: LocalizedString;
-    tagline: LocalizedString;
-    location: LocalizedString;
+    name: string;
+    tagline: string;
+    location: string;
     email: string;
     images: {
       avatar: string;
@@ -54,94 +52,92 @@ export type SiteConfig = {
     sourceUrl: string;
   };
   navigation: {
-    headerLinks: LocalizedLink[];
-    followLabel: LocalizedString;
+    headerLinks: Link[];
+    followLabel: string;
   };
   home: {
-    eyebrow: LocalizedString;
-    title: LocalizedString;
-    description: LocalizedString;
-    primaryAction: LocalizedLink;
-    secondaryAction?: LocalizedLink | null;
+    eyebrow: string;
+    title: string;
+    description: string;
+    primaryAction: Link;
+    secondaryAction?: Link | null;
   };
   feed: {
     subtitle: string;
   };
   footer: {
-    sourceLabel: LocalizedString;
-    note: LocalizedString;
+    sourceLabel: string;
+    note: string;
   };
-  about: Record<Locale, AboutContent>;
+  about: AboutContent;
   opengraph: {
-    profileHighlights: Record<Locale, string[]>;
+    profileHighlights: string[];
   };
 };
 
 export const siteConfig = rawSiteConfig as SiteConfig;
 
-export function getLocalizedString(value: LocalizedString, locale: Locale): string {
-  return value[locale] ?? value.en ?? value.zh;
+export function getAuthorName(): string {
+  return siteConfig.author.name;
 }
 
-export function getAuthorName(locale: Locale): string {
-  return getLocalizedString(siteConfig.author.name, locale);
+export function getAuthorTagline(): string {
+  return siteConfig.author.tagline;
 }
 
-export function getAuthorTagline(locale: Locale): string {
-  return getLocalizedString(siteConfig.author.tagline, locale);
+export function getAuthorLocation(): string {
+  return siteConfig.author.location;
 }
 
-export function getAuthorLocation(locale: Locale): string {
-  return getLocalizedString(siteConfig.author.location, locale);
+export function getAboutContent(): AboutContent {
+  return siteConfig.about;
 }
 
-export function getAboutContent(locale: Locale): AboutContent {
-  return siteConfig.about[locale] ?? siteConfig.about.en;
-}
-
-export function getProfileHighlights(locale: Locale): string[] {
-  return siteConfig.opengraph.profileHighlights[locale] ?? siteConfig.opengraph.profileHighlights.en;
+export function getProfileHighlights(): string[] {
+  return siteConfig.opengraph.profileHighlights;
 }
 
 export function getPrimarySocialHandle(): string {
-  return siteConfig.social.primary.handle ? `@${siteConfig.social.primary.handle}` : siteConfig.social.primary.label;
+  return siteConfig.social.primary.handle
+    ? `@${siteConfig.social.primary.handle}`
+    : siteConfig.social.primary.label;
 }
 
-export function getNavigationLinks(locale: Locale) {
+export function getNavigationLinks() {
   return siteConfig.navigation.headerLinks.map(item => ({
     href: item.href,
-    label: getLocalizedString(item.label, locale),
+    label: item.label,
   }));
 }
 
-export function getFollowLabel(locale: Locale): string {
-  return getLocalizedString(siteConfig.navigation.followLabel, locale);
+export function getFollowLabel(): string {
+  return siteConfig.navigation.followLabel;
 }
 
-export function getHomeContent(locale: Locale) {
+export function getHomeContent() {
   const secondaryAction = siteConfig.home.secondaryAction
     ? {
         href: siteConfig.home.secondaryAction.href,
-        label: getLocalizedString(siteConfig.home.secondaryAction.label, locale),
+        label: siteConfig.home.secondaryAction.label,
       }
     : null;
 
   return {
-    eyebrow: getLocalizedString(siteConfig.home.eyebrow, locale),
-    title: getLocalizedString(siteConfig.home.title, locale),
-    description: getLocalizedString(siteConfig.home.description, locale),
+    eyebrow: siteConfig.home.eyebrow,
+    title: siteConfig.home.title,
+    description: siteConfig.home.description,
     primaryAction: {
       href: siteConfig.home.primaryAction.href,
-      label: getLocalizedString(siteConfig.home.primaryAction.label, locale),
+      label: siteConfig.home.primaryAction.label,
     },
     secondaryAction,
   };
 }
 
-export function getFooterContent(locale: Locale) {
+export function getFooterContent() {
   return {
-    sourceLabel: getLocalizedString(siteConfig.footer.sourceLabel, locale),
-    note: getLocalizedString(siteConfig.footer.note, locale),
+    sourceLabel: siteConfig.footer.sourceLabel,
+    note: siteConfig.footer.note,
   };
 }
 

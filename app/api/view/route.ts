@@ -3,15 +3,12 @@ import { getPostById } from "@/app/get-posts";
 import commaNumber from "comma-number";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveLocale } from "@/locales/config";
 import { logger } from "@/utils/logger";
 import { canPreviewDrafts } from "@/utils/server/editor-auth";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id") ?? null;
-  const localeParam = url.searchParams.get("locale");
-  const locale = localeParam ? resolveLocale(localeParam) : undefined;
 
   if (id === null) {
     return NextResponse.json(
@@ -25,7 +22,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const post = await getPostById(id, locale, {
+  const post = await getPostById(id, {
     includeDrafts: await canPreviewDrafts(),
   });
 

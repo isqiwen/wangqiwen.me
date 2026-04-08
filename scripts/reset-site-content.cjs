@@ -26,12 +26,13 @@ async function main() {
     stdio: "inherit",
   });
 
-  for (const locale of ["zh", "en"]) {
-    const localeDir = join(POSTS_ROOT, locale);
-    const entries = await safeReadDir(localeDir);
-    for (const entry of entries) {
-      await rm(join(localeDir, entry), { recursive: true, force: true });
+  const postEntries = await safeReadDir(POSTS_ROOT);
+  for (const entry of postEntries) {
+    if (!/^\d{4}$/.test(entry)) {
+      continue;
     }
+
+    await rm(join(POSTS_ROOT, entry), { recursive: true, force: true });
   }
 
   const imageEntries = await safeReadDir(IMAGES_ROOT);
@@ -48,12 +49,7 @@ async function main() {
     join(process.cwd(), "posts", "manifest.json"),
     JSON.stringify(
       {
-        locales: ["zh", "en"],
-        posts: {
-          zh: [],
-          en: [],
-        },
-        translations: {},
+        posts: [],
       },
       null,
       2,

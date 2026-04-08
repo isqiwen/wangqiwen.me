@@ -35,7 +35,7 @@ export function MermaidDiagram({
           startOnLoad: false,
           securityLevel: "strict",
           theme,
-          fontFamily: "Inter, Noto Sans SC, sans-serif",
+          fontFamily: "Inter, sans-serif",
         });
 
         const { svg: renderedSvg } = await mermaid.render(

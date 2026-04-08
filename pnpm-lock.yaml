@@ -15,24 +15,15 @@ importers:
       '@fontsource-variable/inter':
         specifier: ^5.1.1
         version: 5.1.1
-      '@fontsource-variable/noto-sans-sc':
-        specifier: ^5.1.1
-        version: 5.1.1
       '@fontsource-variable/roboto-mono':
         specifier: ^5.1.1
         version: 5.1.1
       '@fontsource/inter':
         specifier: ^5.1.1
         version: 5.1.1
-      '@fontsource/noto-sans-sc':
-        specifier: ^5.1.1
-        version: 5.1.1
       '@fontsource/roboto-mono':
         specifier: ^5.1.1
         version: 5.1.1
-      '@formatjs/intl-localematcher':
-        specifier: ^0.5.4
-        version: 0.5.10
       '@mdx-js/react':
         specifier: ^2.3.0
         version: 2.3.0(react@19.0.0-rc-02c0e824-20241028)
@@ -60,9 +51,6 @@ importers:
       comma-number:
         specifier: ^2.1.0
         version: 2.1.0
-      cookie:
-        specifier: ^1.0.2
-        version: 1.0.2
       date-fns:
         specifier: ^2.29.3
         version: 2.29.3
@@ -72,9 +60,6 @@ importers:
       image-size:
         specifier: ^1.0.2
         version: 1.0.2
-      js-cookie:
-        specifier: ^3.0.5
-        version: 3.0.5
       katex:
         specifier: ^0.16.45
         version: 0.16.45
@@ -84,9 +69,6 @@ importers:
       mermaid:
         specifier: ^10.9.1
         version: 10.9.1
-      negotiator:
-        specifier: ^0.6.3
-        version: 0.6.4
       next:
         specifier: 15.1.2
         version: 15.1.2(react-dom@19.0.0-rc-02c0e824-20241028(react@19.0.0-rc-02c0e824-20241028))(react@19.0.0-rc-02c0e824-20241028)
@@ -248,27 +230,19 @@ packages:
   '@fontsource-variable/inter@5.1.1':
     resolution: {integrity: sha512-OpXFTmiH6tHkYijMvQTycFKBLK4X+SRV6tet1m4YOUH7SzIIlMqDja+ocDtiCA72UthBH/vF+3ZtlMr2rN/wIw==}
 
-  '@fontsource-variable/noto-sans-sc@5.1.1':
-    resolution: {integrity: sha512-kr4mr8vgNC3jrpnbL4kd1bznG53jtL3GKvUCdzzHuoyt3qoKtScS7oBNF5Wqkvw6Pkc8RHwBIUvEOzAbevV3dA==}
-
   '@fontsource-variable/roboto-mono@5.1.1':
     resolution: {integrity: sha512-5oZ4r3khknJVqooNtgi8QKRROJtbFhSptnpqBfbST0VGP1iIOcfmU1FIxoQFpCDjwPpx6oHQcTBF02JuI9094A==}
 
   '@fontsource/inter@5.1.1':
     resolution: {integrity: sha512-weN3E+rq0Xb3Z93VHJ+Rc7WOQX9ETJPTAJ+gDcaMHtjft67L58sfS65rAjC5tZUXQ2FdZ/V1/sSzCwZ6v05kJw==}
 
-  '@fontsource/noto-sans-sc@5.1.1':
-    resolution: {integrity: sha512-v20RiW0Hp9qnHjLV5IAIwloL3IIKy2elMyMSeLuMzqyhYTCD2kHuRoe4w0aA+sd19IaWtdo2diHskIFL0Asfgw==}
-
   '@fontsource/roboto-mono@5.1.1':
     resolution: {integrity: sha512-3Uwg4ZsoYlqzpGgPQn5bpBjCBX7HISbEmbycmrdyzK/dcMChlsmf0VGBjSs2AZV+UK7kLCUFYnCakXYz6VTIUA==}
-
-  '@formatjs/intl-localematcher@0.5.10':
-    resolution: {integrity: sha512-af3qATX+m4Rnd9+wHcjJ4w2ijq+rAVP3CCinJQvFv1kgSu1W6jypUmvleJxcewdxmutM8dmIRZFxO/IQBZmP2Q==}
 
   '@humanwhocodes/config-array@0.11.13':
     resolution: {integrity: sha512-JSBDMiDKSzQVngfRjOdFXgFfklaXI4K9nLF49Auh21lmBWRLIK3+xTErTWD4KU54pb6coM6ESE7Awz/FNU3zgQ==}
     engines: {node: '>=10.10.0'}
+    deprecated: Use @eslint/config-array instead
 
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
@@ -276,6 +250,7 @@ packages:
 
   '@humanwhocodes/object-schema@2.0.1':
     resolution: {integrity: sha512-dvuCeX5fC9dXgJn9t+X5atfmgQAzUOWqS1254Gh0m6i8wKd10ebXkfNKiRK+1GWi/yTvvLDHpoxLr0xxxeslWw==}
+    deprecated: Use @eslint/object-schema instead
 
   '@img/sharp-darwin-arm64@0.33.5':
     resolution: {integrity: sha512-UT4p+iz/2H4twwAoLCqfA9UH5pI6DggwKEGuaPy7nCVQ8ZsiY5PIcrRvD1DzuY3qYL07NtIQcWnBSY/heikIFQ==}
@@ -1266,10 +1241,6 @@ packages:
     resolution: {integrity: sha512-7V+KqSvMiHp8yWDuwfww06XleMWVVB9b9tURBx+G7UTADuo5hYPuowKloz4OzOqbPezxgo+fdQ1522WzPG4OeA==}
     engines: {node: '>=8'}
 
-  cookie@1.0.2:
-    resolution: {integrity: sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==}
-    engines: {node: '>=18'}
-
   cose-base@1.0.3:
     resolution: {integrity: sha512-s9whTXInMSgAp/NVXVNuVxVKzGH2qck3aQlVHxDCdAEPgtMKwc4Wq6/QKhgdEdgbLSi9rBTAcPoRa6JpiG4ksg==}
 
@@ -1868,6 +1839,7 @@ packages:
   eslint@8.56.0:
     resolution: {integrity: sha512-Go19xM6T9puCOWntie1/P997aXxFsOi37JIHRWI514Hc6ZnaHGKY9xFhrU65RT6CcBEzZoGG1e6Nq+DT04ZtZQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
 
   espree@9.6.1:
@@ -2048,9 +2020,11 @@ packages:
 
   glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   globals@13.20.0:
     resolution: {integrity: sha512-Qg5QtVkCy/kv3FUSlu4ukeZDVf9ee0iXLAUYX13gbR17bnejFTzr4iS9bY7kwCf1NztRNm1t91fjOiyx4CSwPQ==}
@@ -2219,6 +2193,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.1:
     resolution: {integrity: sha512-8nWq2nLTAwd02jTqJExUYFSD/fKq6VH9Y/oG2accc/kdI0V98Bag8d5a4gi3XHz73rDWa2PvTtvcWYquKqSENA==}
@@ -2416,10 +2391,6 @@ packages:
   jiti@1.18.2:
     resolution: {integrity: sha512-QAdOptna2NYiSSpv0O/BwoHBSmz4YhpzJHyi+fnMRTXFjp7B8i/YG5Z8IfusxB1ufjcD2Sre1F3R+nX3fvy7gg==}
     hasBin: true
-
-  js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
-    engines: {node: '>=14'}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2721,10 +2692,6 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
-
-  negotiator@0.6.4:
-    resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
-    engines: {node: '>= 0.6'}
 
   next-nprogress-bar@2.4.3:
     resolution: {integrity: sha512-069WmFALkpCyKiIy89q6dWcPiHhUmXh6EZz6oLpOS7zsIunNOYLscloKFALjIQNCOg3ZO9dWRPowYW4ULho4HQ==}
@@ -3186,6 +3153,7 @@ packages:
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@5.0.10:
@@ -3957,19 +3925,11 @@ snapshots:
 
   '@fontsource-variable/inter@5.1.1': {}
 
-  '@fontsource-variable/noto-sans-sc@5.1.1': {}
-
   '@fontsource-variable/roboto-mono@5.1.1': {}
 
   '@fontsource/inter@5.1.1': {}
 
-  '@fontsource/noto-sans-sc@5.1.1': {}
-
   '@fontsource/roboto-mono@5.1.1': {}
-
-  '@formatjs/intl-localematcher@0.5.10':
-    dependencies:
-      tslib: 2.8.1
 
   '@humanwhocodes/config-array@0.11.13':
     dependencies:
@@ -5023,8 +4983,6 @@ snapshots:
   content-type@1.0.4: {}
 
   convert-hrtime@3.0.0: {}
-
-  cookie@1.0.2: {}
 
   cose-base@1.0.3:
     dependencies:
@@ -6397,8 +6355,6 @@ snapshots:
 
   jiti@1.18.2: {}
 
-  js-cookie@3.0.5: {}
-
   js-tokens@4.0.0: {}
 
   js-yaml@4.1.0:
@@ -6790,8 +6746,6 @@ snapshots:
   nanoid@3.3.6: {}
 
   natural-compare@1.4.0: {}
-
-  negotiator@0.6.4: {}
 
   next-nprogress-bar@2.4.3:
     dependencies:

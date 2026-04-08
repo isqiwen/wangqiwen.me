@@ -12,4 +12,3 @@ TODO
 fonts/*
 !fonts/init.mjs
 public/fonts
-.translation-cache.json

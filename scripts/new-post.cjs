@@ -8,9 +8,7 @@ const { normalizeTags } = require("./lib/posts");
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 
 function parseArgs(argv) {
-  const options = {
-    locales: ["zh"],
-  };
+  const options = {};
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -61,10 +59,6 @@ function parseArgs(argv) {
       options.cover = arg.slice(8);
     } else if (arg === "--featured") {
       options.featured = true;
-    } else if (arg === "--with-en") {
-      if (!options.locales.includes("en")) {
-        options.locales.push("en");
-      }
     } else if (arg === "--published") {
       options.published = true;
     } else if (arg === "--help") {
@@ -88,8 +82,8 @@ async function exists(path) {
   }
 }
 
-async function createPostFile(locale, year, slug, metadata, description) {
-  const dir = join(POSTS_ROOT, locale, year, slug);
+async function createPostFile(year, slug, metadata, description) {
+  const dir = join(POSTS_ROOT, year, slug);
   await ensureDir(dir);
   const body = description ? `\n${description}\n` : "\nStart writing here.\n";
   const contents = `export const metadata = ${JSON.stringify(metadata, null, 2)};\n${body}`;
@@ -112,7 +106,6 @@ Options:
   --series "Editor Workflow"
   --cover "/images/my-post/cover.jpg"
   --featured
-  --with-en
   --published
 
 By default, new posts are created as drafts.`);
@@ -153,14 +146,12 @@ By default, new posts are created as drafts.`);
     metadata.featured = true;
   }
 
-  for (const locale of args.locales) {
-    const targetPath = join(POSTS_ROOT, locale, year, slug, "page.mdx");
-    if (await exists(targetPath)) {
-      throw new Error(`${locale}/${year}/${slug} already exists.`);
-    }
-    await createPostFile(locale, year, slug, metadata, "");
-    console.log(`Created ${locale} post: ${locale}/${year}/${slug}`);
+  const targetPath = join(POSTS_ROOT, year, slug, "page.mdx");
+  if (await exists(targetPath)) {
+    throw new Error(`${year}/${slug} already exists.`);
   }
+  await createPostFile(year, slug, metadata, "");
+  console.log(`Created post: ${year}/${slug}`);
 
   spawnSync("node", ["scripts/normalize-post-metadata.cjs", "--silent"], {
     stdio: "inherit",

@@ -2,23 +2,20 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import type { Locale } from "@/locales/config";
 import { getAuthorName } from "@/utils/site-config";
 
-export function Logo({ language }: { language: Locale }) {
+export function Logo() {
   const pathname = usePathname();
-  const label = getAuthorName(language);
-  const isChinese = /[\u3400-\u9FFF]/.test(label);
-  const textClass = `text-md md:text-lg whitespace-nowrap font-bold ${isChinese ? "tracking-[0.2em]" : ""}`;
+  const label = getAuthorName();
 
   return (
-    <span className={textClass}>
+    <span className="text-md whitespace-nowrap font-bold md:text-lg">
       {pathname === "/" ? (
         <span className="cursor-default pr-2">{label}</span>
       ) : (
         <Link
           href="/"
-          className="hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] p-2 rounded-sm -ml-2 transition-[background-color]"
+          className="-ml-2 rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424]"
         >
           {label}
         </Link>

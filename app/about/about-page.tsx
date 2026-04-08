@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { A } from "@/app/(post)/components/a";
 import { RawImage } from "@/app/(post)/components/raw-image";
-import type { Locale } from "@/locales/config";
 import {
   getAboutContent,
   getAuthorLocation,
@@ -11,8 +10,8 @@ import {
   siteConfig,
 } from "@/utils/site-config";
 
-export function buildAboutMetadata(locale: Locale): Metadata {
-  const about = getAboutContent(locale);
+export function buildAboutMetadata(): Metadata {
+  const about = getAboutContent();
   const title = `${about.title} | ${siteConfig.site.title}`;
 
   return {
@@ -26,11 +25,11 @@ export function buildAboutMetadata(locale: Locale): Metadata {
   };
 }
 
-export function AboutPage({ locale }: { locale: Locale }) {
-  const about = getAboutContent(locale);
-  const authorName = getAuthorName(locale);
-  const authorTagline = getAuthorTagline(locale);
-  const authorLocation = getAuthorLocation(locale);
+export function AboutPage() {
+  const about = getAboutContent();
+  const authorName = getAuthorName();
+  const authorTagline = getAuthorTagline();
+  const authorLocation = getAuthorLocation();
   const primaryHandle = getPrimarySocialHandle();
 
   return (

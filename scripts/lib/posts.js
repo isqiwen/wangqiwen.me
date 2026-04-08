@@ -2,7 +2,6 @@ const { join } = require("path");
 const { readdir, readFile, writeFile, stat, mkdir } = require("fs/promises");
 const { runInNewContext } = require("vm");
 
-const SUPPORTED_LOCALES = ["zh", "en"];
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 const POSTS_MANIFEST_DIR = join(process.cwd(), "posts");
 const POSTS_MANIFEST_PATH = join(POSTS_MANIFEST_DIR, "manifest.json");
@@ -10,58 +9,34 @@ const POSTS_MANIFEST_PATH = join(POSTS_MANIFEST_DIR, "manifest.json");
 async function collectPosts() {
   const entries = new Map();
 
-  for (const locale of SUPPORTED_LOCALES) {
-    const localeDir = join(POSTS_ROOT, locale);
-    const years = await safeReadDir(localeDir);
+  const years = await safeReadDir(POSTS_ROOT);
+  for (const year of years) {
+    const yearDir = join(POSTS_ROOT, year);
+    if (!/^\d{4}$/.test(year) || !(await isDirectory(yearDir))) continue;
 
-    for (const year of years) {
-      const yearDir = join(localeDir, year);
-      if (!(await isDirectory(yearDir))) continue;
+    const ids = await safeReadDir(yearDir);
+    for (const id of ids) {
+      const postDir = join(yearDir, id);
+      if (!(await isDirectory(postDir))) continue;
 
-      const ids = await safeReadDir(yearDir);
-      for (const id of ids) {
-        const postDir = join(yearDir, id);
-        if (!(await isDirectory(postDir))) continue;
+      const pagePath = join(postDir, "page.mdx");
+      const source = await readFileSafe(pagePath);
+      if (!source) continue;
 
-        const pagePath = join(postDir, "page.mdx");
-        const source = await readFileSafe(pagePath);
-        if (!source) continue;
+      const key = `${year}/${id}`;
 
-        const metadata = parseMetadata(source);
-        const frontmatter = parseFrontmatter(source);
-        const key = `${year}/${id}`;
-
-        if (!entries.has(key)) {
-          entries.set(key, {
-            year,
-            id,
-            locales: {},
-          });
-        }
-
-        entries.get(key).locales[locale] = {
-          path: pagePath,
-          source,
-          metadata,
-          frontmatter,
-        };
-      }
+      entries.set(key, {
+        year,
+        id,
+        path: pagePath,
+        source,
+        metadata: parseMetadata(source),
+        frontmatter: parseFrontmatter(source),
+      });
     }
   }
 
   return entries;
-}
-
-function getFirstValue(entryLocales, getter) {
-  for (const locale of SUPPORTED_LOCALES) {
-    const data = entryLocales[locale];
-    if (!data) continue;
-    const value = getter(data);
-    if (value !== undefined && value !== null && value !== "") {
-      return value;
-    }
-  }
-  return null;
 }
 
 function buildNormalizedMetadata(data, defaults) {
@@ -377,8 +352,8 @@ function estimateReadingTimeMinutes(source) {
     return 1;
   }
 
-  // Mixed Chinese/English content is common here, so use a simple unit-based
-  // estimate instead of language-specific branching.
+  // Use a simple unit-based estimate so the script stays stable across
+  // different kinds of technical writing.
   return Math.max(1, Math.ceil(totalUnits / 220));
 }
 
@@ -415,11 +390,9 @@ function toTitle(slug) {
 }
 
 module.exports = {
-  SUPPORTED_LOCALES,
   POSTS_ROOT,
   POSTS_MANIFEST_PATH,
   collectPosts,
-  getFirstValue,
   buildNormalizedMetadata,
   replaceMetadataBlock,
   writeManifest,

@@ -19,7 +19,7 @@ pnpm reset:content -- --force
 That command will:
 
 - create a backup first
-- remove all post directories under `app/(post)/zh` and `app/(post)/en`
+- remove all post directories under `app/(post)/<year>`
 - clear article image folders under `public/images`
 - preserve the neutral avatar placeholder files
 - reset `posts/manifest.json`
@@ -72,7 +72,7 @@ Optional variables:
 Create a starter article:
 
 ```bash
-pnpm new:post --id my-first-post --with-en
+pnpm new:post --id my-first-post
 ```
 
 Then use `/editor` to continue writing, upload images, and publish.

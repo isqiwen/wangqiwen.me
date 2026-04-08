@@ -20,7 +20,7 @@ Update these areas first:
 - `navigation.headerLinks`, `navigation.followLabel`
 - `home.*`
 - `footer.*`
-- `about.zh` and `about.en`
+- `about.en`
 - `opengraph.profileHighlights`
 
 Once these values change, the following parts of the app will automatically follow:
@@ -46,7 +46,7 @@ If you want a clean starting point, remove old posts first and then create new o
 
 ```bash
 pnpm reset:content -- --force
-pnpm new:post --id my-first-post --with-en
+pnpm new:post --id my-first-post
 ```
 
 After editing posts, rebuild the content manifest:

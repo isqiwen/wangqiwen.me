@@ -3,10 +3,8 @@ import commaNumber from "comma-number";
 import { join } from "path";
 import { readdir, readFile, stat } from "fs/promises";
 import { runInNewContext } from "vm";
-import { supportedLocales, type Locale } from "@/locales/config";
 import { logger } from "@/utils/logger";
 
-export type PostLocale = Locale;
 export type PostStatus = "draft" | "published" | "archived";
 
 export type Post = {
@@ -19,7 +17,6 @@ export type Post = {
   date: string;
   publishedAt: string;
   updatedAt: string | null;
-  locale: PostLocale;
   status: PostStatus;
   featured: boolean;
   tags: string[];
@@ -50,7 +47,6 @@ type Frontmatter = {
 
 type PostMetadata = {
   id: string;
-  locale: PostLocale;
   title: string;
   description: string;
   summary: string;
@@ -68,26 +64,23 @@ type PostMetadata = {
 };
 
 type Manifest = {
-  posts?: Record<
-    PostLocale,
-    Array<{
-      id: string;
-      title: string;
-      description?: string;
-      summary?: string;
-      series?: string | null;
-      publishedAt: string;
-      updatedAt?: string | null;
-      status?: PostStatus | string;
-      draft?: boolean;
-      archived?: boolean;
-      featured?: boolean;
-      tags?: string[];
-      cover?: string | null;
-      readingTimeMinutes?: number;
-      path: string;
-    }>
-  >;
+  posts?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    summary?: string;
+    series?: string | null;
+    publishedAt: string;
+    updatedAt?: string | null;
+    status?: PostStatus | string;
+    draft?: boolean;
+    archived?: boolean;
+    featured?: boolean;
+    tags?: string[];
+    cover?: string | null;
+    readingTimeMinutes?: number;
+    path: string;
+  }>;
 };
 
 type Views = {
@@ -100,7 +93,6 @@ type GetPostsOptions = {
 
 const POSTS_ROOT_DIR = join(process.cwd(), "app", "(post)");
 const POSTS_MANIFEST_PATH = join(process.cwd(), "posts", "manifest.json");
-const SUPPORTED_LOCALES: PostLocale[] = [...supportedLocales];
 const METADATA_CACHE_TTL_MS = 60 * 1000;
 
 type MetadataCache = {
@@ -108,7 +100,7 @@ type MetadataCache = {
   data: PostMetadata[];
 };
 
-const metadataCache = new Map<PostLocale, MetadataCache>();
+let metadataCache: MetadataCache | null = null;
 let manifestCache: { timestamp: number; data: Manifest | null } | null = null;
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -117,46 +109,26 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export const getPosts = async (
-  locale: PostLocale = "zh",
-  options: GetPostsOptions = {},
-) => {
-  const [metadata, allViews] = await Promise.all([
-    loadManifestMetadata(locale, options),
-    loadViews(),
-  ]);
+export const getPosts = async (options: GetPostsOptions = {}) => {
+  const [metadata, allViews] = await Promise.all([loadManifestMetadata(options), loadViews()]);
 
   return metadata.map(post => buildPost(post, allViews));
 };
 
 export const getPostById = async (
   id: string,
-  locale?: PostLocale,
   options: GetPostsOptions = {},
 ): Promise<Post | null> => {
   const views = await loadViews();
   const manifest = await getManifest();
-  const localeOrder = locale
-    ? [locale, ...SUPPORTED_LOCALES.filter(candidate => candidate !== locale)]
-    : SUPPORTED_LOCALES;
+  const match = manifest?.posts?.find(post => post.id === id);
 
-  if (manifest?.posts) {
-    for (const candidateLocale of localeOrder) {
-      const list = manifest.posts[candidateLocale] ?? [];
-      const match = list.find(post => post.id === id);
-      if (!match) {
-        continue;
-      }
-
-      const status = normalizeStatus(match.status, match.draft, match.archived);
-      if (status === "archived" || (!options.includeDrafts && status === "draft")) {
-        continue;
-      }
-
+  if (match) {
+    const status = normalizeStatus(match.status, match.draft, match.archived);
+    if (status !== "archived" && (options.includeDrafts || status !== "draft")) {
       return buildPost(
         {
           id: match.id,
-          locale: candidateLocale,
           title: match.title,
           description: match.description ?? "",
           summary: match.summary ?? match.description ?? "",
@@ -177,12 +149,10 @@ export const getPostById = async (
     }
   }
 
-  for (const candidateLocale of localeOrder) {
-    const metadata = await loadPostsMetadata(candidateLocale, options);
-    const target = metadata.find(post => post.id === id);
-    if (target) {
-      return buildPost(target, views);
-    }
+  const metadata = await loadPostsMetadata(options);
+  const target = metadata.find(post => post.id === id);
+  if (target) {
+    return buildPost(target, views);
   }
 
   return null;
@@ -197,13 +167,10 @@ async function loadViews(): Promise<Views> {
   }
 }
 
-async function loadManifestMetadata(
-  locale: PostLocale,
-  options: GetPostsOptions,
-): Promise<PostMetadata[]> {
+async function loadManifestMetadata(options: GetPostsOptions): Promise<PostMetadata[]> {
   const manifest = await getManifest();
-  if (manifest?.posts?.[locale]) {
-    return manifest.posts[locale]
+  if (manifest?.posts) {
+    return manifest.posts
       .map(post => {
         const status = normalizeStatus(post.status, post.draft, post.archived);
         return { ...post, status };
@@ -212,7 +179,6 @@ async function loadManifestMetadata(
       .filter(post => options.includeDrafts || post.status !== "draft")
       .map(post => ({
         id: post.id,
-        locale,
         title: post.title,
         description: post.description ?? "",
         summary: post.summary ?? post.description ?? "",
@@ -230,25 +196,21 @@ async function loadManifestMetadata(
       }));
   }
 
-  return loadPostsMetadata(locale, options);
+  return loadPostsMetadata(options);
 }
 
-async function loadPostsMetadata(
-  locale: PostLocale,
-  options: GetPostsOptions,
-): Promise<PostMetadata[]> {
-  const cached = metadataCache.get(locale);
-  if (cached && Date.now() - cached.timestamp < METADATA_CACHE_TTL_MS) {
-    return filterDrafts(cached.data, options);
+async function loadPostsMetadata(options: GetPostsOptions): Promise<PostMetadata[]> {
+  if (metadataCache && Date.now() - metadataCache.timestamp < METADATA_CACHE_TTL_MS) {
+    return filterDrafts(metadataCache.data, options);
   }
 
   const posts: PostMetadata[] = [];
-  const years = await safeReadDir(getLocaleDir(locale));
+  const years = (await safeReadDir(POSTS_ROOT_DIR)).filter(year => /^\d{4}$/.test(year));
 
   // The generated manifest is the fast path. This scan stays as a resilient
   // fallback so local drafts still render even if metadata has not been synced.
   for (const year of years) {
-    const yearPath = join(getLocaleDir(locale), year);
+    const yearPath = join(POSTS_ROOT_DIR, year);
     if (!(await isDirectory(yearPath))) continue;
 
     const ids = await safeReadDir(yearPath);
@@ -272,7 +234,6 @@ async function loadPostsMetadata(
 
       posts.push({
         id: finalId,
-        locale,
         title,
         description: metadata.description ?? "",
         summary: metadata.summary || metadata.description || "",
@@ -295,7 +256,7 @@ async function loadPostsMetadata(
 
   posts.sort((a, b) => b.publishedAtTimestamp - a.publishedAtTimestamp);
 
-  metadataCache.set(locale, { timestamp: Date.now(), data: posts });
+  metadataCache = { timestamp: Date.now(), data: posts };
   return filterDrafts(posts, options);
 }
 
@@ -327,7 +288,6 @@ function buildPost(metadata: PostMetadata, views: Views): Post {
     date: metadata.date,
     publishedAt: metadata.publishedAt,
     updatedAt: metadata.updatedAt,
-    locale: metadata.locale,
     status: metadata.status,
     featured: metadata.featured,
     tags: metadata.tags,
@@ -336,10 +296,6 @@ function buildPost(metadata: PostMetadata, views: Views): Post {
     views: viewValue,
     viewsFormatted: commaNumber(viewValue),
   };
-}
-
-function getLocaleDir(locale: PostLocale): string {
-  return join(POSTS_ROOT_DIR, locale);
 }
 
 function filterDrafts(posts: PostMetadata[], options: GetPostsOptions): PostMetadata[] {

@@ -31,20 +31,6 @@
 }
 
 @font-face {
-    font-family: "Noto Sans SC";
-    font-weight: 400;
-    font-style: normal;
-    src: url("/fonts/noto-sans-sc-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "Noto Sans SC";
-    font-weight: 700;
-    font-style: normal;
-    src: url("/fonts/noto-sans-sc-chinese-simplified-700-normal.woff2") format("woff2");
-}
-
-@font-face {
     font-family: "Inter Var";
     src: url("/fonts/inter-latin-wght-normal.woff2") format("truetype");
     font-weight: 1 999;
@@ -58,16 +44,9 @@
     font-style: normal;
 }
 
-@font-face {
-    font-family: "Noto Sans SC Var";
-    src: url("/fonts/noto-sans-sc-latin-wght-normal.woff2") format("truetype");
-    font-weight: 1 999;
-    font-style: normal;
-}
-
 @layer base {
     :root {
-        font-family: "Inter", "Noto Sans SC", "Roboto Mono", sans-serif;
+        font-family: "Inter", "Roboto Mono", sans-serif;
 
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
         -webkit-tap-highlight-color: transparent;
@@ -79,10 +58,6 @@
     :root.dark {
         color-scheme: dark;
         @apply bg-[#1C1C1C];
-    }
-
-    [lang="zh"] {
-        font-family: "Noto Sans SC", "Roboto Mono", sans-serif;
     }
 
     [lang="en"] {
@@ -101,15 +76,11 @@
 
     @supports (font-variation-settings: normal) {
         :root {
-            font-family: "Inter Var", "Roboto Mono Var", "Noto Sans SC Var", sans-serif;
-        }
-
-        [lang="zh"] {
-            font-family: "Noto Sans SC Var", "Inter Var", "Noto Sans SC", sans-serif;
+            font-family: "Inter Var", "Roboto Mono Var", sans-serif;
         }
 
         [lang="en"] {
-            font-family: "Inter Var", "Roboto Mono Var", "Noto Sans SC Var", sans-serif;
+            font-family: "Inter Var", "Roboto Mono Var", sans-serif;
         }
     }
 }

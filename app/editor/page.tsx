@@ -18,8 +18,6 @@ import {
   PENDING_EDITOR_SNIPPET_KEY,
 } from "./pending-snippet";
 
-type Locale = "zh" | "en";
-
 type EditorSession = {
   enabled: boolean;
   authorized: boolean;
@@ -58,7 +56,6 @@ type EditorConfirmation = {
 };
 
 type EditorDocumentState = {
-  locale: Locale;
   title: string;
   description: string;
   summary: string;
@@ -90,9 +87,9 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildTargetPath(locale: Locale, publishedAt: string, id: string) {
+function buildTargetPath(publishedAt: string, id: string) {
   const year = publishedAt ? publishedAt.slice(0, 4) : "2025";
-  return `app/(post)/${locale}/${year}/${id}/page.mdx`;
+  return `app/(post)/${year}/${id}/page.mdx`;
 }
 
 function normalizeAssetId(value: string) {
@@ -108,17 +105,12 @@ function buildWorkspaceSnapshot(
 ): EditorWorkspaceSnapshot {
   return {
     ...state,
-    targetPath: buildTargetPath(state.locale, state.publishedAt, state.id),
+    targetPath: buildTargetPath(state.publishedAt, state.id),
   };
 }
 
 function serializeWorkspaceSnapshot(snapshot: EditorWorkspaceSnapshot) {
   return JSON.stringify(snapshot);
-}
-
-function parseLocaleFromPath(filePath: string): Locale | null {
-  const match = filePath.match(/^app\/\(post\)\/(zh|en)\//);
-  return match ? (match[1] as Locale) : null;
 }
 
 function parseMetadataObject(content: string) {
@@ -185,19 +177,13 @@ function normalizeBoolean(value: unknown): boolean {
   return false;
 }
 
-function parseEditorDocument(
-  content: string,
-  filePath: string,
-  fallbackLocale: Locale,
-): EditorDocumentState {
+function parseEditorDocument(content: string, filePath: string): EditorDocumentState {
   const metadata = parseMetadataObject(content);
   const metadataTags = metadata?.tags;
-  const locale = parseLocaleFromPath(filePath) ?? fallbackLocale;
   const body = content.replace(/export const metadata =[\s\S]*?;\s*/, "").trimStart() || content;
   const slugFallback = filePath.split("/").at(-2) ?? "my-post";
 
   return {
-    locale,
     title: metadata?.title || "Untitled Post",
     description: metadata?.description || "",
     summary: metadata?.summary || "",
@@ -232,7 +218,6 @@ function parseLocalAutosave(rawValue: string | null): EditorLocalAutosave | null
     }
 
     if (
-      typeof parsed.locale !== "string" ||
       typeof parsed.title !== "string" ||
       typeof parsed.description !== "string" ||
       typeof parsed.publishedAt !== "string" ||
@@ -250,7 +235,6 @@ function parseLocalAutosave(rawValue: string | null): EditorLocalAutosave | null
       version: LOCAL_AUTOSAVE_VERSION,
       activePath: typeof parsed.activePath === "string" ? parsed.activePath : null,
       targetPath: parsed.targetPath,
-      locale: parsed.locale === "en" ? "en" : "zh",
       title: parsed.title,
       description: parsed.description,
       summary: typeof parsed.summary === "string" ? parsed.summary : "",
@@ -446,7 +430,6 @@ function EditorWorkspace({
   onSignOut?: () => void | Promise<void>;
   onAuthExpired: () => void;
 }) {
-  const [locale, setLocale] = useState<Locale>("zh");
   const [title, setTitle] = useState("Untitled Post");
   const [description, setDescription] = useState("Add a short summary for this post.");
   const [summary, setSummary] = useState("");
@@ -484,7 +467,6 @@ function EditorWorkspace({
     () =>
       buildWorkspaceSnapshot({
         activePath,
-        locale,
         title,
         description,
         summary,
@@ -500,7 +482,6 @@ function EditorWorkspace({
       }),
     [
       activePath,
-      locale,
       title,
       description,
       summary,
@@ -540,8 +521,8 @@ function EditorWorkspace({
   );
   const previewHref = useMemo(() => {
     const year = publishedAt ? publishedAt.slice(0, 4) : "2025";
-    return `/${locale}/${year}/${id}`;
-  }, [locale, publishedAt, id]);
+    return `/${year}/${id}`;
+  }, [publishedAt, id]);
   const assetFolderId = useMemo(() => normalizeAssetId(id), [id]);
   const isReadOnly = currentStatus === "archived";
   const canOpenPreview = currentStatus !== "archived" && activePath === workspaceSnapshot.targetPath;
@@ -600,7 +581,6 @@ function EditorWorkspace({
     ) => {
       const nextActivePath = options.activePath ?? null;
 
-      setLocale(nextState.locale);
       setTitle(nextState.title);
       setDescription(nextState.description);
       setSummary(nextState.summary);
@@ -652,7 +632,6 @@ function EditorWorkspace({
       pendingAutosaveRef.current = null;
       applyWorkspaceState(
         {
-          locale: autosave.locale,
           title: autosave.title,
           description: autosave.description,
           summary: autosave.summary,
@@ -707,7 +686,7 @@ function EditorWorkspace({
           return false;
         }
 
-        const nextState = parseEditorDocument(content, path, locale);
+        const nextState = parseEditorDocument(content, path);
         applyWorkspaceState(nextState, {
           activePath: path,
           markPersisted: true,
@@ -728,7 +707,7 @@ function EditorWorkspace({
         return false;
       }
     },
-    [applyWorkspaceState, clearPickerFeedback, locale, onAuthExpired, restoreLocalAutosave, showFeedback, showPickerFeedback],
+    [applyWorkspaceState, clearPickerFeedback, onAuthExpired, restoreLocalAutosave, showFeedback, showPickerFeedback],
   );
 
   const refreshFileList = useCallback(
@@ -874,7 +853,6 @@ function EditorWorkspace({
 
       applyWorkspaceState(
         {
-          locale,
           title,
           description,
           summary,
@@ -1028,7 +1006,6 @@ function EditorWorkspace({
       const emptyTitle = "Untitled Post";
       applyWorkspaceState(
         {
-          locale: "zh",
           title: emptyTitle,
           description: "Add a short summary for this post.",
           summary: "",
@@ -1532,17 +1509,6 @@ function EditorWorkspace({
               disabled={isReadOnly}
             />
           </Field>
-          <Field label="Language">
-            <select
-              value={locale}
-              onChange={event => setLocale(event.target.value as Locale)}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-              disabled={isReadOnly}
-            >
-              <option value="zh">zh</option>
-              <option value="en">en</option>
-            </select>
-          </Field>
           <Field label="Status">
             <div className="flex min-h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               <span
@@ -1911,7 +1877,7 @@ function EditorWorkspace({
                 )}
               </div>
               {fileOptions.length === 0 ? (
-                <div className="text-slate-400">No files found. Confirm that app/(post)/zh|en/.../page.mdx exists.</div>
+                <div className="text-slate-400">No files found. Confirm that app/(post)/YEAR/slug/page.mdx exists.</div>
               ) : (
                 <FolderTree
                   tree={buildTree(fileOptions)}
@@ -2696,11 +2662,10 @@ function buildTree(files: EditorFileOption[]): TreeNode[] {
 
   for (const file of files) {
     const parts = file.label.split("/");
-    if (parts.length < 4) continue;
+    if (parts.length < 2) continue;
 
-    const [locale, year, slug] = parts;
-    const localeNode = getOrCreate(root, locale);
-    const yearNode = getOrCreate(localeNode.children!, year);
+    const [year, slug] = parts;
+    const yearNode = getOrCreate(root, year);
     const slugNode = getOrCreate(yearNode.children!, slug);
     slugNode.path = file.path;
     slugNode.status = file.status;
@@ -2720,63 +2685,56 @@ function FolderTree({
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  function toggleLocale(key: string) {
+  function toggleYear(key: string) {
     setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
   return (
     <div className="space-y-1">
-      {tree.map(localeNode => {
-        const localeKey = localeNode.name;
-        const isLocaleOpen = Boolean(expanded[localeKey]);
+      {tree.map(yearNode => {
+        const yearKey = yearNode.name;
+        const isYearOpen = Boolean(expanded[yearKey]);
 
         return (
-          <div key={localeKey} className="rounded-md border border-slate-200 bg-white p-2">
+          <div key={yearKey} className="rounded-md border border-slate-200 bg-white p-2">
             <button
               type="button"
-              onClick={() => toggleLocale(localeKey)}
+              onClick={() => toggleYear(yearKey)}
               className="flex w-full items-center justify-between text-left font-semibold text-slate-700"
             >
-              <span>{localeNode.name}</span>
+              <span>{yearNode.name}</span>
               <span className="text-[11px] text-slate-500">
-                {isLocaleOpen ? "Collapse" : "Expand"}
+                {isYearOpen ? "Collapse" : "Expand"}
               </span>
             </button>
 
-            {isLocaleOpen ? (
+            {isYearOpen ? (
               <div className="mt-1 space-y-1 pl-2">
-                {localeNode.children?.map(yearNode => (
+                {yearNode.children?.map(slugNode => (
                   <div
-                    key={`${localeKey}/${yearNode.name}`}
+                    key={`${yearKey}/${slugNode.name}`}
                     className="rounded-md border border-slate-100 bg-white/60 p-1"
                   >
-                    <div className="flex w-full items-center justify-between text-left text-slate-600">
-                      <span>{yearNode.name}</span>
-                    </div>
-                    <div className="mt-1 grid grid-cols-1 gap-1 pl-2">
-                      {yearNode.children?.map(slugNode => (
-                        <button
-                          key={slugNode.path}
-                          onClick={() => slugNode.path && onSelect(slugNode.path)}
-                          className={`flex items-center justify-between gap-2 rounded border px-2 py-1 text-left text-[12px] transition ${
-                            slugNode.path === selectedPath
-                              ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
-                          }`}
-                        >
-                          <span>{slugNode.name}</span>
-                          {slugNode.status === "archived" ? (
-                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-800">
-                              Archived
-                            </span>
-                          ) : slugNode.status === "draft" ? (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                              Draft
-                            </span>
-                          ) : null}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => slugNode.path && onSelect(slugNode.path)}
+                      className={`flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left text-[12px] transition ${
+                        slugNode.path === selectedPath
+                          ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+                      }`}
+                    >
+                      <span>{slugNode.name}</span>
+                      {slugNode.status === "archived" ? (
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-800">
+                          Archived
+                        </span>
+                      ) : slugNode.status === "draft" ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                          Draft
+                        </span>
+                      ) : null}
+                    </button>
                   </div>
                 ))}
               </div>

@@ -1,14 +1,11 @@
 import "@/styles/globals.css";
 import "katex/dist/katex.min.css";
-import { getLanguageFromCookies } from "@/utils/server/get-language";
 import { themeEffect } from "./themes/theme-effect";
 import { Analytics } from "./analytics";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
 import ProgressBar from "./progress-bar";
-import { getDictionary } from "@/locales/dictionary";
-import DictionaryProvider from "@/locales/DictionaryProvider";
 import { siteConfig } from "@/utils/site-config";
 import { ensureEnvironmentWarnings } from "@/utils/server/env-warnings";
 
@@ -34,20 +31,15 @@ export const viewport = {
   themeColor: "transparent",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   ensureEnvironmentWarnings();
-  const language = await getLanguageFromCookies();
-  const dictionary = await getDictionary();
 
   return (
-    <html
-      lang={language}
-      suppressHydrationWarning={true}
-    >
+    <html lang={siteConfig.site.language} suppressHydrationWarning={true}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -58,14 +50,12 @@ export default async function RootLayout({
 
       <body className="dark:text-gray-100 max-w-2xl m-auto">
         <ProgressBar />
-        <DictionaryProvider dictionary={dictionary}>
-          <main className="p-6 pt-3 md:pt-6 min-h-screen">
-            <Header dict={dictionary} language={language} />
-            {children}
-          </main>
+        <main className="min-h-screen p-6 pt-3 md:pt-6">
+          <Header />
+          {children}
+        </main>
 
-          <Footer dict={dictionary} language={language} />
-        </DictionaryProvider>
+        <Footer />
         <Analytics />
       </body>
     </html>

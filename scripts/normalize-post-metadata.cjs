@@ -2,10 +2,8 @@
 
 const { readFile, writeFile } = require("fs/promises");
 const {
-  SUPPORTED_LOCALES,
   POSTS_MANIFEST_PATH,
   collectPosts,
-  getFirstValue,
   buildNormalizedMetadata,
   replaceMetadataBlock,
   writeManifest,
@@ -19,69 +17,46 @@ async function main() {
 
   const entries = await collectPosts();
   const manifest = {
-    locales: SUPPORTED_LOCALES,
-    posts: Object.fromEntries(SUPPORTED_LOCALES.map(locale => [locale, []])),
-    translations: {},
+    posts: [],
   };
 
   for (const entry of entries.values()) {
-    const sharedId =
-      getFirstValue(entry.locales, data => data.metadata.id || data.frontmatter.id) ||
-      entry.id;
-    const sharedPublishedAt =
-      getFirstValue(
-        entry.locales,
-        data => data.metadata.publishedAt || data.frontmatter.publishedAt,
-      ) || `${entry.year}-01-01`;
+    const normalized = buildNormalizedMetadata(entry, {
+      postId: entry.metadata.id || entry.frontmatter.id || entry.id,
+      publishedAt: entry.metadata.publishedAt || entry.frontmatter.publishedAt || `${entry.year}-01-01`,
+      id: entry.id,
+    });
 
-    for (const locale of SUPPORTED_LOCALES) {
-      const data = entry.locales[locale];
-      if (!data) continue;
-
-      const normalized = buildNormalizedMetadata(data, {
-        postId: sharedId,
-        publishedAt: sharedPublishedAt,
-        id: entry.id,
-      });
-
-      const newSource = replaceMetadataBlock(data.source, normalized);
-      if (newSource && newSource !== data.source) {
-        if (isCheck) {
-          changedFiles.add(data.path);
-        } else {
-          await writeFile(data.path, newSource, "utf8");
-        }
+    const newSource = replaceMetadataBlock(entry.source, normalized);
+    if (newSource && newSource !== entry.source) {
+      if (isCheck) {
+        changedFiles.add(entry.path);
+      } else {
+        await writeFile(entry.path, newSource, "utf8");
       }
-
-      manifest.posts[locale].push({
-        id: normalized.id,
-        title: normalized.title,
-        description: normalized.description ?? "",
-        summary: normalized.summary ?? "",
-        series: normalized.series ?? null,
-        publishedAt: normalized.publishedAt,
-        updatedAt: normalized.updatedAt ?? null,
-        status: normalized.status ?? "published",
-        featured: normalized.featured ?? false,
-        tags: normalized.tags ?? [],
-        cover: normalized.cover ?? null,
-        readingTimeMinutes: normalized.readingTimeMinutes ?? 1,
-        path: `/${locale}/${entry.year}/${entry.id}`,
-      });
-
-      if (!manifest.translations[normalized.id]) {
-        manifest.translations[normalized.id] = {};
-      }
-      manifest.translations[normalized.id][locale] = `/${locale}/${entry.year}/${entry.id}`;
     }
-  }
 
-  for (const locale of SUPPORTED_LOCALES) {
-    manifest.posts[locale].sort((a, b) => {
-      if (a.publishedAt === b.publishedAt) return 0;
-      return a.publishedAt > b.publishedAt ? -1 : 1;
+    manifest.posts.push({
+      id: normalized.id,
+      title: normalized.title,
+      description: normalized.description ?? "",
+      summary: normalized.summary ?? "",
+      series: normalized.series ?? null,
+      publishedAt: normalized.publishedAt,
+      updatedAt: normalized.updatedAt ?? null,
+      status: normalized.status ?? "published",
+      featured: normalized.featured ?? false,
+      tags: normalized.tags ?? [],
+      cover: normalized.cover ?? null,
+      readingTimeMinutes: normalized.readingTimeMinutes ?? 1,
+      path: `/${entry.year}/${entry.id}`,
     });
   }
+
+  manifest.posts.sort((a, b) => {
+    if (a.publishedAt === b.publishedAt) return 0;
+    return a.publishedAt > b.publishedAt ? -1 : 1;
+  });
 
   const manifestJSON = JSON.stringify(manifest, null, 2);
 

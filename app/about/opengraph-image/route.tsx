@@ -6,7 +6,6 @@ import { getPosts } from "@/app/get-posts";
 import { readFileSync } from "fs";
 import { join } from "path";
 import commaNumber from "comma-number";
-import { defaultLocale } from "@/locales/config";
 import {
   getAuthorName,
   getProfileHighlights,
@@ -30,11 +29,11 @@ const robotoMono400 = readFileSync(
 );
 
 export async function GET() {
-  const posts = await getPosts("en");
+  const posts = await getPosts();
   const viewsSum = posts.reduce((sum, post) => sum + post.views, 0);
   const portrait = await loadPortrait();
-  const authorName = getAuthorName(defaultLocale);
-  const highlights = getProfileHighlights(defaultLocale);
+  const authorName = getAuthorName();
+  const highlights = getProfileHighlights();
 
   return new ImageResponse(
     (
