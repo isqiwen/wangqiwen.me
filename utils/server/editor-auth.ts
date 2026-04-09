@@ -24,11 +24,49 @@ function safeCompare(left: string, right: string): boolean {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function getCookieOptions() {
+function parseBooleanEnv(value: string | undefined): boolean | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "1" || normalized === "true" || normalized === "yes") {
+    return true;
+  }
+  if (normalized === "0" || normalized === "false" || normalized === "no") {
+    return false;
+  }
+
+  return null;
+}
+
+function shouldUseSecureCookie(req?: Request): boolean {
+  const explicit = parseBooleanEnv(process.env.EDITOR_ACCESS_COOKIE_SECURE);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  if (!req) {
+    return process.env.NODE_ENV === "production";
+  }
+
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.split(",")[0]?.trim().toLowerCase() === "https";
+  }
+
+  try {
+    return new URL(req.url).protocol === "https:";
+  } catch {
+    return process.env.NODE_ENV === "production";
+  }
+}
+
+function getCookieOptions(req?: Request) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(req),
     path: "/",
   };
 }
@@ -80,7 +118,7 @@ export async function canPreviewDrafts(): Promise<boolean> {
   return isEditorAuthorized();
 }
 
-export async function applyEditorAccess(response: NextResponse) {
+export async function applyEditorAccess(response: NextResponse, req?: Request) {
   if (!isEditorProtectionEnabled()) {
     return response;
   }
@@ -91,18 +129,18 @@ export async function applyEditorAccess(response: NextResponse) {
     name: editorAccessCookieName,
     value: await hashEditorAccessToken(getConfiguredToken()),
     maxAge: EDITOR_ACCESS_MAX_AGE_SECONDS,
-    ...getCookieOptions(),
+    ...getCookieOptions(req),
   });
 
   return response;
 }
 
-export function clearEditorAccess(response: NextResponse) {
+export function clearEditorAccess(response: NextResponse, req?: Request) {
   response.cookies.set({
     name: editorAccessCookieName,
     value: "",
     maxAge: 0,
-    ...getCookieOptions(),
+    ...getCookieOptions(req),
   });
 
   return response;

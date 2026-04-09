@@ -178,9 +178,11 @@ Keep a small bootstrap checkout on the server so the deployment scripts are alwa
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
-cd ~/blog-bootstrap
+sudo git clone https://github.com/your-name/your-repo.git /opt/blog-bootstrap
+cd /opt/blog-bootstrap
 ```
+
+Use a path like `/opt/blog-bootstrap` instead of `/root/...` so service-user handoff does not hit directory permission issues.
 
 Upload the build artifact from your local machine:
 
@@ -252,7 +254,7 @@ The provision script still depends on two external prerequisites:
 If you prefer explicit control instead of the all-in-one provision script:
 
 ```bash
-cd ~/blog-bootstrap
+cd /opt/blog-bootstrap
 sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
 sudo install -d -o blog -g blog /srv/blog/your-site
 sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local
@@ -316,14 +318,14 @@ sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.t
 If the update also changes your public domain, Nginx settings, upload limits, or HTTPS setup, run the site script again after the deploy:
 
 ```bash
-cd ~/blog-bootstrap
+cd /opt/blog-bootstrap
 sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
 ```
 
 If you want to reuse the all-in-one provision script on an existing server, skip the install step:
 
 ```bash
-cd ~/blog-bootstrap
+cd /opt/blog-bootstrap
 sudo env \
   RUN_INSTALL=0 \
   APP_NAME=your-site \

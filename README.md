@@ -169,8 +169,8 @@ On a brand-new server, keep a small bootstrap checkout so you have the ops scrip
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
-cd ~/blog-bootstrap
+sudo git clone https://github.com/your-name/your-repo.git /opt/blog-bootstrap
+cd /opt/blog-bootstrap
 ```
 
 Build the deploy artifact on your local machine or CI runner:
@@ -189,7 +189,7 @@ scp .env.production root@your-server:/tmp/prod.env
 Then provision and deploy on the server:
 
 ```bash
-cd ~/blog-bootstrap
+cd /opt/blog-bootstrap
 sudo env \
   APP_NAME=your-site \
   SERVICE_USER=blog \
@@ -205,7 +205,7 @@ sudo env \
 If you prefer to split the steps:
 
 ```bash
-cd ~/blog-bootstrap
+cd /opt/blog-bootstrap
 sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
 sudo install -d -o blog -g blog /srv/blog/your-site
 sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local

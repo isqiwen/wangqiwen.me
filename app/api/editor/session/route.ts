@@ -71,6 +71,7 @@ export async function POST(req: Request) {
       { enabled: true, authorized: true },
       { headers: NO_STORE },
     ),
+    req,
   );
 }
 
@@ -87,5 +88,6 @@ export async function DELETE(req: Request) {
   logEditorInfo("session-signout", "Signed out editor session.");
   return clearEditorAccess(
     NextResponse.json({ ok: true }, { headers: NO_STORE }),
+    req,
   );
 }
