@@ -1,10 +1,11 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import util from "util";
+import { join } from "path";
 
-const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
 
 export async function syncPostsMetadata() {
-  return execAsync("pnpm sync:posts -- --silent", {
+  return execFileAsync(process.execPath, [join(process.cwd(), "scripts", "normalize-post-metadata.cjs"), "--", "--silent"], {
     cwd: process.cwd(),
     env: process.env,
   });

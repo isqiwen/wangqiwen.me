@@ -159,7 +159,12 @@ can host it.
 
 For a simple Ubuntu self-hosted deploy helper:
 
-On a brand-new server, start with a temporary bootstrap checkout so you have the scripts locally:
+For small servers, the recommended path is:
+- build the app on another machine
+- upload a standalone artifact
+- let the server only extract and run that artifact
+
+On a brand-new server, keep a small bootstrap checkout so you have the ops scripts locally:
 
 ```bash
 sudo apt-get update
@@ -168,51 +173,57 @@ git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
 cd ~/blog-bootstrap
 ```
 
-Then run the all-in-one provision script:
+Build the deploy artifact on your local machine or CI runner:
 
 ```bash
+bash scripts/build-deploy-artifact.sh
+```
+
+Upload the generated tarball to the server:
+
+```bash
+scp dist/<artifact>.tar.gz root@your-server:/tmp/
+scp .env.production root@your-server:/tmp/prod.env
+```
+
+Then provision and deploy on the server:
+
+```bash
+cd ~/blog-bootstrap
 sudo env \
-  APP_NAME=my-blog \
-  DOMAIN=example.com \
-  SERVER_ALIASES=www.example.com \
+  APP_NAME=your-site \
+  SERVICE_USER=blog \
+  DOMAIN=your-domain.com \
+  SERVER_ALIASES=www.your-domain.com \
   ENABLE_HTTPS=1 \
-  CERTBOT_EMAIL=admin@example.com \
+  CERTBOT_EMAIL=you@example.com \
+  ENV_FILE_PATH=/tmp/prod.env \
+  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
 
-If `REPO_URL` is omitted, the provision script reuses the current checkout's `origin` remote for the real deploy clone into `/srv/nextjs/app`.
-
-Manual step-by-step flow:
+If you prefer to split the steps:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git
-git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
 cd ~/blog-bootstrap
-sudo bash scripts/install-ubuntu-env.sh
-sudo -u nextjs -H git clone <repo-url> /srv/nextjs/app
-cd /srv/nextjs/app
-sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
-sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
+sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
+sudo install -d -o blog -g blog /srv/blog/your-site
+sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local
+sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
+sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
 ```
 
-The bootstrap script now creates a dedicated system user by default:
-
-```bash
-sudo adduser --system --group --home /srv/nextjs --shell /usr/sbin/nologin nextjs
-```
-
-It also prepares `/srv/nextjs/app` for the repository, then the deploy script runs the pull/build/restart flow as that `nextjs` service user instead of root.
-The Nginx site script then points `example.com` at the local Next.js process on port `3000`.
-The all-in-one provision script simply chains those same steps together.
-Once the real deploy is in `/srv/nextjs/app`, the temporary `~/blog-bootstrap` checkout can be removed.
+The all-in-one provision script chains those same steps together without building on the server.
+The server only needs Node.js, PM2, Nginx, your env file, and the uploaded artifact.
+Deploy paths are derived automatically:
+- `SERVICE_HOME=/srv/{SERVICE_USER}`
+- `APP_DIR={SERVICE_HOME}/{APP_NAME}`
 
 If your server is already prepared, you can run only:
 
 ```bash
-cd /srv/nextjs/app
-sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
-sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
+cd /srv/blog/your-site
+sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
 ```
 
 For deployment and operational details, use:

@@ -6,6 +6,7 @@ dist
 .output
 tsconfig.tsbuildinfo
 .env.local
+.env.production
 .pnpm-debug.log
 TODO
 .env*.local

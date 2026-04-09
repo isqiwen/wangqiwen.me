@@ -134,7 +134,46 @@ After deployment, double-check:
 
 Any Node 18+ environment that can run `pnpm install && pnpm build && pnpm start` should work.
 
-For a fresh Ubuntu 24.04 server, the fastest path is the all-in-one provision script:
+For low-memory Ubuntu servers, the recommended deployment model is:
+
+1. build on another machine or CI runner
+2. upload a prebuilt standalone artifact
+3. let the server only extract and run that artifact
+
+This repo is configured to produce a Next.js standalone bundle, and the deployment scripts now support that flow directly.
+
+## 8. Build The Artifact Elsewhere
+
+Run this on your laptop, workstation, or CI runner:
+
+```bash
+bash scripts/build-deploy-artifact.sh
+```
+
+The script will:
+
+- install dependencies unless `SKIP_INSTALL=1`
+- synchronize and validate post metadata
+- run `next build`
+- package a standalone deployment tarball into `dist/`
+
+Useful env vars for the build step:
+
+- `ARTIFACT_DIR=dist` changes the output directory
+- `ARTIFACT_NAME=my-site.tar.gz` overrides the generated file name
+- `SKIP_INSTALL=1` skips `pnpm install --frozen-lockfile`
+- `RUN_LINT_POSTS=0` skips `pnpm lint:posts`
+
+The artifact includes:
+
+- the standalone Node.js server from `.next/standalone`
+- `.next/static`
+- `public/`
+- the runtime source files needed by the local editor and content sync flows
+
+## 9. First-Time Ubuntu Server Setup
+
+Keep a small bootstrap checkout on the server so the deployment scripts are always available:
 
 ```bash
 sudo apt-get update
@@ -143,114 +182,99 @@ git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
 cd ~/blog-bootstrap
 ```
 
-Then run:
+Upload the build artifact from your local machine:
+
+```bash
+scp dist/<artifact>.tar.gz root@your-server:/tmp/
+scp .env.production root@your-server:/tmp/prod.env
+```
+
+Then run the all-in-one provision script:
 
 ```bash
 sudo env \
-  APP_NAME=my-blog \
-  DOMAIN=example.com \
-  SERVER_ALIASES=www.example.com \
+  APP_NAME=your-site \
+  SERVICE_USER=blog \
+  DOMAIN=your-domain.com \
+  SERVER_ALIASES=www.your-domain.com \
   ENABLE_HTTPS=1 \
-  CERTBOT_EMAIL=admin@example.com \
+  CERTBOT_EMAIL=you@example.com \
+  ENV_FILE_PATH=/tmp/prod.env \
+  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
 
 The provision script can automatically:
 
-- install Node.js, pnpm, Nginx, PM2, and optional Certbot
-- create the `nextjs` service user and `/srv/nextjs/app`
-- clone the repo if it is not already present
-- build and start the app with PM2
+- install Node.js, Nginx, PM2, and optional Certbot
+- create the service user and deploy directories
+- deploy the uploaded artifact without building on the server
 - configure Nginx as a reverse proxy
 - request HTTPS with Certbot when `ENABLE_HTTPS=1`
 
 Useful env vars for the all-in-one flow:
 
-- `REPO_URL=https://github.com/your-name/your-repo.git` sets the Git remote used for the initial clone
-- `REPO_BRANCH=main` clones a specific branch
-- `APP_NAME=my-blog` names the PM2 process
-- `DOMAIN=example.com` sets the primary public domain
-- `SERVER_ALIASES=www.example.com` adds extra hostnames
+- `APP_NAME=your-site` names the PM2 process, so you will see this name in `pm2 list`
+- `SERVICE_USER=blog` is the Linux service account that owns and runs the app
+- `SERVICE_HOME` is derived as `/srv/{SERVICE_USER}`
+- `APP_DIR` is derived as `{SERVICE_HOME}/{APP_NAME}`
+- `DOMAIN=your-domain.com` is the primary public domain for Nginx and HTTPS
+- `SERVER_ALIASES=www.your-domain.com` adds extra hostnames to the Nginx `server_name`
+- `ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz` points at the uploaded build artifact
+- `ARTIFACT_URL=https://example.com/my-site.tar.gz` lets the server download the artifact directly
+- `ENV_FILE_PATH=/tmp/prod.env` copies a production env file into `APP_DIR/.env.local` before the first deploy
 - `ENABLE_HTTPS=1` requests HTTPS automatically
-- `CERTBOT_EMAIL=admin@example.com` sets the Let's Encrypt contact email
+- `CERTBOT_EMAIL=you@example.com` sets the Let's Encrypt contact email
 - `RUN_INSTALL=0` skips environment bootstrap
-- `RUN_DEPLOY=0` skips app deployment
+- `RUN_DEPLOY=0` skips artifact deployment
 - `RUN_SITE_CONFIG=0` skips the Nginx / HTTPS step
 
-If `REPO_URL` is omitted, the provision script uses the current checkout's `origin` remote. That is why the bootstrap checkout above is enough for a fresh machine.
+What the example command means:
+
+- `APP_NAME=your-site`: PM2 process name only. This is not your Unix user and not your directory path.
+- `SERVICE_USER=blog`: the dedicated system user that will own files and run the Node.js process.
+- `SERVICE_HOME`: auto-derived to `/srv/blog`.
+- `APP_DIR`: auto-derived to `/srv/blog/your-site`.
+- `DOMAIN=your-domain.com`: the main site domain served by Nginx.
+- `SERVER_ALIASES=www.your-domain.com`: additional domains that should point to the same site.
+- `ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz`: the uploaded deployment package produced by `build-deploy-artifact.sh`.
+- `ENV_FILE_PATH=/tmp/prod.env`: an existing env file on the server that should become `APP_DIR/.env.local`.
+- `ENABLE_HTTPS=1`: tells the script to run Certbot and configure TLS automatically.
+- `CERTBOT_EMAIL=you@example.com`: contact email used by Let's Encrypt for expiry and recovery notices.
 
 The provision script still depends on two external prerequisites:
 
 - your DNS must already point the domain at this server before HTTPS issuance
 - your cloud firewall or security-group rules must allow ports `80` and `443`
 
-If you prefer explicit step-by-step control, use the scripts below instead.
+## 10. Step-By-Step Manual Setup
 
-For a fresh Ubuntu 24.04 server, bootstrap the machine first:
+If you prefer explicit control instead of the all-in-one provision script:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git
-git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
 cd ~/blog-bootstrap
-sudo bash scripts/install-ubuntu-env.sh
+sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
+sudo install -d -o blog -g blog /srv/blog/your-site
+sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local
+sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
+sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
 ```
 
-What the bootstrap script installs:
+The install script will:
 
-- Node.js from NodeSource
-- corepack and pnpm
-- Nginx
-- PM2
-- common deployment packages like `git`, `curl`, and `build-essential`
-- `certbot` and the Nginx plugin by default
-- a dedicated system user `nextjs` with home directory `/srv/nextjs`
-- an application directory at `/srv/nextjs/app`
-
-Useful env vars for the bootstrap step:
-
-- `NODE_MAJOR=20` selects the Node.js major version
-- `SERVICE_USER=nextjs` changes the service user name
-- `SERVICE_HOME=/srv/nextjs` changes the service user home
-- `APP_DIR=/srv/nextjs/app` changes the repo directory
-- `INSTALL_CERTBOT=0` skips Certbot packages
-- `INSTALL_UFW=1` installs UFW and opens SSH / Nginx rules
-
-The service user is created with:
-
-```bash
-sudo adduser --system --group --home /srv/nextjs --shell /usr/sbin/nologin nextjs
-```
-
-After bootstrap, clone the repo as that user:
-
-```bash
-sudo -u nextjs -H git clone <repo-url> /srv/nextjs/app
-```
-
-Once the server is ready, deploy the app with:
-
-```bash
-cd /srv/nextjs/app
-sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
-```
+- install Node.js from NodeSource
+- enable corepack and pnpm
+- install Nginx and PM2
+- create a dedicated service user
+- prepare `/srv/{SERVICE_USER}`, `/srv/{SERVICE_USER}/{APP_NAME}`, and shared directories
 
 The deploy script will:
 
-- switch to `APP_USER` automatically if needed
-- pull the latest code
-- install dependencies with pnpm
-- synchronize and validate post metadata
-- build the app
-- restart a PM2 process named by `APP_NAME`
-- persist the PM2 process list with `pm2 save`
-
-To expose the app on the public internet, configure Nginx:
-
-```bash
-cd /srv/nextjs/app
-sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
-```
+- switch to `SERVICE_USER` automatically if needed
+- extract the standalone artifact into `APP_DIR`
+- preserve `.env`, `.env.production`, and `.env.local` if they already exist
+- keep the previous release as a timestamped backup
+- restart the PM2 process by running `server.js`
 
 The site script will:
 
@@ -260,24 +284,57 @@ The site script will:
 - disable the default Nginx site by default
 - validate and reload Nginx
 
-To request HTTPS after your DNS already points at the server:
-
-```bash
-cd /srv/nextjs/app
-sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=admin@example.com bash scripts/configure-ubuntu-site.sh
-```
-
 Useful env vars for the public site step:
 
-- `DOMAIN=example.com` sets the primary domain
-- `SERVER_ALIASES=www.example.com` adds extra names to `server_name`
+- `DOMAIN=your-domain.com` sets the primary domain
+- `SERVER_ALIASES=www.your-domain.com` adds extra names to `server_name`
 - `APP_PORT=3000` changes the local app port that Nginx proxies to
 - `APP_HOST=127.0.0.1` changes the local app host that Nginx proxies to
 - `ENABLE_HTTPS=1` asks Certbot to configure HTTPS automatically
-- `CERTBOT_EMAIL=admin@example.com` sets the Let's Encrypt contact email
+- `CERTBOT_EMAIL=you@example.com` sets the Let's Encrypt contact email
 - `REMOVE_DEFAULT_SITE=0` keeps the default Nginx site enabled
 - `CLIENT_MAX_BODY_SIZE=32m` changes the upload limit for Nginx
 
-Make sure your production environment variables are set before running the script.
-Also make sure your domain DNS and any cloud security-group rules already allow ports `80` and `443`, otherwise HTTPS issuance will fail.
-After the final deploy is running from `/srv/nextjs/app`, you can remove the temporary `~/blog-bootstrap` checkout.
+Make sure your production environment variables are set before the first artifact deploy, typically in `APP_DIR/.env.local`.
+
+## 11. Updating An Existing Server
+
+For later releases, build a new artifact on your local machine or CI runner:
+
+```bash
+bash scripts/build-deploy-artifact.sh
+scp dist/<artifact>.tar.gz root@your-server:/tmp/
+```
+
+Then deploy it on the server:
+
+```bash
+cd /srv/blog/your-site
+sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
+```
+
+If the update also changes your public domain, Nginx settings, upload limits, or HTTPS setup, run the site script again after the deploy:
+
+```bash
+cd ~/blog-bootstrap
+sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
+```
+
+If you want to reuse the all-in-one provision script on an existing server, skip the install step:
+
+```bash
+cd ~/blog-bootstrap
+sudo env \
+  RUN_INSTALL=0 \
+  APP_NAME=your-site \
+  SERVICE_USER=blog \
+  DOMAIN=your-domain.com \
+  SERVER_ALIASES=www.your-domain.com \
+  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
+  bash scripts/provision-ubuntu.sh
+```
+
+One important operational note:
+
+- the artifact replaces the contents of `APP_DIR`
+- if you use the built-in editor to modify posts or uploaded assets on the server, make sure those changes are synced back to your source repo before the next release

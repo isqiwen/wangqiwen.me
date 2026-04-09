@@ -5,38 +5,40 @@ set -euo pipefail
 # It can:
 # - install server dependencies
 # - create the service user and directories
-# - clone or reuse the repo in the target app directory
-# - deploy the app with pm2
+# - deploy a prebuilt standalone artifact without running `next build`
 # - configure Nginx and optionally request HTTPS
 #
 # Common env vars:
-#   REPO_URL=https://github.com/me/my-blog.git
-#   REPO_BRANCH=main
 #   APP_NAME=my-blog
+#   SERVICE_USER=nextjs
 #   DOMAIN=example.com
 #   SERVER_ALIASES="www.example.com"
 #   ENABLE_HTTPS=1
 #   CERTBOT_EMAIL=admin@example.com
+#   ARTIFACT_TARBALL=/tmp/my-artifact.tar.gz
+#   ARTIFACT_URL=https://example.com/my-artifact.tar.gz
+#   ENV_FILE_PATH=/tmp/prod.env
 #
 # Advanced env vars are inherited by the underlying scripts:
-#   NODE_MAJOR, SERVICE_USER, SERVICE_HOME, APP_DIR, CREATE_SERVICE_USER
+#   NODE_MAJOR, CREATE_SERVICE_USER
 #   INSTALL_CERTBOT, INSTALL_UFW, CONFIGURE_PM2_STARTUP
 #   APP_HOST, APP_PORT, SITE_NAME, REMOVE_DEFAULT_SITE, CLIENT_MAX_BODY_SIZE
 #   RUN_INSTALL=1, RUN_DEPLOY=1, RUN_SITE_CONFIG=1
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-REPO_URL="${REPO_URL:-}"
-REPO_BRANCH="${REPO_BRANCH:-}"
 APP_NAME="${APP_NAME:-personal-blog}"
 DOMAIN="${DOMAIN:-}"
 SERVER_ALIASES="${SERVER_ALIASES:-}"
 ENABLE_HTTPS="${ENABLE_HTTPS:-0}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
+ARTIFACT_TARBALL="${ARTIFACT_TARBALL:-}"
+ARTIFACT_URL="${ARTIFACT_URL:-}"
+ENV_FILE_PATH="${ENV_FILE_PATH:-}"
 
 SERVICE_USER="${SERVICE_USER:-nextjs}"
-SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
-APP_DIR="${APP_DIR:-${SERVICE_HOME}/app}"
+SERVICE_HOME="/srv/${SERVICE_USER}"
+APP_DIR="${SERVICE_HOME}/${APP_NAME}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3000}"
 
@@ -62,45 +64,27 @@ as_root() {
   fi
 }
 
-as_user() {
-  local target_user="$1"
-  shift
+prepare_artifact() {
+  local artifact_source="$1"
+  local incoming_dir="${SERVICE_HOME}/shared/incoming"
+  local target_path="${incoming_dir}/$(basename "${artifact_source}")"
 
-  if [[ "$(id -un)" == "${target_user}" ]]; then
-    "$@"
-  elif [[ -n "${SUDO_BIN}" ]]; then
-    "${SUDO_BIN}" -u "${target_user}" -H "$@"
-  else
-    runuser -u "${target_user}" -- "$@"
-  fi
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${incoming_dir}"
+  as_root cp "${artifact_source}" "${target_path}"
+  as_root chown "${SERVICE_USER}:${SERVICE_USER}" "${target_path}"
+
+  printf '%s\n' "${target_path}"
 }
 
-if [[ -z "${REPO_URL}" ]]; then
-  REPO_URL="$(git -C "${ROOT_DIR}" remote get-url origin 2>/dev/null || true)"
-fi
+download_artifact() {
+  local incoming_dir="${SERVICE_HOME}/shared/incoming"
+  local target_path="${incoming_dir}/artifact-$(date +%Y%m%d%H%M%S).tar.gz"
 
-clone_repo_if_needed() {
-  if [[ -d "${APP_DIR}/.git" ]]; then
-    echo "==> Repo already present at ${APP_DIR}"
-    return
-  fi
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${incoming_dir}"
+  as_root curl -fL "${ARTIFACT_URL}" -o "${target_path}"
+  as_root chown "${SERVICE_USER}:${SERVICE_USER}" "${target_path}"
 
-  if [[ -z "${REPO_URL}" ]]; then
-    echo "REPO_URL is required when ${APP_DIR} does not already contain a git repo." >&2
-    exit 1
-  fi
-
-  if [[ -d "${APP_DIR}" ]] && [[ -n "$(find "${APP_DIR}" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
-    echo "${APP_DIR} exists and is not empty, but is not a git repo. Refusing to overwrite it." >&2
-    exit 1
-  fi
-
-  echo "==> Cloning repo into ${APP_DIR}"
-  if [[ -n "${REPO_BRANCH}" ]]; then
-    as_user "${SERVICE_USER}" git clone --branch "${REPO_BRANCH}" --single-branch "${REPO_URL}" "${APP_DIR}"
-  else
-    as_user "${SERVICE_USER}" git clone "${REPO_URL}" "${APP_DIR}"
-  fi
+  printf '%s\n' "${target_path}"
 }
 
 echo "==> Provisioning Ubuntu app stack"
@@ -114,9 +98,8 @@ if [[ "${RUN_INSTALL}" == "1" ]]; then
   echo "==> Running environment bootstrap"
   as_root env \
     NODE_MAJOR="${NODE_MAJOR:-20}" \
+    APP_NAME="${APP_NAME}" \
     SERVICE_USER="${SERVICE_USER}" \
-    SERVICE_HOME="${SERVICE_HOME}" \
-    APP_DIR="${APP_DIR}" \
     CREATE_SERVICE_USER="${CREATE_SERVICE_USER:-1}" \
     INSTALL_CERTBOT="${INSTALL_CERTBOT:-1}" \
     INSTALL_UFW="${INSTALL_UFW:-0}" \
@@ -129,38 +112,53 @@ if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
   exit 1
 fi
 
-clone_repo_if_needed
+if [[ -n "${ENV_FILE_PATH}" ]]; then
+  echo "==> Installing production env file into ${APP_DIR}/.env.local"
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${APP_DIR}"
+  as_root cp "${ENV_FILE_PATH}" "${APP_DIR}/.env.local"
+  as_root chown "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}/.env.local"
+fi
 
 if [[ "${RUN_DEPLOY}" == "1" ]]; then
-  echo "==> Deploying application"
-  (
-    cd "${APP_DIR}"
-    as_user "${SERVICE_USER}" env \
+  DEPLOYABLE_ARTIFACT=""
+
+  if [[ -n "${ARTIFACT_TARBALL}" ]]; then
+    echo "==> Preparing uploaded artifact for deployment"
+    DEPLOYABLE_ARTIFACT="$(prepare_artifact "${ARTIFACT_TARBALL}")"
+  elif [[ -n "${ARTIFACT_URL}" ]]; then
+    echo "==> Downloading deployment artifact"
+    DEPLOYABLE_ARTIFACT="$(download_artifact)"
+  fi
+
+  if [[ -n "${DEPLOYABLE_ARTIFACT}" ]]; then
+    echo "==> Deploying application artifact"
+    as_root env \
       APP_NAME="${APP_NAME}" \
-      APP_USER="${SERVICE_USER}" \
+      SERVICE_USER="${SERVICE_USER}" \
       APP_HOST="${APP_HOST}" \
       APP_PORT="${APP_PORT}" \
-      bash scripts/deploy-ubuntu.sh
-  )
+      ARTIFACT_TARBALL="${DEPLOYABLE_ARTIFACT}" \
+      bash "${ROOT_DIR}/scripts/deploy-ubuntu.sh"
+  else
+    echo "==> Skipping application deploy"
+    echo "    Provide ARTIFACT_TARBALL=/path/to/artifact.tar.gz or ARTIFACT_URL=https://..."
+  fi
 fi
 
 if [[ "${RUN_SITE_CONFIG}" == "1" ]]; then
   echo "==> Configuring public Nginx site"
-  (
-    cd "${APP_DIR}"
-    as_root env \
-      APP_NAME="${APP_NAME}" \
-      APP_HOST="${APP_HOST}" \
-      APP_PORT="${APP_PORT}" \
-      DOMAIN="${DOMAIN}" \
-      SERVER_ALIASES="${SERVER_ALIASES}" \
-      SITE_NAME="${SITE_NAME:-}" \
-      ENABLE_HTTPS="${ENABLE_HTTPS}" \
-      CERTBOT_EMAIL="${CERTBOT_EMAIL}" \
-      REMOVE_DEFAULT_SITE="${REMOVE_DEFAULT_SITE:-1}" \
-      CLIENT_MAX_BODY_SIZE="${CLIENT_MAX_BODY_SIZE:-32m}" \
-      bash scripts/configure-ubuntu-site.sh
-  )
+  as_root env \
+    APP_NAME="${APP_NAME}" \
+    APP_HOST="${APP_HOST}" \
+    APP_PORT="${APP_PORT}" \
+    DOMAIN="${DOMAIN}" \
+    SERVER_ALIASES="${SERVER_ALIASES}" \
+    SITE_NAME="${SITE_NAME:-}" \
+    ENABLE_HTTPS="${ENABLE_HTTPS}" \
+    CERTBOT_EMAIL="${CERTBOT_EMAIL}" \
+    REMOVE_DEFAULT_SITE="${REMOVE_DEFAULT_SITE:-1}" \
+    CLIENT_MAX_BODY_SIZE="${CLIENT_MAX_BODY_SIZE:-32m}" \
+    bash "${ROOT_DIR}/scripts/configure-ubuntu-site.sh"
 fi
 
 echo

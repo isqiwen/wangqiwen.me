@@ -11,9 +11,8 @@ set -euo pipefail
 #
 # Optional env vars:
 #   NODE_MAJOR=20             Node.js major version to install
+#   APP_NAME=personal-blog    App name used for deploy directory
 #   SERVICE_USER=nextjs       System user that owns the app
-#   SERVICE_HOME=/srv/nextjs  Home directory for the service user
-#   APP_DIR=/srv/nextjs/app   Deployment directory for the repo
 #   CREATE_SERVICE_USER=1     Create SERVICE_USER if it does not exist
 #   INSTALL_CERTBOT=1         Install certbot + nginx plugin
 #   INSTALL_UFW=0             Install ufw and open SSH/Nginx rules
@@ -21,9 +20,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NODE_MAJOR="${NODE_MAJOR:-20}"
+APP_NAME="${APP_NAME:-personal-blog}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
-SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
-APP_DIR="${APP_DIR:-${SERVICE_HOME}/app}"
+SERVICE_HOME="/srv/${SERVICE_USER}"
+APP_DIR="${SERVICE_HOME}/${APP_NAME}"
 CREATE_SERVICE_USER="${CREATE_SERVICE_USER:-1}"
 INSTALL_CERTBOT="${INSTALL_CERTBOT:-1}"
 INSTALL_UFW="${INSTALL_UFW:-0}"
@@ -191,15 +191,20 @@ npm list -g pm2 --depth=0
 
 echo
 echo "==> Next steps"
-echo "    1. Clone the repo as ${SERVICE_USER}:"
-echo "       sudo -u ${SERVICE_USER} -H git clone <repo-url> ${APP_DIR}"
-echo "    2. Create your production env file in ${APP_DIR}."
-echo "    3. Deploy the app as ${SERVICE_USER}:"
-echo "       cd ${APP_DIR} && sudo -u ${SERVICE_USER} -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh"
-echo "    4. Configure Nginx for public access:"
-echo "       sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash ${APP_DIR}/scripts/configure-ubuntu-site.sh"
-echo "    5. Optionally request HTTPS once DNS points to this server:"
-echo "       sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com ENABLE_HTTPS=1 CERTBOT_EMAIL=admin@example.com bash ${APP_DIR}/scripts/configure-ubuntu-site.sh"
+echo "    1. Keep a small bootstrap checkout on the server:"
+echo "       sudo apt-get install -y git"
+echo "       git clone <repo-url> ~/blog-bootstrap"
+echo "    2. Build a deployment artifact on another machine:"
+echo "       bash scripts/build-deploy-artifact.sh"
+echo "    3. Upload the artifact to this server:"
+echo "       scp dist/<artifact>.tar.gz <server>:/tmp/"
+echo "    4. Create your production env file in ${APP_DIR}/.env.local."
+echo "    5. Deploy the uploaded artifact:"
+echo "       sudo env APP_NAME=${APP_NAME} SERVICE_USER=${SERVICE_USER} ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash ~/blog-bootstrap/scripts/deploy-ubuntu.sh"
+echo "    6. Configure Nginx for public access:"
+echo "       sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash ~/blog-bootstrap/scripts/configure-ubuntu-site.sh"
+echo "    7. Optionally request HTTPS once DNS points to this server:"
+echo "       sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com ENABLE_HTTPS=1 CERTBOT_EMAIL=admin@example.com bash ~/blog-bootstrap/scripts/configure-ubuntu-site.sh"
 echo
 if [[ "${INSTALL_UFW}" == "1" ]]; then
   echo "UFW rules were added but the firewall was not enabled automatically."
