@@ -159,8 +159,60 @@ can host it.
 
 For a simple Ubuntu self-hosted deploy helper:
 
+On a brand-new server, start with a temporary bootstrap checkout so you have the scripts locally:
+
 ```bash
-APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
+cd ~/blog-bootstrap
+```
+
+Then run the all-in-one provision script:
+
+```bash
+sudo env \
+  APP_NAME=my-blog \
+  DOMAIN=example.com \
+  SERVER_ALIASES=www.example.com \
+  ENABLE_HTTPS=1 \
+  CERTBOT_EMAIL=admin@example.com \
+  bash scripts/provision-ubuntu.sh
+```
+
+If `REPO_URL` is omitted, the provision script reuses the current checkout's `origin` remote for the real deploy clone into `/srv/nextjs/app`.
+
+Manual step-by-step flow:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
+cd ~/blog-bootstrap
+sudo bash scripts/install-ubuntu-env.sh
+sudo -u nextjs -H git clone <repo-url> /srv/nextjs/app
+cd /srv/nextjs/app
+sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
+```
+
+The bootstrap script now creates a dedicated system user by default:
+
+```bash
+sudo adduser --system --group --home /srv/nextjs --shell /usr/sbin/nologin nextjs
+```
+
+It also prepares `/srv/nextjs/app` for the repository, then the deploy script runs the pull/build/restart flow as that `nextjs` service user instead of root.
+The Nginx site script then points `example.com` at the local Next.js process on port `3000`.
+The all-in-one provision script simply chains those same steps together.
+Once the real deploy is in `/srv/nextjs/app`, the temporary `~/blog-bootstrap` checkout can be removed.
+
+If your server is already prepared, you can run only:
+
+```bash
+cd /srv/nextjs/app
+sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
 ```
 
 For deployment and operational details, use:

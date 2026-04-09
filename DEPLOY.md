@@ -134,18 +134,150 @@ After deployment, double-check:
 
 Any Node 18+ environment that can run `pnpm install && pnpm build && pnpm start` should work.
 
-On Ubuntu, you can use:
+For a fresh Ubuntu 24.04 server, the fastest path is the all-in-one provision script:
 
 ```bash
-APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
+cd ~/blog-bootstrap
 ```
 
-The script will:
+Then run:
 
+```bash
+sudo env \
+  APP_NAME=my-blog \
+  DOMAIN=example.com \
+  SERVER_ALIASES=www.example.com \
+  ENABLE_HTTPS=1 \
+  CERTBOT_EMAIL=admin@example.com \
+  bash scripts/provision-ubuntu.sh
+```
+
+The provision script can automatically:
+
+- install Node.js, pnpm, Nginx, PM2, and optional Certbot
+- create the `nextjs` service user and `/srv/nextjs/app`
+- clone the repo if it is not already present
+- build and start the app with PM2
+- configure Nginx as a reverse proxy
+- request HTTPS with Certbot when `ENABLE_HTTPS=1`
+
+Useful env vars for the all-in-one flow:
+
+- `REPO_URL=https://github.com/your-name/your-repo.git` sets the Git remote used for the initial clone
+- `REPO_BRANCH=main` clones a specific branch
+- `APP_NAME=my-blog` names the PM2 process
+- `DOMAIN=example.com` sets the primary public domain
+- `SERVER_ALIASES=www.example.com` adds extra hostnames
+- `ENABLE_HTTPS=1` requests HTTPS automatically
+- `CERTBOT_EMAIL=admin@example.com` sets the Let's Encrypt contact email
+- `RUN_INSTALL=0` skips environment bootstrap
+- `RUN_DEPLOY=0` skips app deployment
+- `RUN_SITE_CONFIG=0` skips the Nginx / HTTPS step
+
+If `REPO_URL` is omitted, the provision script uses the current checkout's `origin` remote. That is why the bootstrap checkout above is enough for a fresh machine.
+
+The provision script still depends on two external prerequisites:
+
+- your DNS must already point the domain at this server before HTTPS issuance
+- your cloud firewall or security-group rules must allow ports `80` and `443`
+
+If you prefer explicit step-by-step control, use the scripts below instead.
+
+For a fresh Ubuntu 24.04 server, bootstrap the machine first:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/your-name/your-repo.git ~/blog-bootstrap
+cd ~/blog-bootstrap
+sudo bash scripts/install-ubuntu-env.sh
+```
+
+What the bootstrap script installs:
+
+- Node.js from NodeSource
+- corepack and pnpm
+- Nginx
+- PM2
+- common deployment packages like `git`, `curl`, and `build-essential`
+- `certbot` and the Nginx plugin by default
+- a dedicated system user `nextjs` with home directory `/srv/nextjs`
+- an application directory at `/srv/nextjs/app`
+
+Useful env vars for the bootstrap step:
+
+- `NODE_MAJOR=20` selects the Node.js major version
+- `SERVICE_USER=nextjs` changes the service user name
+- `SERVICE_HOME=/srv/nextjs` changes the service user home
+- `APP_DIR=/srv/nextjs/app` changes the repo directory
+- `INSTALL_CERTBOT=0` skips Certbot packages
+- `INSTALL_UFW=1` installs UFW and opens SSH / Nginx rules
+
+The service user is created with:
+
+```bash
+sudo adduser --system --group --home /srv/nextjs --shell /usr/sbin/nologin nextjs
+```
+
+After bootstrap, clone the repo as that user:
+
+```bash
+sudo -u nextjs -H git clone <repo-url> /srv/nextjs/app
+```
+
+Once the server is ready, deploy the app with:
+
+```bash
+cd /srv/nextjs/app
+sudo -u nextjs -H env APP_NAME=my-blog bash scripts/deploy-ubuntu.sh
+```
+
+The deploy script will:
+
+- switch to `APP_USER` automatically if needed
 - pull the latest code
 - install dependencies with pnpm
 - synchronize and validate post metadata
 - build the app
 - restart a PM2 process named by `APP_NAME`
+- persist the PM2 process list with `pm2 save`
+
+To expose the app on the public internet, configure Nginx:
+
+```bash
+cd /srv/nextjs/app
+sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 bash scripts/configure-ubuntu-site.sh
+```
+
+The site script will:
+
+- create or update an Nginx site file
+- reverse proxy traffic from port `80` to `127.0.0.1:3000`
+- enable the site
+- disable the default Nginx site by default
+- validate and reload Nginx
+
+To request HTTPS after your DNS already points at the server:
+
+```bash
+cd /srv/nextjs/app
+sudo env DOMAIN=example.com SERVER_ALIASES=www.example.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=admin@example.com bash scripts/configure-ubuntu-site.sh
+```
+
+Useful env vars for the public site step:
+
+- `DOMAIN=example.com` sets the primary domain
+- `SERVER_ALIASES=www.example.com` adds extra names to `server_name`
+- `APP_PORT=3000` changes the local app port that Nginx proxies to
+- `APP_HOST=127.0.0.1` changes the local app host that Nginx proxies to
+- `ENABLE_HTTPS=1` asks Certbot to configure HTTPS automatically
+- `CERTBOT_EMAIL=admin@example.com` sets the Let's Encrypt contact email
+- `REMOVE_DEFAULT_SITE=0` keeps the default Nginx site enabled
+- `CLIENT_MAX_BODY_SIZE=32m` changes the upload limit for Nginx
 
 Make sure your production environment variables are set before running the script.
+Also make sure your domain DNS and any cloud security-group rules already allow ports `80` and `443`, otherwise HTTPS issuance will fail.
+After the final deploy is running from `/srv/nextjs/app`, you can remove the temporary `~/blog-bootstrap` checkout.
