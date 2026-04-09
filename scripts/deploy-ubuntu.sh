@@ -29,11 +29,29 @@ if [[ "$(id -un)" != "${SERVICE_USER}" ]]; then
     exit 1
   fi
 
+  relay_script="${SCRIPT_PATH}"
+  can_read_script="0"
+  if command -v sudo >/dev/null 2>&1; then
+    if sudo -u "${SERVICE_USER}" test -r "${SCRIPT_PATH}" 2>/dev/null; then
+      can_read_script="1"
+    fi
+  elif [[ "$(id -u)" -eq 0 ]]; then
+    if runuser -u "${SERVICE_USER}" -- test -r "${SCRIPT_PATH}" 2>/dev/null; then
+      can_read_script="1"
+    fi
+  fi
+
+  if [[ "${can_read_script}" != "1" ]]; then
+    relay_script="$(mktemp /tmp/deploy-ubuntu.XXXXXX.sh)"
+    cp "${SCRIPT_PATH}" "${relay_script}"
+    chmod 0644 "${relay_script}"
+  fi
+
   echo "==> Switching to deploy user ${SERVICE_USER}"
   if command -v sudo >/dev/null 2>&1; then
-    exec sudo -u "${SERVICE_USER}" -H env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${SCRIPT_PATH}"
+    exec sudo -u "${SERVICE_USER}" -H env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${relay_script}"
   elif [[ "$(id -u)" -eq 0 ]]; then
-    exec runuser -u "${SERVICE_USER}" -- env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${SCRIPT_PATH}"
+    exec runuser -u "${SERVICE_USER}" -- env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${relay_script}"
   else
     echo "Need sudo or root privileges to switch to ${SERVICE_USER}." >&2
     exit 1
