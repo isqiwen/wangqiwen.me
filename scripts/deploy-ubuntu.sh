@@ -1,73 +1,74 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deployment helper for Ubuntu servers.
+# Deploy wangqiwen.me to an Ubuntu server.
 #
-# Recommended mode:
-# - artifact deploy: extract a prebuilt standalone tarball onto the server
+# Preferred mode:
+#   ARTIFACT_TARBALL=dist/nextjs-standalone-xxxx.tar.gz ./scripts/deploy-ubuntu.sh
 #
-# Legacy mode:
-# - source deploy: git pull + build on the server when no artifact is provided
+# The artifact must contain Next.js standalone output with server.js at root.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
-
-APP_NAME="${APP_NAME:-personal-blog}"
+APP_NAME="${APP_NAME:-wangqiwen-me}"
+SYSTEMD_SERVICE_NAME="${SYSTEMD_SERVICE_NAME:-${APP_NAME}}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
-APP_DIR="/srv/${SERVICE_USER}/${APP_NAME}"
+SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
+APP_DIR="${APP_DIR:-${SERVICE_HOME}/${APP_NAME}}"
 APP_PORT="${APP_PORT:-3000}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 ARTIFACT_TARBALL="${ARTIFACT_TARBALL:-${1:-}}"
+STAGE_DIR=""
 
-if [[ -n "${ARTIFACT_TARBALL}" ]]; then
-  ARTIFACT_TARBALL="$(cd "$(dirname "${ARTIFACT_TARBALL}")" && pwd)/$(basename "${ARTIFACT_TARBALL}")"
+SUDO_BIN=""
+if [[ "${EUID}" -ne 0 ]]; then
+  SUDO_BIN="sudo"
 fi
 
-if [[ "$(id -un)" != "${SERVICE_USER}" ]]; then
+as_root() {
+  if [[ -n "${SUDO_BIN}" ]]; then
+    "${SUDO_BIN}" "$@"
+  else
+    "$@"
+  fi
+}
+
+as_user() {
+  local user="$1"
+  shift
+  if command -v sudo >/dev/null 2>&1; then
+    as_root sudo -u "${user}" -H "$@"
+  elif [[ "${EUID}" -eq 0 ]]; then
+    runuser -u "${user}" -- "$@"
+  else
+    echo "sudo is required when not running as root." >&2
+    exit 1
+  fi
+}
+
+shell_quote() {
+  printf "%q" "$1"
+}
+
+assert_safe_paths() {
+  case "${APP_DIR}" in
+    /srv/*) ;;
+    *)
+      echo "Refusing to deploy outside /srv: ${APP_DIR}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+ensure_service_user() {
   if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
-    echo "SERVICE_USER ${SERVICE_USER} does not exist." >&2
+    echo "Service user does not exist: ${SERVICE_USER}" >&2
+    echo "Run scripts/install-ubuntu-env.sh first." >&2
     exit 1
   fi
+}
 
-  relay_script="${SCRIPT_PATH}"
-  can_read_script="0"
-  if command -v sudo >/dev/null 2>&1; then
-    if sudo -u "${SERVICE_USER}" test -r "${SCRIPT_PATH}" 2>/dev/null; then
-      can_read_script="1"
-    fi
-  elif [[ "$(id -u)" -eq 0 ]]; then
-    if runuser -u "${SERVICE_USER}" -- test -r "${SCRIPT_PATH}" 2>/dev/null; then
-      can_read_script="1"
-    fi
-  fi
-
-  if [[ "${can_read_script}" != "1" ]]; then
-    relay_script="$(mktemp /tmp/deploy-ubuntu.XXXXXX.sh)"
-    cp "${SCRIPT_PATH}" "${relay_script}"
-    chmod 0644 "${relay_script}"
-  fi
-
-  echo "==> Switching to deploy user ${SERVICE_USER}"
-  if command -v sudo >/dev/null 2>&1; then
-    exec sudo -u "${SERVICE_USER}" -H env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${relay_script}"
-  elif [[ "$(id -u)" -eq 0 ]]; then
-    exec runuser -u "${SERVICE_USER}" -- env PATH="${PATH}" APP_NAME="${APP_NAME}" SERVICE_USER="${SERVICE_USER}" APP_PORT="${APP_PORT}" APP_HOST="${APP_HOST}" ARTIFACT_TARBALL="${ARTIFACT_TARBALL}" bash "${relay_script}"
-  else
-    echo "Need sudo or root privileges to switch to ${SERVICE_USER}." >&2
-    exit 1
-  fi
-fi
-
-start_pm2_artifact() {
-  local target_dir="$1"
-
-  echo "==> Starting standalone server with pm2"
-  if command -v pm2 >/dev/null 2>&1; then
-    pm2 delete "${APP_NAME}" >/dev/null 2>&1 || true
-    PORT="${APP_PORT}" HOSTNAME="${APP_HOST}" NODE_ENV=production pm2 start server.js --name "${APP_NAME}" --cwd "${target_dir}"
-    pm2 save >/dev/null
-  else
-    echo "pm2 not found; start manually with: PORT=${APP_PORT} HOSTNAME=${APP_HOST} node server.js"
+normalize_artifact_path() {
+  if [[ -n "${ARTIFACT_TARBALL}" ]]; then
+    ARTIFACT_TARBALL="$(cd "$(dirname "${ARTIFACT_TARBALL}")" && pwd)/$(basename "${ARTIFACT_TARBALL}")"
   fi
 }
 
@@ -77,101 +78,141 @@ preserve_env_files() {
   local env_file
 
   for env_file in .env .env.production .env.local; do
-    if [[ -f "${source_dir}/${env_file}" && ! -f "${dest_dir}/${env_file}" ]]; then
-      cp -p "${source_dir}/${env_file}" "${dest_dir}/${env_file}"
+    if as_root test -f "${source_dir}/${env_file}" && ! as_root test -f "${dest_dir}/${env_file}"; then
+      as_root cp -p "${source_dir}/${env_file}" "${dest_dir}/${env_file}"
     fi
   done
+}
+
+write_systemd_unit() {
+  local exec_start="$1"
+  local unit_file="/etc/systemd/system/${SYSTEMD_SERVICE_NAME}.service"
+  local tmp_unit
+
+  tmp_unit="$(mktemp)"
+  cat > "${tmp_unit}" <<EOF
+[Unit]
+Description=${APP_NAME} Next.js app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=${SERVICE_USER}
+Group=${SERVICE_USER}
+WorkingDirectory=${APP_DIR}
+Environment=NODE_ENV=production
+Environment=PORT=${APP_PORT}
+Environment=HOSTNAME=${APP_HOST}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-${APP_DIR}/.env
+EnvironmentFile=-${APP_DIR}/.env.production
+EnvironmentFile=-${APP_DIR}/.env.local
+ExecStart=${exec_start}
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=${APP_DIR} ${SERVICE_HOME}/shared ${SERVICE_HOME}/logs
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  as_root install -m 0644 -o root -g root "${tmp_unit}" "${unit_file}"
+  rm -f "${tmp_unit}"
+
+  echo "==> Reloading systemd"
+  as_root systemctl daemon-reload
+  as_root systemctl enable "${SYSTEMD_SERVICE_NAME}.service" >/dev/null
+}
+
+restart_service() {
+  echo "==> Restarting ${SYSTEMD_SERVICE_NAME}.service"
+  as_root systemctl restart "${SYSTEMD_SERVICE_NAME}.service"
+  as_root systemctl --no-pager --full status "${SYSTEMD_SERVICE_NAME}.service" || true
 }
 
 deploy_artifact() {
   local parent_dir
   local app_basename
-  local stage_dir
-  local backup_dir=""
 
   if [[ ! -f "${ARTIFACT_TARBALL}" ]]; then
     echo "Artifact not found: ${ARTIFACT_TARBALL}" >&2
     exit 1
   fi
 
-  echo "==> Deploying prebuilt artifact"
-  echo "    target dir: ${APP_DIR}"
-  echo "    artifact: ${ARTIFACT_TARBALL}"
-
   parent_dir="$(dirname "${APP_DIR}")"
   app_basename="$(basename "${APP_DIR}")"
-  mkdir -p "${parent_dir}"
 
-  stage_dir="$(mktemp -d "${parent_dir}/.${app_basename}.stage.XXXXXX")"
+  echo "==> Deploying standalone artifact"
+  echo "    artifact: ${ARTIFACT_TARBALL}"
+  echo "    app dir:  ${APP_DIR}"
 
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${parent_dir}"
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${SERVICE_HOME}/shared"
+  as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${SERVICE_HOME}/logs"
+
+  STAGE_DIR="$(as_root mktemp -d "${parent_dir}/.${app_basename}.stage.XXXXXX")"
   cleanup_stage() {
-    rm -rf "${stage_dir}"
+    if [[ -n "${STAGE_DIR}" ]]; then
+      as_root rm -rf "${STAGE_DIR}"
+    fi
   }
   trap cleanup_stage EXIT
 
-  tar -xzf "${ARTIFACT_TARBALL}" -C "${stage_dir}"
+  as_root tar -xzf "${ARTIFACT_TARBALL}" -C "${STAGE_DIR}"
 
-  if [[ ! -f "${stage_dir}/server.js" ]]; then
-    echo "The artifact does not look like a standalone Next.js bundle: server.js is missing." >&2
+  if ! as_root test -f "${STAGE_DIR}/server.js"; then
+    echo "Invalid artifact: server.js is missing at artifact root." >&2
     exit 1
   fi
 
-  if [[ -d "${APP_DIR}" ]]; then
-    preserve_env_files "${APP_DIR}" "${stage_dir}"
+  if as_root test -d "${APP_DIR}"; then
+    preserve_env_files "${APP_DIR}" "${STAGE_DIR}"
   fi
 
-  cd "${parent_dir}"
-  if [[ -d "${APP_DIR}" ]]; then
-    backup_dir="${parent_dir}/.${app_basename}.backup.$(date +%Y%m%d%H%M%S)"
-    echo "==> Backing up current app to ${backup_dir}"
-    mv "${APP_DIR}" "${backup_dir}"
-  fi
-
-  mv "${stage_dir}" "${APP_DIR}"
+  as_root rm -rf "${APP_DIR}"
+  as_root mv "${STAGE_DIR}" "${APP_DIR}"
+  STAGE_DIR=""
   trap - EXIT
 
-  cd "${APP_DIR}"
-  start_pm2_artifact "${APP_DIR}"
+  as_root chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
+
+  write_systemd_unit "/usr/bin/node ${APP_DIR}/server.js"
+  restart_service
 
   echo "==> Artifact deploy complete"
-  if [[ -n "${backup_dir}" ]]; then
-    echo "    previous release backup: ${backup_dir}"
-  fi
 }
 
 deploy_source() {
-  cd "${APP_DIR}"
+  local quoted_app_dir
 
-  echo "==> Pulling latest code"
-  git pull --ff-only
-
-  echo "==> Ensuring corepack/pnpm"
-  if ! command -v corepack >/dev/null 2>&1; then
-    echo "corepack not found. Install Node.js 18+ and rerun." >&2
+  if ! as_root test -d "${APP_DIR}/.git"; then
+    echo "Source deploy requires an existing git checkout at ${APP_DIR}." >&2
+    echo "Artifact deploy is recommended for this project." >&2
     exit 1
   fi
-  corepack enable
 
-  echo "==> Installing deps"
-  pnpm install --frozen-lockfile
+  quoted_app_dir="$(shell_quote "${APP_DIR}")"
 
-  echo "==> Synchronizing post metadata"
-  pnpm sync:posts -- --silent
+  echo "==> Pulling and building source on server"
+  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && git pull --ff-only"
+  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && corepack enable && pnpm install --frozen-lockfile"
+  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && pnpm sync:posts -- --silent && pnpm lint:posts && pnpm build"
 
-  echo "==> Validating post metadata"
-  pnpm lint:posts
+  write_systemd_unit "/usr/bin/env pnpm start -- --hostname ${APP_HOST} --port ${APP_PORT}"
+  restart_service
 
-  echo "==> Building"
-  pnpm build
-
-  echo "==> Restarting app (legacy source-build mode)"
-  if command -v pm2 >/dev/null 2>&1; then
-    pm2 restart "${APP_NAME}" || pm2 start pnpm --name "${APP_NAME}" -- start -- --hostname "${APP_HOST}" --port "${APP_PORT}"
-    pm2 save >/dev/null
-  else
-    echo "pm2 not found; start manually with: pnpm start"
-  fi
+  echo "==> Source deploy complete"
 }
+
+assert_safe_paths
+ensure_service_user
+normalize_artifact_path
 
 if [[ -n "${ARTIFACT_TARBALL}" ]]; then
   deploy_artifact

@@ -20,12 +20,57 @@ REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date +%Y%
 ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}.tar.gz}"
 ARTIFACT_PATH="${ARTIFACT_DIR}/${ARTIFACT_NAME}"
 
-echo "==> Ensuring corepack/pnpm"
-if ! command -v corepack >/dev/null 2>&1; then
-  echo "corepack not found. Install Node.js 18+ and rerun." >&2
+get_pnpm_spec() {
+  node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); const v=p.packageManager || ''; console.log(typeof v === 'string' ? v.replace(/\\+.*/, '') : '')" "${ROOT_DIR}/package.json"
+}
+
+print_node_help() {
+  cat <<'EOF'
+Node.js/corepack is not ready.
+
+On Ubuntu, install an official Node.js package first:
+
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  corepack enable
+
+Then rerun:
+
+  bash scripts/build-deploy-artifact.sh
+EOF
+}
+
+if [[ -s "${NVM_DIR:-${HOME}/.nvm}/nvm.sh" ]]; then
+  # shellcheck disable=SC1090
+  . "${NVM_DIR:-${HOME}/.nvm}/nvm.sh"
+fi
+
+if [[ -f "${ROOT_DIR}/.nvmrc" ]] && command -v nvm >/dev/null 2>&1; then
+  echo "==> Using project Node.js version from .nvmrc"
+  nvm use >/dev/null
+fi
+
+echo "==> Ensuring Node.js and pnpm"
+if ! command -v node >/dev/null 2>&1; then
+  echo "node not found. Install Node.js 18+ and rerun." >&2
+  print_node_help
   exit 1
 fi
-corepack enable
+
+PNPM_SPEC="$(get_pnpm_spec)"
+
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable
+  if [[ "${PNPM_SPEC}" == pnpm@* ]]; then
+    corepack prepare "${PNPM_SPEC}" --activate
+  fi
+elif command -v pnpm >/dev/null 2>&1; then
+  echo "corepack not found; using existing pnpm $(pnpm -v)."
+else
+  echo "corepack and pnpm were not found." >&2
+  print_node_help
+  exit 1
+fi
 
 cd "${ROOT_DIR}"
 

@@ -1,14 +1,17 @@
-# White-Label Deployment Guide
+# Deployment Guide
 
-This project can be turned into another person's or team's site without rewriting the app shell.
-The main rule is simple:
+This project can run on Vercel or on an Ubuntu VPS. The self-hosted production path is:
 
-- Public branding and profile information live in `site.config.js`.
-- Secrets and deployment-only values live in `.env.local` or your hosting platform's environment settings.
+1. build a Next.js standalone artifact on a development machine or CI runner
+2. upload the artifact to the VPS
+3. run the app with systemd
+4. expose the site with Caddy
+
+Secrets and deployment-only values belong in `.env.local` on the server or in the hosting platform's secret manager.
 
 ## 1. Rebrand The Site
 
-Start with [site.config.js](E:/wangqiwen.me/site.config.js).
+Public branding and profile information live in [site.config.js](site.config.js).
 
 Update these areas first:
 
@@ -23,7 +26,7 @@ Update these areas first:
 - `about.en`
 - `opengraph.profileHighlights`
 
-Once these values change, the following parts of the app will automatically follow:
+Once these values change, the following parts of the app follow automatically:
 
 - global metadata and SEO
 - header and footer identity
@@ -34,30 +37,24 @@ Once these values change, the following parts of the app will automatically foll
 
 ## 2. Replace Personal Content
 
-The shared config removes most shell-level identity, but content files are still your real content.
 For a full white-label deployment, also review:
 
 - `app/(post)/...` for posts and demos
 - `links.json` for short-link cards
 - `public/images/...` for portraits and article assets
-- any sample article that still references the original author, company, or domain
+- sample articles that still reference the original author, company, or domain
 
-If you want a clean starting point, remove old posts first and then create new ones with:
+To reset content first:
 
 ```bash
 pnpm reset:content -- --force
 pnpm new:post --id my-first-post
-```
-
-After editing posts, rebuild the content manifest:
-
-```bash
 pnpm sync:posts
 ```
 
 ## 3. Configure Environment Variables
 
-Copy the example file:
+Copy the example file locally:
 
 ```bash
 cp .env.example .env.local
@@ -65,16 +62,15 @@ cp .env.example .env.local
 
 Then fill in the values you actually use:
 
-| Variable | Required | Purpose | Where to get it |
-| --- | --- | --- | --- |
-| `UPSTASH_REDIS_REST_URL` | Recommended | View counts and Redis-backed caching | Create a Redis database in the Upstash console and copy the REST URL from the database details page |
-| `UPSTASH_REDIS_REST_TOKEN` | Recommended | Auth token for Upstash Redis | Copy the REST TOKEN from the same Upstash database details page |
-| `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Force real Redis in development | Local toggle only; set it yourself to `1` if needed |
-| `GEO_IP_API_KEY` | Optional | Enables `/api/geo` | Create an account at ipgeolocation.io and copy an API key from the dashboard / API Keys page |
-| `EDITOR_ACCESS_TOKEN` | Optional but recommended for shared deployments | Locks `/editor` and its write APIs behind a browser unlock flow | Self-generated secret; create your own strong random password/token |
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `UPSTASH_REDIS_REST_URL` | Recommended | View counts and Redis-backed caching |
+| `UPSTASH_REDIS_REST_TOKEN` | Recommended | Auth token for Upstash Redis |
+| `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Force real Redis in development |
+| `GEO_IP_API_KEY` | Optional | Enables `/api/geo` |
+| `EDITOR_ACCESS_TOKEN` | Optional but recommended | Locks `/editor` and its write APIs behind a browser unlock flow |
 
-Keep these values out of `site.config.js`.
-They are secrets or environment-specific settings and should stay in `.env.local` or your deployment platform's secret manager.
+The standalone deployment artifact does not include `.env`, `.env.local`, `.env.production`, or other `.env*.local` files. Put production values on the VPS and pass them to the deployment script with `ENV_FILE_PATH`.
 
 ## 4. Local Verification
 
@@ -82,30 +78,29 @@ Before deploying, run:
 
 ```bash
 pnpm lint
-pnpm build
 pnpm lint:posts
 pnpm sync:posts -- --check
+pnpm build
 ```
 
 What each command protects:
 
 - `pnpm lint`: catches code, JSX, and accessibility issues
-- `pnpm build`: validates production compilation and route generation
 - `pnpm lint:posts`: verifies post metadata
 - `pnpm sync:posts -- --check`: ensures `posts/manifest.json` is in sync
+- `pnpm build`: validates production compilation and route generation
 
 ## 5. Editor Access
 
-If `EDITOR_ACCESS_TOKEN` is empty, `/editor` stays open locally.
-If it is set, the editor requires one successful unlock in the browser and then stores an HttpOnly session cookie.
+If `EDITOR_ACCESS_TOKEN` is empty, `/editor` stays open locally. In production, set `EDITOR_ACCESS_TOKEN`.
 
 Relevant files:
 
-- [app/editor/page.tsx](E:/wangqiwen.me/app/editor/page.tsx)
-- [app/api/editor/session/route.ts](E:/wangqiwen.me/app/api/editor/session/route.ts)
-- [utils/server/editor-auth.ts](E:/wangqiwen.me/utils/server/editor-auth.ts)
-- [INIT.md](E:/wangqiwen.me/INIT.md)
-- [OPERATIONS.md](E:/wangqiwen.me/OPERATIONS.md)
+- [app/editor/page.tsx](app/editor/page.tsx)
+- [app/api/editor/session/route.ts](app/api/editor/session/route.ts)
+- [utils/server/editor-auth.ts](utils/server/editor-auth.ts)
+- [INIT.md](INIT.md)
+- [OPERATIONS.md](OPERATIONS.md)
 
 ## 6. Deploy To Vercel
 
@@ -121,7 +116,7 @@ vercel env add EDITOR_ACCESS_TOKEN
 vercel --prod
 ```
 
-After deployment, double-check:
+After deployment, check:
 
 - homepage metadata
 - `/about`
@@ -130,213 +125,254 @@ After deployment, double-check:
 - `/about/opengraph-image`
 - `/editor`
 
-## 7. Self-Hosted Deploy
+## 7. Self-Hosted Architecture
 
-Any Node 18+ environment that can run `pnpm install && pnpm build && pnpm start` should work.
+The recommended Ubuntu/VPS deployment uses:
 
-For low-memory Ubuntu servers, the recommended deployment model is:
+| Layer | Tool | Role |
+| --- | --- | --- |
+| Build | `scripts/build-deploy-artifact.sh` | Build a Next.js standalone tarball outside the VPS |
+| Process manager | systemd | Keep the Node.js app running as `wangqiwen-me.service` |
+| Reverse proxy | Caddy | Receive public HTTP/HTTPS traffic and proxy to the app |
+| App listener | Next.js standalone `server.js` | Listen on `127.0.0.1:3000` |
 
-1. build on another machine or CI runner
-2. upload a prebuilt standalone artifact
-3. let the server only extract and run that artifact
+Default paths and names:
 
-This repo is configured to produce a Next.js standalone bundle, and the deployment scripts now support that flow directly.
+| Item | Default |
+| --- | --- |
+| App name | `wangqiwen-me` |
+| systemd service | `wangqiwen-me.service` |
+| Service user | `nextjs` |
+| App directory | `/srv/nextjs/wangqiwen-me` |
+| App listen address | `127.0.0.1:3000` |
+| Caddy site file | `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy` |
 
-## 8. Build The Artifact Elsewhere
+Port rule:
 
-Run this on your laptop, workstation, or CI runner:
+- open `80/tcp` and `443/tcp` on the VPS firewall and cloud firewall
+- keep `3000/tcp` private on `127.0.0.1`; it is only for Caddy to reach the app
+
+## 8. Build The Artifact
+
+Do not run `next build` on the small VPS. Build the artifact on a machine with enough CPU and memory, then upload the result to the VPS.
+
+Recommended build locations:
+
+- home Ubuntu development machine
+- Linux CI runner
+- another Linux server with enough memory
+
+Avoid building the production artifact on macOS when the runtime target is an Ubuntu VPS. Next.js standalone output can include platform-specific native dependencies. Building on Linux for Linux keeps the artifact closer to the production runtime.
+
+Run this in the project checkout on the build machine:
 
 ```bash
 bash scripts/build-deploy-artifact.sh
 ```
 
-The script will:
+If the build machine reports that `corepack` is missing, install Node.js from an official Node.js distribution first. On Ubuntu:
 
-- install dependencies unless `SKIP_INSTALL=1`
-- synchronize and validate post metadata
-- run `next build`
-- package a standalone deployment tarball into `dist/`
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+corepack enable
+```
 
-Useful env vars for the build step:
-
-- `ARTIFACT_DIR=dist` changes the output directory
-- `ARTIFACT_NAME=my-site.tar.gz` overrides the generated file name
-- `SKIP_INSTALL=1` skips `pnpm install --frozen-lockfile`
-- `RUN_LINT_POSTS=0` skips `pnpm lint:posts`
-
-The artifact includes:
+The artifact is written to `dist/` and includes:
 
 - the standalone Node.js server from `.next/standalone`
 - `.next/static`
 - `public/`
-- the runtime source files needed by the local editor and content sync flows
+- runtime source files needed by the local editor and content sync flows
 
-## 9. First-Time Ubuntu Server Setup
+Useful build env vars:
 
-Keep a small bootstrap checkout on the server so the deployment scripts are always available:
+- `ARTIFACT_DIR=dist`
+- `ARTIFACT_NAME=wangqiwen-me.tar.gz`
+- `SKIP_INSTALL=1`
+- `RUN_LINT_POSTS=0`
+
+The VPS receives only the finished tarball. It does not need to run:
+
+```bash
+pnpm install
+pnpm build
+next build
+```
+
+Running the standalone artifact is enough for the full dynamic app, as long as the VPS has Node.js, the production env file, writable app directory, and the systemd service.
+
+## 9. First-Time VPS Setup
+
+Upload the artifact and production env file from your local machine:
+
+```bash
+scp dist/<artifact>.tar.gz qiwen@wangqiwen.me:/tmp/
+scp .env.production qiwen@wangqiwen.me:/tmp/prod.env
+```
+
+Log in to the VPS:
+
+```bash
+ssh qiwen@wangqiwen.me
+```
+
+Keep a small bootstrap checkout on the VPS so the deployment scripts are available:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
-sudo git clone https://github.com/your-name/your-repo.git /opt/blog-bootstrap
-cd /opt/blog-bootstrap
+sudo git clone https://github.com/isqiwen/wangqiwen.me.git /opt/wangqiwen-me-bootstrap
+cd /opt/wangqiwen-me-bootstrap
 ```
 
-Use a path like `/opt/blog-bootstrap` instead of `/root/...` so service-user handoff does not hit directory permission issues.
-
-Upload the build artifact from your local machine:
-
-```bash
-scp dist/<artifact>.tar.gz root@your-server:/tmp/
-scp .env.production root@your-server:/tmp/prod.env
-```
-
-Then run the all-in-one provision script:
+Run the all-in-one provision script:
 
 ```bash
 sudo env \
-  APP_NAME=your-site \
-  SERVICE_USER=blog \
-  DOMAIN=your-domain.com \
-  SERVER_ALIASES=www.your-domain.com \
-  ENABLE_HTTPS=1 \
-  CERTBOT_EMAIL=you@example.com \
+  APP_NAME=wangqiwen-me \
+  SERVICE_USER=nextjs \
+  DOMAIN=wangqiwen.me \
+  SERVER_ALIASES=www.wangqiwen.me \
   ENV_FILE_PATH=/tmp/prod.env \
   ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
 
-The provision script can automatically:
+The provision script will:
 
-- install Node.js, Nginx, PM2, and optional Certbot
-- create the service user and deploy directories
-- deploy the uploaded artifact without building on the server
-- configure Nginx as a reverse proxy
-- request HTTPS with Certbot when `ENABLE_HTTPS=1`
+- install Node.js, corepack, pnpm, and Caddy
+- create the `nextjs` service user
+- prepare `/srv/nextjs/wangqiwen-me`
+- copy `/tmp/prod.env` to `/srv/nextjs/wangqiwen-me/.env.local`
+- extract the standalone artifact
+- write `/etc/systemd/system/wangqiwen-me.service`
+- start and enable the systemd service
+- write the Caddy reverse proxy config
+- validate and reload Caddy
 
-Useful env vars for the all-in-one flow:
+## 10. Manual Step-By-Step Deploy
 
-- `APP_NAME=your-site` names the PM2 process, so you will see this name in `pm2 list`
-- `SERVICE_USER=blog` is the Linux service account that owns and runs the app
-- `SERVICE_HOME` is derived as `/srv/{SERVICE_USER}`
-- `APP_DIR` is derived as `{SERVICE_HOME}/{APP_NAME}`
-- `DOMAIN=your-domain.com` is the primary public domain for Nginx and HTTPS
-- `SERVER_ALIASES=www.your-domain.com` adds extra hostnames to the Nginx `server_name`
-- `ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz` points at the uploaded build artifact
-- `ARTIFACT_URL=https://example.com/my-site.tar.gz` lets the server download the artifact directly
-- `ENV_FILE_PATH=/tmp/prod.env` copies a production env file into `APP_DIR/.env.local` before the first deploy
-- `ENABLE_HTTPS=1` requests HTTPS automatically
-- `CERTBOT_EMAIL=you@example.com` sets the Let's Encrypt contact email
-- `RUN_INSTALL=0` skips environment bootstrap
-- `RUN_DEPLOY=0` skips artifact deployment
-- `RUN_SITE_CONFIG=0` skips the Nginx / HTTPS step
+Use this flow when you want to run each step explicitly.
 
-What the example command means:
-
-- `APP_NAME=your-site`: PM2 process name only. This is not your Unix user and not your directory path.
-- `SERVICE_USER=blog`: the dedicated system user that will own files and run the Node.js process.
-- `SERVICE_HOME`: auto-derived to `/srv/blog`.
-- `APP_DIR`: auto-derived to `/srv/blog/your-site`.
-- `DOMAIN=your-domain.com`: the main site domain served by Nginx.
-- `SERVER_ALIASES=www.your-domain.com`: additional domains that should point to the same site.
-- `ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz`: the uploaded deployment package produced by `build-deploy-artifact.sh`.
-- `ENV_FILE_PATH=/tmp/prod.env`: an existing env file on the server that should become `APP_DIR/.env.local`.
-- `ENABLE_HTTPS=1`: tells the script to run Certbot and configure TLS automatically.
-- `CERTBOT_EMAIL=you@example.com`: contact email used by Let's Encrypt for expiry and recovery notices.
-
-The provision script still depends on two external prerequisites:
-
-- your DNS must already point the domain at this server before HTTPS issuance
-- your cloud firewall or security-group rules must allow ports `80` and `443`
-
-## 10. Step-By-Step Manual Setup
-
-If you prefer explicit control instead of the all-in-one provision script:
+Install server dependencies:
 
 ```bash
-cd /opt/blog-bootstrap
-sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
-sudo install -d -o blog -g blog /srv/blog/your-site
-sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local
-sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
-sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
+cd /opt/wangqiwen-me-bootstrap
+sudo env \
+  APP_NAME=wangqiwen-me \
+  SERVICE_USER=nextjs \
+  bash scripts/install-ubuntu-env.sh
 ```
 
-The install script will:
+Install the production env file:
 
-- install Node.js from NodeSource
-- enable corepack and pnpm
-- install Nginx and PM2
-- create a dedicated service user
-- prepare `/srv/{SERVICE_USER}`, `/srv/{SERVICE_USER}/{APP_NAME}`, and shared directories
+```bash
+sudo install -d -o nextjs -g nextjs -m 0755 /srv/nextjs/wangqiwen-me
+sudo install -m 0600 -o nextjs -g nextjs /tmp/prod.env /srv/nextjs/wangqiwen-me/.env.local
+```
 
-The deploy script will:
+Deploy the artifact:
 
-- switch to `SERVICE_USER` automatically if needed
-- extract the standalone artifact into `APP_DIR`
-- preserve `.env`, `.env.production`, and `.env.local` if they already exist
-- keep the previous release as a timestamped backup
-- restart the PM2 process by running `server.js`
+```bash
+sudo env \
+  APP_NAME=wangqiwen-me \
+  SERVICE_USER=nextjs \
+  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
+  bash scripts/deploy-ubuntu.sh
+```
 
-The site script will:
+Configure Caddy:
 
-- create or update an Nginx site file
-- reverse proxy traffic from port `80` to `127.0.0.1:3000`
-- enable the site
-- disable the default Nginx site by default
-- validate and reload Nginx
+```bash
+sudo env \
+  APP_NAME=wangqiwen-me \
+  DOMAIN=wangqiwen.me \
+  SERVER_ALIASES=www.wangqiwen.me \
+  APP_HOST=127.0.0.1 \
+  APP_PORT=3000 \
+  bash scripts/configure-ubuntu-site.sh
+```
 
-Useful env vars for the public site step:
+## 11. Updating An Existing VPS
 
-- `DOMAIN=your-domain.com` sets the primary domain
-- `SERVER_ALIASES=www.your-domain.com` adds extra names to `server_name`
-- `APP_PORT=3000` changes the local app port that Nginx proxies to
-- `APP_HOST=127.0.0.1` changes the local app host that Nginx proxies to
-- `ENABLE_HTTPS=1` asks Certbot to configure HTTPS automatically
-- `CERTBOT_EMAIL=you@example.com` sets the Let's Encrypt contact email
-- `REMOVE_DEFAULT_SITE=0` keeps the default Nginx site enabled
-- `CLIENT_MAX_BODY_SIZE=32m` changes the upload limit for Nginx
-
-Make sure your production environment variables are set before the first artifact deploy, typically in `APP_DIR/.env.local`.
-
-## 11. Updating An Existing Server
-
-For later releases, build a new artifact on your local machine or CI runner:
+Build and upload a new artifact:
 
 ```bash
 bash scripts/build-deploy-artifact.sh
-scp dist/<artifact>.tar.gz root@your-server:/tmp/
+scp dist/<artifact>.tar.gz qiwen@wangqiwen.me:/tmp/
 ```
 
-Then deploy it on the server:
+Deploy it on the VPS:
 
 ```bash
-cd /srv/blog/your-site
-sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
-```
-
-If the update also changes your public domain, Nginx settings, upload limits, or HTTPS setup, run the site script again after the deploy:
-
-```bash
-cd /opt/blog-bootstrap
-sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
-```
-
-If you want to reuse the all-in-one provision script on an existing server, skip the install step:
-
-```bash
-cd /opt/blog-bootstrap
+ssh qiwen@wangqiwen.me
+cd /opt/wangqiwen-me-bootstrap
+git pull --ff-only
 sudo env \
   RUN_INSTALL=0 \
-  APP_NAME=your-site \
-  SERVICE_USER=blog \
-  DOMAIN=your-domain.com \
-  SERVER_ALIASES=www.your-domain.com \
+  RUN_SITE_CONFIG=0 \
+  APP_NAME=wangqiwen-me \
+  SERVICE_USER=nextjs \
   ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
 
-One important operational note:
+Re-run the Caddy step only when the domain, aliases, app host, or app port changes:
 
-- the artifact replaces the contents of `APP_DIR`
-- if you use the built-in editor to modify posts or uploaded assets on the server, make sure those changes are synced back to your source repo before the next release
+```bash
+sudo env \
+  APP_NAME=wangqiwen-me \
+  DOMAIN=wangqiwen.me \
+  SERVER_ALIASES=www.wangqiwen.me \
+  APP_PORT=3000 \
+  bash scripts/configure-ubuntu-site.sh
+```
+
+## 12. Check The Deployment
+
+Process status:
+
+```bash
+sudo systemctl status wangqiwen-me
+sudo journalctl -u wangqiwen-me -n 100 --no-pager
+```
+
+Local app check on the VPS:
+
+```bash
+curl -I http://127.0.0.1:3000
+curl -s http://127.0.0.1:3000/api/health
+```
+
+Caddy check:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl status caddy
+sudo journalctl -u caddy -n 100 --no-pager
+```
+
+Public check:
+
+```bash
+curl -I https://wangqiwen.me
+curl -s https://wangqiwen.me/api/health
+```
+
+## 13. Operational Notes
+
+The artifact replaces the contents of `APP_DIR`. If the built-in editor changes posts or uploaded assets on the production server, sync those changes back to the source repo before the next release.
+
+Production source of truth:
+
+- code and content: Git repository
+- runtime secrets: server `.env.local`
+- public ingress: Caddy
+- app process: systemd
+
+Related docs:
+
+- [README.md](README.md)
+- [OPERATIONS.md](OPERATIONS.md)
+- [INIT.md](INIT.md)

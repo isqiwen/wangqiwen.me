@@ -9,6 +9,26 @@ It includes:
 - image asset management for posts
 - white-label configuration through `site.config.js`
 
+## Prerequisites
+
+- Node.js 18+
+- pnpm through corepack, or an existing pnpm installation
+
+On Ubuntu, install Node.js from NodeSource if `corepack` is missing:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+corepack enable
+```
+
+Then check:
+
+```bash
+node -v
+corepack -v
+```
+
 ## Quick Start
 
 1. Install dependencies:
@@ -59,7 +79,7 @@ pwsh ./scripts/setup-dev.ps1
 | `GEO_IP_API_KEY` | Optional | Enables the demo geo API route |
 | `EDITOR_ACCESS_TOKEN` | Optional | Protects `/editor` and its write APIs |
 
-See [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md) for where to get each value.
+See [DEPLOY.md](DEPLOY.md) for where to get each value.
 
 ## Common Commands
 
@@ -131,9 +151,9 @@ To turn this into your own site:
 4. Run the verification commands above
 
 Related guides:
-- [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md)
-- [INIT.md](E:/wangqiwen.me/INIT.md)
-- [OPERATIONS.md](E:/wangqiwen.me/OPERATIONS.md)
+- [DEPLOY.md](DEPLOY.md)
+- [INIT.md](INIT.md)
+- [OPERATIONS.md](OPERATIONS.md)
 
 ## Project Structure
 
@@ -147,85 +167,40 @@ Related guides:
 
 ## Deployment
 
-The site works well on Vercel, but any Node 18+ environment that can run:
+The site works well on Vercel. For the self-hosted `wangqiwen.me` deployment, the recommended path is:
 
-```bash
-pnpm install
-pnpm build
-pnpm start
-```
+- build a Next.js standalone artifact on a development machine or CI runner
+- upload the artifact to the VPS
+- run the app as `wangqiwen-me.service` with systemd
+- expose `https://wangqiwen.me` with Caddy
 
-can host it.
-
-For a simple Ubuntu self-hosted deploy helper:
-
-For small servers, the recommended path is:
-- build the app on another machine
-- upload a standalone artifact
-- let the server only extract and run that artifact
-
-On a brand-new server, keep a small bootstrap checkout so you have the ops scripts locally:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y git
-sudo git clone https://github.com/your-name/your-repo.git /opt/blog-bootstrap
-cd /opt/blog-bootstrap
-```
-
-Build the deploy artifact on your local machine or CI runner:
+Build an artifact:
 
 ```bash
 bash scripts/build-deploy-artifact.sh
 ```
 
-Upload the generated tarball to the server:
+Deploy on the VPS:
 
 ```bash
-scp dist/<artifact>.tar.gz root@your-server:/tmp/
-scp .env.production root@your-server:/tmp/prod.env
-```
-
-Then provision and deploy on the server:
-
-```bash
-cd /opt/blog-bootstrap
 sudo env \
-  APP_NAME=your-site \
-  SERVICE_USER=blog \
-  DOMAIN=your-domain.com \
-  SERVER_ALIASES=www.your-domain.com \
-  ENABLE_HTTPS=1 \
-  CERTBOT_EMAIL=you@example.com \
+  APP_NAME=wangqiwen-me \
+  SERVICE_USER=nextjs \
+  DOMAIN=wangqiwen.me \
+  SERVER_ALIASES=www.wangqiwen.me \
   ENV_FILE_PATH=/tmp/prod.env \
   ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
 
-If you prefer to split the steps:
+Runtime defaults:
 
-```bash
-cd /opt/blog-bootstrap
-sudo env APP_NAME=your-site SERVICE_USER=blog bash scripts/install-ubuntu-env.sh
-sudo install -d -o blog -g blog /srv/blog/your-site
-sudo -u blog -H cp .env.example /srv/blog/your-site/.env.local
-sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
-sudo env DOMAIN=your-domain.com SERVER_ALIASES=www.your-domain.com APP_PORT=3000 ENABLE_HTTPS=1 CERTBOT_EMAIL=you@example.com bash scripts/configure-ubuntu-site.sh
-```
-
-The all-in-one provision script chains those same steps together without building on the server.
-The server only needs Node.js, PM2, Nginx, your env file, and the uploaded artifact.
-Deploy paths are derived automatically:
-- `SERVICE_HOME=/srv/{SERVICE_USER}`
-- `APP_DIR={SERVICE_HOME}/{APP_NAME}`
-
-If your server is already prepared, you can run only:
-
-```bash
-cd /srv/blog/your-site
-sudo env APP_NAME=your-site SERVICE_USER=blog ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz bash scripts/deploy-ubuntu.sh
-```
+- app directory: `/srv/nextjs/wangqiwen-me`
+- process: `wangqiwen-me.service`
+- local app listener: `127.0.0.1:3000`
+- public ingress: Caddy on `80/tcp` and `443/tcp`
 
 For deployment and operational details, use:
-- [DEPLOY.md](E:/wangqiwen.me/DEPLOY.md)
-- [OPERATIONS.md](E:/wangqiwen.me/OPERATIONS.md)
+
+- [DEPLOY.md](DEPLOY.md)
+- [OPERATIONS.md](OPERATIONS.md)
