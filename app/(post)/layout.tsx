@@ -3,7 +3,7 @@ import { getPosts } from "../get-posts";
 import { canPreviewDrafts } from "@/utils/server/editor-auth";
 import { EquationNumbering } from "./components/equation-numbering";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function Layout({ children }) {
   const posts = await getPosts({

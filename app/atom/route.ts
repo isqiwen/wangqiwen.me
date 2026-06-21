@@ -1,6 +1,8 @@
 import { getPosts } from "@/app/get-posts";
 import { getSiteUrl, siteConfig } from "@/utils/site-config";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const posts = await getPosts();
   const max = 100; // max returned posts

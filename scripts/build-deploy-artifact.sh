@@ -10,11 +10,13 @@ set -euo pipefail
 #   ARTIFACT_NAME=blog-<sha>.tar.gz   Override the artifact file name
 #   SKIP_INSTALL=0                    Skip `pnpm install --frozen-lockfile`
 #   RUN_LINT_POSTS=1                  Run `pnpm lint:posts` before the build
+#   BUILD_WITH_REMOTE_REDIS=0         Use real Upstash Redis during build
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
 RUN_LINT_POSTS="${RUN_LINT_POSTS:-1}"
+BUILD_WITH_REMOTE_REDIS="${BUILD_WITH_REMOTE_REDIS:-0}"
 
 REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)"
 ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}.tar.gz}"
@@ -102,7 +104,12 @@ if [[ "${RUN_LINT_POSTS}" == "1" ]]; then
 fi
 
 echo "==> Building standalone output"
-pnpm build
+if [[ "${BUILD_WITH_REMOTE_REDIS}" == "1" ]]; then
+  pnpm build
+else
+  echo "==> Disabling remote Redis for build-time rendering"
+  UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= pnpm build
+fi
 
 if [[ ! -d ".next/standalone" ]]; then
   echo ".next/standalone was not created. Check that next.config.js enables output=\"standalone\"." >&2

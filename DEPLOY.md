@@ -191,6 +191,7 @@ Useful build env vars:
 - `ARTIFACT_NAME=wangqiwen-me.tar.gz`
 - `SKIP_INSTALL=1`
 - `RUN_LINT_POSTS=0`
+- `BUILD_WITH_REMOTE_REDIS=1` allows build-time rendering to use real Upstash Redis; default is `0`
 
 The VPS receives only the finished tarball. It does not need to run:
 
