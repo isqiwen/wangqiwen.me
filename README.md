@@ -132,6 +132,7 @@ pnpm build
 ## Editor
 
 The editor is intended as a local or self-hosted authoring tool, not a public CMS.
+For the self-hosted artifact deployment, production `/editor` changes are written to the VPS app directory and do not automatically enter Git; see [DEPLOY.md](DEPLOY.md) and [OPERATIONS.md](OPERATIONS.md) before using it on the public server.
 
 Current editor features:
 - draft, published, and archived status workflow

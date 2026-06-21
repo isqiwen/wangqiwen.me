@@ -17,6 +17,41 @@ Default production layout:
 
 The app listens only on localhost. Public traffic enters through Caddy on `80/tcp` and `443/tcp`.
 
+## Runtime Permissions
+
+Expected ownership:
+
+```text
+/srv/nextjs                  nextjs:nextjs
+/srv/nextjs/shared           nextjs:nextjs
+/srv/nextjs/logs             nextjs:nextjs
+/srv/nextjs/wangqiwen-me     nextjs:nextjs
+```
+
+The systemd service runs as `nextjs`, so owner write permission is enough for runtime files and editor uploads.
+
+Typical directory modes:
+
+```text
+/srv/nextjs                  755
+/srv/nextjs/shared           755
+/srv/nextjs/logs             755
+/srv/nextjs/wangqiwen-me     755
+```
+
+`775` on `/srv/nextjs/wangqiwen-me` is acceptable only when the `nextjs` group is not shared with normal shell users. Check group membership with:
+
+```bash
+getent group nextjs
+```
+
+The production env file should stay private:
+
+```bash
+sudo chown nextjs:nextjs /srv/nextjs/wangqiwen-me/.env.local
+sudo chmod 600 /srv/nextjs/wangqiwen-me/.env.local
+```
+
 ## Health Monitoring
 
 The app exposes:
@@ -133,6 +168,35 @@ Protected routes include:
 - `/api/editor/upload`
 
 The current rate limiter is in-memory. It is enough for a single-node deployment, but if the app later runs multiple instances, move the limiter to Redis or another shared store.
+
+## Production Editor Content
+
+On the VPS, `/editor` writes under the app working directory:
+
+```text
+/srv/nextjs/wangqiwen-me/app/(post)/YYYY/slug/page.mdx
+/srv/nextjs/wangqiwen-me/public/images/<post-id>/...
+/srv/nextjs/wangqiwen-me/posts/manifest.json
+```
+
+These files are inside the deployed artifact directory. They are not automatically committed to Git, and the artifact directory normally has no `.git` folder.
+
+The editor is useful for local or development-machine authoring. In the current standalone production architecture, it is not a complete CMS:
+
+- the homepage and post list can read updated manifest metadata
+- uploaded images can be written to the VPS filesystem
+- MDX article pages are compiled during `next build`, so changed or new `page.mdx` content requires a rebuild and redeploy to be reliable publicly
+- a future artifact deploy can overwrite unsynced production edits
+
+If production editor changes must be kept, copy them back to the source repo before deploying again. From the local repo root:
+
+```bash
+rsync -av 'qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/app/(post)/' 'app/(post)/'
+rsync -av 'qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/public/images/' 'public/images/'
+scp qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/posts/manifest.json posts/manifest.json
+pnpm sync:posts
+git status
+```
 
 ## Environment Warnings
 

@@ -114,6 +114,39 @@ What each command protects:
 
 If `EDITOR_ACCESS_TOKEN` is empty, `/editor` stays open locally. In production, set `EDITOR_ACCESS_TOKEN`.
 
+### Production Editor Behavior
+
+The self-hosted artifact deployment treats Git as the source of truth. The production app directory is a deployment target, not the canonical content repository.
+
+When `/editor` runs on the VPS, it reads and writes files relative to the systemd working directory:
+
+```text
+/srv/nextjs/wangqiwen-me
+```
+
+Typical editor writes:
+
+```text
+/srv/nextjs/wangqiwen-me/app/(post)/YYYY/slug/page.mdx
+/srv/nextjs/wangqiwen-me/public/images/<post-id>/...
+/srv/nextjs/wangqiwen-me/posts/manifest.json
+```
+
+Those changes do not automatically enter Git. The standalone artifact also does not include a `.git` directory, so production editor changes cannot be committed from the deployed app directory unless they are copied back to a real checkout first.
+
+Production editor changes are not a full CMS workflow:
+
+- post metadata and lists can update after `posts/manifest.json` changes
+- uploaded files under `public/images` can exist on the VPS filesystem
+- MDX post routes are compiled during `next build`, so changed or newly created `page.mdx` files usually require a rebuild and redeploy before the public article page is fully updated
+- the next artifact deploy replaces `/srv/nextjs/wangqiwen-me`, so unsynced production edits can be overwritten
+
+Recommended authoring flow:
+
+```text
+edit on local/home development machine -> commit to Git -> build artifact -> deploy to VPS
+```
+
 Relevant files:
 
 - [app/editor/page.tsx](app/editor/page.tsx)
@@ -423,6 +456,15 @@ curl -s https://wangqiwen.me/api/health
 ## 13. Operational Notes
 
 The artifact replaces the contents of `APP_DIR`. If the built-in editor changes posts or uploaded assets on the production server, sync those changes back to the source repo before the next release.
+
+Default production paths:
+
+```text
+APP_DIR=/srv/nextjs/wangqiwen-me
+ENV_FILE=/srv/nextjs/wangqiwen-me/.env.local
+SYSTEMD_UNIT=/etc/systemd/system/wangqiwen-me.service
+CADDY_SITE=/etc/caddy/Caddyfile.d/wangqiwen.me.caddy
+```
 
 Production source of truth:
 
