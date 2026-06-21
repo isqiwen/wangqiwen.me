@@ -356,13 +356,13 @@ sudo env \
   bash scripts/configure-ubuntu-site.sh
 ```
 
-Caddy 要求同一个站点地址只能定义一次。`scripts/configure-ubuntu-site.sh` 默认会接管当前站点配置：
+Caddy requires each site address to be defined only once. By default, `scripts/configure-ubuntu-site.sh` takes ownership of the current site config:
 
-- 删除 `/etc/caddy/Caddyfile` 里已存在的 `wangqiwen.me` / `www.wangqiwen.me` 顶层站点块。
-- 删除 `/etc/caddy/Caddyfile.d/` 里包含同一域名的旧 `.caddy` 片段。
-- 写入新的 `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy`，再验证并重载 Caddy。
+- remove existing top-level `wangqiwen.me` / `www.wangqiwen.me` site blocks from `/etc/caddy/Caddyfile`
+- remove old `.caddy` snippets under `/etc/caddy/Caddyfile.d/` that contain the same domain
+- write the new `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy`, then validate and reload Caddy
 
-如果想保留旧配置，不让脚本清理同域名配置，可以显式关闭：
+To keep existing config and prevent the script from cleaning same-domain definitions, disable replacement explicitly:
 
 ```bash
 sudo env \
@@ -375,13 +375,13 @@ sudo env \
   bash scripts/configure-ubuntu-site.sh
 ```
 
-如果验证仍然报：
+If validation still reports:
 
 ```text
 ambiguous site definition: wangqiwen.me
 ```
 
-说明还有脚本没有识别到的重复定义，可以查询后手动清理：
+That means a duplicate definition remains in a form the script did not recognize. Find it and remove it manually:
 
 ```bash
 sudo grep -Rni "wangqiwen.me" /etc/caddy
