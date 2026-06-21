@@ -19,7 +19,7 @@ On Ubuntu, install Node.js from NodeSource if `corepack` is missing:
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
-corepack enable
+sudo corepack enable
 ```
 
 Then check:

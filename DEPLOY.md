@@ -175,7 +175,7 @@ If the build machine reports that `corepack` is missing, install Node.js from an
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
-corepack enable
+sudo corepack enable
 ```
 
 The artifact is written to `dist/` and includes:

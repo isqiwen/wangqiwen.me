@@ -32,12 +32,26 @@ On Ubuntu, install an official Node.js package first:
 
   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
   sudo apt-get install -y nodejs
-  corepack enable
+  sudo corepack enable
 
 Then rerun:
 
   bash scripts/build-deploy-artifact.sh
 EOF
+}
+
+enable_corepack() {
+  if corepack enable >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v sudo >/dev/null 2>&1; then
+    echo "corepack enable needs elevated permissions; running sudo corepack enable."
+    sudo corepack enable
+  else
+    echo "corepack enable failed and sudo is not available." >&2
+    exit 1
+  fi
 }
 
 if [[ -s "${NVM_DIR:-${HOME}/.nvm}/nvm.sh" ]]; then
@@ -60,7 +74,7 @@ fi
 PNPM_SPEC="$(get_pnpm_spec)"
 
 if command -v corepack >/dev/null 2>&1; then
-  corepack enable
+  enable_corepack
   if [[ "${PNPM_SPEC}" == pnpm@* ]]; then
     corepack prepare "${PNPM_SPEC}" --activate
   fi
