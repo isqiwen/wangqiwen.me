@@ -54,13 +54,21 @@ pnpm sync:posts
 
 ## 3. Configure Environment Variables
 
-Copy the example file locally:
+For local development, copy the example file to `.env.local`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Then fill in the values you actually use:
+Then fill in the values you actually use locally.
+
+For production deployment, create a separate local production env file:
+
+```bash
+cp .env.example .env.production
+```
+
+Then fill `.env.production` with the production values. This file is not committed to Git because `.gitignore` excludes it.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -70,7 +78,19 @@ Then fill in the values you actually use:
 | `GEO_IP_API_KEY` | Optional | Enables `/api/geo` |
 | `EDITOR_ACCESS_TOKEN` | Optional but recommended | Locks `/editor` and its write APIs behind a browser unlock flow |
 
-The standalone deployment artifact does not include `.env`, `.env.local`, `.env.production`, or other `.env*.local` files. Put production values on the VPS and pass them to the deployment script with `ENV_FILE_PATH`.
+The standalone deployment artifact does not include `.env`, `.env.local`, `.env.production`, or other `.env*.local` files.
+
+Deployment env flow:
+
+```text
+local .env.production -> upload as /tmp/prod.env -> install as /srv/nextjs/wangqiwen-me/.env.local
+```
+
+The running systemd service reads the final server file:
+
+```text
+/srv/nextjs/wangqiwen-me/.env.local
+```
 
 ## 4. Local Verification
 
@@ -205,7 +225,15 @@ Running the standalone artifact is enough for the full dynamic app, as long as t
 
 ## 9. First-Time VPS Setup
 
-Upload the artifact and production env file from your local machine:
+Upload the artifact and production env file from your local machine.
+
+If `.env.production` does not exist yet, create and fill it first:
+
+```bash
+cp .env.example .env.production
+```
+
+Then upload it as `/tmp/prod.env`:
 
 ```bash
 scp dist/<artifact>.tar.gz qiwen@wangqiwen.me:/tmp/
@@ -293,6 +321,37 @@ sudo env \
   APP_HOST=127.0.0.1 \
   APP_PORT=3000 \
   bash scripts/configure-ubuntu-site.sh
+```
+
+Caddy 要求同一个站点地址只能定义一次。`scripts/configure-ubuntu-site.sh` 默认会接管当前站点配置：
+
+- 删除 `/etc/caddy/Caddyfile` 里已存在的 `wangqiwen.me` / `www.wangqiwen.me` 顶层站点块。
+- 删除 `/etc/caddy/Caddyfile.d/` 里包含同一域名的旧 `.caddy` 片段。
+- 写入新的 `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy`，再验证并重载 Caddy。
+
+如果想保留旧配置，不让脚本清理同域名配置，可以显式关闭：
+
+```bash
+sudo env \
+  REPLACE_EXISTING_SITE_CONFIG=0 \
+  APP_NAME=wangqiwen-me \
+  DOMAIN=wangqiwen.me \
+  SERVER_ALIASES=www.wangqiwen.me \
+  APP_HOST=127.0.0.1 \
+  APP_PORT=3000 \
+  bash scripts/configure-ubuntu-site.sh
+```
+
+如果验证仍然报：
+
+```text
+ambiguous site definition: wangqiwen.me
+```
+
+说明还有脚本没有识别到的重复定义，可以查询后手动清理：
+
+```bash
+sudo grep -Rni "wangqiwen.me" /etc/caddy
 ```
 
 ## 11. Updating An Existing VPS
