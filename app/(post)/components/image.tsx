@@ -4,6 +4,41 @@ import { readFile } from "fs/promises";
 import { Caption } from "./caption";
 import NextImage from "next/image";
 
+function formatImageFetchLabel(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url.split("?")[0];
+  }
+}
+
+async function fetchImageBuffer(url: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch image ${formatImageFetchLabel(url)}: ${response.status}`
+    );
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+function buildInternalImageUrl(src: string) {
+  const url = new URL(src, `https://${process.env.VERCEL_URL}`);
+  const imageBypassSecret = process.env.IMAGE_BOT_BYPASS_SECRET;
+  const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+  if (imageBypassSecret) {
+    url.searchParams.set("image_bot_bypass", imageBypassSecret);
+  }
+
+  if (vercelBypassSecret) {
+    url.searchParams.set("x-vercel-protection-bypass", vercelBypassSecret);
+  }
+
+  return url.toString();
+}
+
 export async function Image({
   src,
   alt: originalAlt,
@@ -24,20 +59,14 @@ export async function Image({
       let imageBuffer: Buffer | null = null;
 
       if (src.startsWith("http")) {
-        imageBuffer = Buffer.from(
-          await fetch(src).then(res => res.arrayBuffer())
-        );
+        imageBuffer = await fetchImageBuffer(src);
       } else {
         if (
           !process.env.CI &&
           process.env.VERCEL_URL &&
           process.env.NODE_ENV === "production"
         ) {
-          imageBuffer = Buffer.from(
-            await fetch("https://" + process.env.VERCEL_URL + src).then(res =>
-              res.arrayBuffer()
-            )
-          );
+          imageBuffer = await fetchImageBuffer(buildInternalImageUrl(src));
         } else {
           const localImagePath = join(
             process.cwd(),
