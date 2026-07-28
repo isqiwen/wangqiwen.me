@@ -109,7 +109,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
       fallbackData: initialViewsMap,
       revalidateOnFocus: true,
       refreshInterval: () =>
-        typeof document !== "undefined" && document.visibilityState === "visible" ? 5000 : 0,
+        typeof document !== "undefined" && document.visibilityState === "visible" ? 60000 : 0,
     },
   );
 

@@ -11,7 +11,7 @@ It includes:
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - pnpm through corepack, or an existing pnpm installation
 
 On Ubuntu, install Node.js from NodeSource if `corepack` is missing:
@@ -73,11 +73,11 @@ pwsh ./scripts/setup-dev.ps1
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `UPSTASH_REDIS_REST_URL` | Recommended | Redis REST endpoint used for view counts |
-| `UPSTASH_REDIS_REST_TOKEN` | Recommended | Redis auth token |
+| `UPSTASH_REDIS_REST_URL` | Required in production | Redis REST endpoint used for view counts |
+| `UPSTASH_REDIS_REST_TOKEN` | Required in production | Redis auth token |
 | `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Use the real Redis instance in local development |
 | `GEO_IP_API_KEY` | Optional | Enables the demo geo API route |
-| `EDITOR_ACCESS_TOKEN` | Optional | Protects `/editor` and its write APIs |
+| `EDITOR_ACCESS_TOKEN` | Required in production | Protects `/editor` and its write APIs |
 
 See [DEPLOY.md](DEPLOY.md) for where to get each value.
 
@@ -85,6 +85,7 @@ See [DEPLOY.md](DEPLOY.md) for where to get each value.
 
 - `pnpm dev` starts the local development server.
 - `pnpm lint` runs ESLint.
+- `pnpm check` validates content, lint rules, and TypeScript together.
 - `pnpm build` creates a production build.
 - `pnpm start` serves the production build.
 - `pnpm new:post --id my-post` creates a new draft post.
@@ -123,9 +124,7 @@ pnpm sync:posts
 Before shipping, verify:
 
 ```bash
-pnpm lint
-pnpm lint:posts
-pnpm sync:posts -- --check
+pnpm check
 pnpm build
 ```
 

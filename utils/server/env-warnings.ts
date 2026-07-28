@@ -50,7 +50,7 @@ export function getEnvironmentChecks(): EnvironmentCheck[] {
       message: hasEditorToken
         ? "EDITOR_ACCESS_TOKEN is configured."
         : process.env.NODE_ENV === "production"
-          ? "EDITOR_ACCESS_TOKEN is missing. /editor and its write APIs are not protected by a password."
+          ? "EDITOR_ACCESS_TOKEN is missing. /editor and its APIs are disabled in production."
           : "EDITOR_ACCESS_TOKEN is not set. /editor is currently open in local development.",
     },
     {

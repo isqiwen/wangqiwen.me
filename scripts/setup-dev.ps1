@@ -11,7 +11,10 @@ Set-Location $Root
 
 Write-Host "==> Ensuring corepack is enabled (pnpm)"
 if (-not (Get-Command corepack -ErrorAction SilentlyContinue)) {
-  Write-Error "corepack not found. Install Node.js 18+ (includes corepack) and rerun."
+  Write-Error "corepack not found. Install Node.js 20.9+ (includes corepack) and rerun."
+}
+if ([version](node -p "process.versions.node") -lt [version]"20.9.0") {
+  Write-Error "Node.js 20.9 or newer is required."
 }
 corepack enable | Out-Null
 

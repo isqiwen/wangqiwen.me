@@ -13,6 +13,7 @@ async function main() {
   const seenIds = new Map();
 
   for (const [key, entry] of entries) {
+    const [pathYear, pathId] = key.split("/");
     const { metadata, frontmatter } = entry;
     const title = metadata.title || frontmatter.title;
     const id = metadata.id || frontmatter.id;
@@ -49,6 +50,22 @@ async function main() {
 
     if (!publishedAt) {
       errors.push(`${key} is missing publishedAt`);
+    } else if (
+      typeof publishedAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(publishedAt) ||
+      !isIsoDate(publishedAt)
+    ) {
+      errors.push(`${key} has an invalid publishedAt value; use YYYY-MM-DD`);
+    } else if (publishedAt.slice(0, 4) !== pathYear) {
+      errors.push(`${key} publishedAt year does not match its directory`);
+    }
+
+    if (id && id !== pathId) {
+      errors.push(`${key} metadata id must match its directory`);
+    }
+
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathId)) {
+      errors.push(`${key} has an invalid directory slug`);
     }
 
     if (
@@ -119,3 +136,8 @@ main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });
+
+function isIsoDate(value) {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}

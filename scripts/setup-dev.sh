@@ -44,7 +44,7 @@ enable_corepack() {
 }
 
 if [[ -s "${NVM_DIR:-${HOME}/.nvm}/nvm.sh" ]]; then
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1090,SC1091
   . "${NVM_DIR:-${HOME}/.nvm}/nvm.sh"
 fi
 
@@ -55,8 +55,12 @@ fi
 
 echo "==> Ensuring Node.js and pnpm"
 if ! command -v node >/dev/null 2>&1; then
-  echo "node not found. Please install Node.js 18+."
+  echo "node not found. Please install Node.js 20.9+."
   print_node_help
+  exit 1
+fi
+if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 20 || (major === 20 && minor >= 9) ? 0 : 1)'; then
+  echo "Node.js 20.9 or newer is required. Found: $(node -v)" >&2
   exit 1
 fi
 

@@ -16,6 +16,7 @@ export const runtime = "nodejs";
 const ROOT = process.cwd();
 const IMAGES_ROOT = path.join(ROOT, "public", "images");
 const NO_STORE = { "Cache-Control": "no-store" };
+const MAX_ASSETS_PER_FOLDER = 500;
 
 type EditorAsset = {
   name: string;
@@ -97,6 +98,8 @@ async function listAssets(id: string): Promise<EditorAsset[]> {
     const files = await Promise.all(
       entries
         .filter(entry => entry.isFile())
+        .sort((left, right) => right.name.localeCompare(left.name))
+        .slice(0, MAX_ASSETS_PER_FOLDER)
         .map(async entry => {
           const absolute = path.join(targetDir, entry.name);
           const stats = await fs.stat(absolute);
@@ -104,8 +107,7 @@ async function listAssets(id: string): Promise<EditorAsset[]> {
           let height: number | null = null;
 
           try {
-            const buffer = await fs.readFile(absolute);
-            const dimensions = sizeOf(buffer);
+            const dimensions = sizeOf(absolute);
             width = dimensions.width ?? null;
             height = dimensions.height ?? null;
           } catch {
@@ -137,18 +139,26 @@ async function listAssets(id: string): Promise<EditorAsset[]> {
 
 function resolveAssetPath(publicPath: string) {
   const normalized = publicPath.replace(/\\/g, "/");
-  if (!normalized.startsWith("/images/")) {
+  const match = normalized.match(
+    /^\/images\/([a-z0-9_-]+)\/([a-zA-Z0-9][a-zA-Z0-9._-]*)$/,
+  );
+  if (!match) {
     throw new Error("Invalid path");
   }
 
-  const relative = normalized.replace(/^\/images\//, "");
+  const relative = `${match[1]}/${match[2]}`;
   return resolvePathInside(IMAGES_ROOT, relative);
 }
 
 async function cleanupEmptyParents(startDir: string) {
   let current = startDir;
 
-  while (current.startsWith(IMAGES_ROOT) && current !== IMAGES_ROOT) {
+  while (current !== IMAGES_ROOT) {
+    const relative = path.relative(IMAGES_ROOT, current);
+    if (relative === ".." || relative.startsWith(`..${path.sep}`)) {
+      return;
+    }
+
     const entries = await fs.readdir(current);
     if (entries.length > 0) {
       return;

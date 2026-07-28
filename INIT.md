@@ -92,9 +92,8 @@ Then use `/editor` to continue writing, upload images, and publish.
 Run:
 
 ```bash
-pnpm lint
-pnpm lint:posts
-pnpm sync:posts -- --check
+pnpm check
+pnpm audit --prod --audit-level high
 pnpm build
 ```
 

@@ -5,25 +5,52 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { logger } from "@/utils/logger";
 import { canPreviewDrafts } from "@/utils/server/editor-auth";
+import {
+  consumeRateLimitToken,
+  getRequestClientIp,
+} from "@/utils/server/rate-limit";
+
+const POST_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const NO_STORE = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id") ?? null;
 
-  if (id === null) {
+  if (id === null || id.length > 100 || !POST_ID_PATTERN.test(id)) {
     return NextResponse.json(
       {
         error: {
-          message: 'Missing "id" query',
-          code: "MISSING_ID",
+          message: 'Missing or invalid "id" query',
+          code: "INVALID_ID",
         },
       },
-      { status: 400 }
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  const shouldIncrement = url.searchParams.get("incr") != null;
+  const clientIp = getRequestClientIp(req);
+  const readRateLimit = consumeRateLimitToken(`view:read:${clientIp}`, {
+    limit: 120,
+    windowMs: 60 * 1000,
+  });
+  if (!readRateLimit.allowed) {
+    return NextResponse.json(
+      { error: { message: "Too many view requests.", code: "RATE_LIMITED" } },
+      {
+        status: 429,
+        headers: {
+          ...NO_STORE,
+          "Retry-After": String(readRateLimit.retryAfterSeconds),
+        },
+      },
     );
   }
 
   const post = await getPostById(id, {
     includeDrafts: await canPreviewDrafts(),
+    includeViews: false,
   });
 
   if (post == null) {
@@ -34,24 +61,30 @@ export async function GET(req: NextRequest) {
           code: "UNKNOWN_POST",
         },
       },
-      { status: 400 }
+      { status: 400, headers: NO_STORE },
     );
   }
 
-  if (url.searchParams.get("incr") != null) {
-    const views = await incrementViews(id);
+  if (shouldIncrement) {
+    const incrementRateLimit = consumeRateLimitToken(
+      `view:increment:${clientIp}:${id}`,
+      { limit: 1, windowMs: 30 * 60 * 1000 },
+    );
+    const views = incrementRateLimit.allowed
+      ? await incrementViews(id)
+      : await readViews(id);
     return NextResponse.json({
       ...post,
       views,
       viewsFormatted: commaNumber(views),
-    });
+    }, { headers: NO_STORE });
   } else {
     const views = await readViews(id);
     return NextResponse.json({
       ...post,
       views,
       viewsFormatted: commaNumber(views),
-    });
+    }, { headers: NO_STORE });
   }
 }
 

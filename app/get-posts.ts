@@ -88,6 +88,7 @@ type Views = {
 
 type GetPostsOptions = {
   includeDrafts?: boolean;
+  includeViews?: boolean;
 };
 
 const POSTS_ROOT_DIR = join(process.cwd(), "app", "(post)");
@@ -100,7 +101,6 @@ type MetadataCache = {
 };
 
 let metadataCache: MetadataCache | null = null;
-let manifestCache: { timestamp: number; data: Manifest | null } | null = null;
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -109,7 +109,10 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
 });
 
 export const getPosts = async (options: GetPostsOptions = {}) => {
-  const [metadata, allViews] = await Promise.all([loadManifestMetadata(options), loadViews()]);
+  const [metadata, allViews] = await Promise.all([
+    loadManifestMetadata(options),
+    options.includeViews === false ? Promise.resolve({}) : loadViews(),
+  ]);
 
   return metadata.map(post => buildPost(post, allViews));
 };
@@ -118,9 +121,9 @@ export const getPostById = async (
   id: string,
   options: GetPostsOptions = {},
 ): Promise<Post | null> => {
-  const views = await loadViews();
   const manifest = await getManifest();
   const match = manifest?.posts?.find(post => post.id === id);
+  const views = options.includeViews === false ? {} : await loadViews();
 
   if (match) {
     const status = normalizeStatus(match.status, match.draft, match.archived);
@@ -260,17 +263,10 @@ async function loadPostsMetadata(options: GetPostsOptions): Promise<PostMetadata
 }
 
 export async function getManifest(): Promise<Manifest | null> {
-  if (manifestCache && Date.now() - manifestCache.timestamp < METADATA_CACHE_TTL_MS) {
-    return manifestCache.data;
-  }
-
   try {
     const raw = await readFile(POSTS_MANIFEST_PATH, "utf8");
-    const data = JSON.parse(raw) as Manifest;
-    manifestCache = { timestamp: Date.now(), data };
-    return data;
+    return JSON.parse(raw) as Manifest;
   } catch {
-    manifestCache = { timestamp: Date.now(), data: null };
     return null;
   }
 }

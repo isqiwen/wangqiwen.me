@@ -11,6 +11,9 @@ import { getPrimarySocialHandle, siteConfig } from "@/utils/site-config";
 
 const fetcher = async (url: string): Promise<Post> => {
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to load post metadata: ${response.status}`);
+  }
   return response.json();
 };
 
@@ -22,7 +25,7 @@ export function Header({ posts }: { posts: Post[] }) {
 
   const { data: hydratedPost, mutate } = useSWR<Post>(viewEndpoint, fetcher, {
     fallbackData: post ?? undefined,
-    refreshInterval: post ? 5000 : 0,
+    refreshInterval: post ? 60000 : 0,
   });
 
   if (post == null || hydratedPost == null) {
@@ -89,7 +92,12 @@ function Views({
     if (!didLogViewRef.current) {
       const url = `/api/view?incr=1&id=${encodeURIComponent(id)}`;
       fetch(url)
-        .then(res => res.json())
+        .then(async res => {
+          if (!res.ok) {
+            throw new Error(`Failed to record page view: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(obj => {
           mutate(obj);
         })

@@ -1,3 +1,5 @@
+import { isIP } from "net";
+
 type RateLimitEntry = {
   count: number;
   resetAt: number;
@@ -11,6 +13,7 @@ type RateLimitResult = {
 
 const globalForRateLimit = globalThis as typeof globalThis & {
   __rateLimitStore?: Map<string, RateLimitEntry>;
+  __rateLimitOperations?: number;
 };
 
 function getStore() {
@@ -18,16 +21,42 @@ function getStore() {
     globalForRateLimit.__rateLimitStore = new Map();
   }
 
+  globalForRateLimit.__rateLimitOperations =
+    (globalForRateLimit.__rateLimitOperations ?? 0) + 1;
+  if (globalForRateLimit.__rateLimitOperations % 128 === 0) {
+    pruneExpiredEntries(globalForRateLimit.__rateLimitStore);
+  }
+
   return globalForRateLimit.__rateLimitStore;
 }
 
-export function getRequestClientIp(request: Request): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0]?.trim() || "unknown";
+function pruneExpiredEntries(store: Map<string, RateLimitEntry>) {
+  const now = Date.now();
+  for (const [key, entry] of store) {
+    if (entry.resetAt <= now) {
+      store.delete(key);
+    }
   }
 
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  const maximumEntries = 10_000;
+  while (store.size > maximumEntries) {
+    const oldestKey = store.keys().next().value;
+    if (typeof oldestKey !== "string") {
+      break;
+    }
+    store.delete(oldestKey);
+  }
+}
+
+export function getRequestClientIp(request: Request): string {
+  const forwardedIp =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+  if (isIP(forwardedIp)) {
+    return forwardedIp;
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim() ?? "";
+  return isIP(realIp) ? realIp : "unknown";
 }
 
 export function consumeRateLimitToken(

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { isIP } from "net";
 
 const API_URL = "https://api.ipgeolocation.io/ipgeo";
 
 export async function GET(req: Request) {
   const ipHeader = req.headers.get("x-forwarded-for");
-  const ip = ipHeader?.split(",")[0]?.trim() || "8.8.8.8";
+  const forwardedIp = ipHeader?.split(",")[0]?.trim() ?? "";
+  const realIp = req.headers.get("x-real-ip")?.trim() ?? "";
+  const ip = isIP(forwardedIp) ? forwardedIp : isIP(realIp) ? realIp : "";
   const apiKey = process.env.GEO_IP_API_KEY;
 
   if (!apiKey) {
@@ -19,8 +22,24 @@ export async function GET(req: Request) {
     );
   }
 
+  if (!ip) {
+    return NextResponse.json(
+      {
+        error: {
+          message: "Unable to determine the client IP address.",
+          code: "MISSING_CLIENT_IP",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   try {
-    const res = await fetch(`${API_URL}?apiKey=${apiKey}&ip=${ip}`);
+    const query = new URLSearchParams({ apiKey, ip });
+    const res = await fetch(`${API_URL}?${query}`, {
+      signal: AbortSignal.timeout(5000),
+      cache: "no-store",
+    });
 
     if (!res.ok) {
       return NextResponse.json(

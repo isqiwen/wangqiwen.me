@@ -58,11 +58,9 @@ The app exposes:
 
 - `GET /api/health`
 
-It reports:
-
-- environment configuration state for Redis, editor protection, and Geo IP
-- whether the Redis adapter responds to a lightweight runtime check
-- overall status as `ok` or `degraded`
+In production it reports only the overall `ok` or `degraded` status and a
+timestamp. Detailed environment checks remain available during development and
+are written to the server log without exposing configuration state publicly.
 
 Checks from the VPS:
 
@@ -136,9 +134,8 @@ Common split:
 
 Before release:
 
-- `pnpm lint` is green
-- `pnpm lint:posts` is green
-- `pnpm sync:posts -- --check` is green
+- `pnpm check` is green
+- `pnpm audit --prod --audit-level high` is green
 - `pnpm build` is green
 - `EDITOR_ACCESS_TOKEN` is set in production
 - Redis credentials are configured if persistent counters are required
@@ -147,8 +144,13 @@ After release:
 
 - `sudo systemctl status wangqiwen-me` shows `active (running)`
 - `/api/health` returns `200`
+- the deploy script reports `Health check passed`
 - `https://wangqiwen.me` loads from outside the VPS
 - Caddy logs do not show certificate or upstream errors
+
+Artifact deployments retain the previous app directory at
+`/srv/nextjs/.wangqiwen-me.rollback`. If the new service fails to start or does
+not pass `/api/health`, the deploy script restores that release automatically.
 
 ## Editor API Guardrails
 

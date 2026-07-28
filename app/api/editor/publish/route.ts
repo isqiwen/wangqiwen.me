@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireEditorAccess } from "@/utils/server/editor-auth";
 import { syncPostsMetadata } from "@/utils/server/sync-posts";
+import { withPostMutationLock } from "@/utils/server/post-files";
 import {
   createEditorJsonError,
   enforceEditorRateLimit,
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { stdout, stderr } = await syncPostsMetadata();
+    const { stdout, stderr } = await withPostMutationLock(syncPostsMetadata);
     logEditorInfo("publish", "Synchronized post metadata after publish.", {
       hasStdout: Boolean(stdout),
       hasStderr: Boolean(stderr),

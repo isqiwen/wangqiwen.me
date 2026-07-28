@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
+import { randomUUID } from "crypto";
 import path from "path";
 import sizeOf from "image-size";
 import { assertPathInside } from "@/utils/server/path-safety";
@@ -17,17 +18,15 @@ const ALLOWED_TYPES = new Set([
   "image/jpg",
   "image/webp",
   "image/gif",
-  "image/avif",
 ]);
-const EXT_FALLBACK: Record<string, string> = {
-  "image/png": ".png",
-  "image/jpeg": ".jpg",
-  "image/jpg": ".jpg",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-  "image/avif": ".avif",
+const DETECTED_IMAGE_TYPES: Record<string, { mime: string; extension: string }> = {
+  png: { mime: "image/png", extension: ".png" },
+  jpg: { mime: "image/jpeg", extension: ".jpg" },
+  webp: { mime: "image/webp", extension: ".webp" },
+  gif: { mime: "image/gif", extension: ".gif" },
 };
 const MAX_SIZE = 15 * 1024 * 1024; // 15MB
+const MAX_PIXELS = 100_000_000;
 
 export async function POST(req: Request) {
   const rateLimited = enforceEditorRateLimit(req, {
@@ -65,22 +64,47 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(arrayBuffer);
-    const ext =
-      path.extname(file.name).toLowerCase() ||
-      EXT_FALLBACK[file.type] ||
-      ".png";
-    const filename = buildFilename(ext);
+    let dimensions;
+    try {
+      dimensions = sizeOf(buffer);
+    } catch {
+      return NextResponse.json({ error: "invalid image data" }, { status: 415 });
+    }
+
+    const detected = dimensions.type
+      ? DETECTED_IMAGE_TYPES[dimensions.type]
+      : undefined;
+    const normalizedDeclaredType = file.type === "image/jpg" ? "image/jpeg" : file.type;
+    if (!detected || detected.mime !== normalizedDeclaredType) {
+      return NextResponse.json(
+        { error: "file content does not match its declared image type" },
+        { status: 415 },
+      );
+    }
+
+    const width = dimensions.width ?? null;
+    const height = dimensions.height ?? null;
+    if (
+      width === null ||
+      height === null ||
+      width <= 0 ||
+      height <= 0 ||
+      width * height > MAX_PIXELS
+    ) {
+      return NextResponse.json(
+        { error: "image dimensions are invalid or too large" },
+        { status: 413 },
+      );
+    }
+
+    const filename = buildFilename(detected.extension);
     const targetDir = path.join(IMAGES_ROOT, safeId);
     assertPathInside(IMAGES_ROOT, targetDir);
     const targetPath = path.join(targetDir, filename);
     assertPathInside(IMAGES_ROOT, targetPath);
 
     await mkdir(targetDir, { recursive: true });
-    await writeFile(targetPath, buffer);
-
-    const dimensions = sizeOf(buffer);
-    const width = dimensions.width ?? null;
-    const height = dimensions.height ?? null;
+    await writeFile(targetPath, buffer, { flag: "wx", mode: 0o644 });
     logEditorInfo("upload-asset", "Uploaded image asset.", {
       path: `/images/${safeId}/${filename}`,
       bytes: buffer.byteLength,
@@ -98,9 +122,7 @@ export async function POST(req: Request) {
 }
 
 function buildFilename(ext: string) {
-  const now = Date.now();
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${now}-${rand}${ext}`;
+  return `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
 }
 
 function normalizeId(value: string) {

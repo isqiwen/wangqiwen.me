@@ -57,7 +57,7 @@ enable_corepack() {
 }
 
 if [[ -s "${NVM_DIR:-${HOME}/.nvm}/nvm.sh" ]]; then
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1090,SC1091
   . "${NVM_DIR:-${HOME}/.nvm}/nvm.sh"
 fi
 
@@ -68,8 +68,12 @@ fi
 
 echo "==> Ensuring Node.js and pnpm"
 if ! command -v node >/dev/null 2>&1; then
-  echo "node not found. Install Node.js 18+ and rerun." >&2
+  echo "node not found. Install Node.js 20.9+ and rerun." >&2
   print_node_help
+  exit 1
+fi
+if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 20 || (major === 20 && minor >= 9) ? 0 : 1)'; then
+  echo "Node.js 20.9 or newer is required. Found: $(node -v)" >&2
   exit 1
 fi
 
@@ -108,7 +112,7 @@ if [[ "${BUILD_WITH_REMOTE_REDIS}" == "1" ]]; then
   pnpm build
 else
   echo "==> Disabling remote Redis for build-time rendering"
-  UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= pnpm build
+  UPSTASH_REDIS_REST_URL='' UPSTASH_REDIS_REST_TOKEN='' pnpm build
 fi
 
 if [[ ! -d ".next/standalone" ]]; then

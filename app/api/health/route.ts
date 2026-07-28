@@ -32,7 +32,7 @@ export async function GET() {
     {
       status: hasRequiredFailure ? "degraded" : "ok",
       timestamp: new Date().toISOString(),
-      checks,
+      ...(process.env.NODE_ENV === "production" ? {} : { checks }),
     },
     {
       headers: {

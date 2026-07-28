@@ -1,0 +1,172 @@
+import { randomUUID } from "crypto";
+import { promises as fs } from "fs";
+import path from "path";
+import { resolvePathInside } from "@/utils/server/path-safety";
+import { parseExportedMetadata } from "@/utils/shared/post-metadata";
+
+export const POSTS_ROOT = path.join(process.cwd(), "app", "(post)");
+export const POSTS_MANIFEST_PATH = path.join(process.cwd(), "posts", "manifest.json");
+
+const POST_FILE_PATTERN =
+  /^app\/\(post\)\/(\d{4})\/([a-z0-9]+(?:-[a-z0-9]+)*)\/page\.mdx$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_POST_BYTES = 2 * 1024 * 1024;
+
+export type ResolvedPostFile = {
+  absolutePath: string;
+  relativePath: string;
+  routePath: string;
+  year: string;
+  slug: string;
+};
+
+type PostMetadata = {
+  title?: unknown;
+  description?: unknown;
+  id?: unknown;
+  publishedAt?: unknown;
+  updatedAt?: unknown;
+  status?: unknown;
+};
+
+const globalForPostMutations = globalThis as typeof globalThis & {
+  __postMutationQueue?: Promise<void>;
+};
+
+export function resolvePostFile(inputPath: unknown): ResolvedPostFile {
+  if (typeof inputPath !== "string") {
+    throw new PostFileValidationError("path is required");
+  }
+
+  const relativePath = inputPath.replace(/\\/g, "/").replace(/^\.?\//, "");
+  const match = relativePath.match(POST_FILE_PATTERN);
+  if (!match) {
+    throw new PostFileValidationError(
+      "path must match app/(post)/YYYY/slug/page.mdx",
+    );
+  }
+
+  const [, year, slug] = match;
+  if (slug.length > 100) {
+    throw new PostFileValidationError("slug must not exceed 100 characters");
+  }
+
+  return {
+    absolutePath: resolvePathInside(POSTS_ROOT, `${year}/${slug}/page.mdx`),
+    relativePath,
+    routePath: `/${year}/${slug}`,
+    year,
+    slug,
+  };
+}
+
+export function validatePostContent(content: unknown, target: ResolvedPostFile): string {
+  if (typeof content !== "string") {
+    throw new PostFileValidationError("content is required");
+  }
+
+  if (Buffer.byteLength(content, "utf8") > MAX_POST_BYTES) {
+    throw new PostFileValidationError("post content exceeds the 2 MB limit");
+  }
+
+  const metadata = parseExportedMetadata<PostMetadata>(content);
+  if (!metadata) {
+    throw new PostFileValidationError(
+      "content must contain JSON-compatible exported metadata",
+    );
+  }
+
+  if (metadata.id !== target.slug) {
+    throw new PostFileValidationError("metadata id must match the target slug");
+  }
+
+  if (typeof metadata.title !== "string" || !metadata.title.trim()) {
+    throw new PostFileValidationError("title is required");
+  }
+
+  if (
+    typeof metadata.publishedAt !== "string" ||
+    !isIsoDate(metadata.publishedAt)
+  ) {
+    throw new PostFileValidationError("publishedAt must use YYYY-MM-DD");
+  }
+
+  if (metadata.publishedAt.slice(0, 4) !== target.year) {
+    throw new PostFileValidationError(
+      "publishedAt year must match the target directory",
+    );
+  }
+
+  if (
+    metadata.status !== "draft" &&
+    metadata.status !== "published" &&
+    metadata.status !== "archived"
+  ) {
+    throw new PostFileValidationError(
+      "status must be draft, published, or archived",
+    );
+  }
+
+  if (
+    metadata.status === "published" &&
+    (typeof metadata.description !== "string" || !metadata.description.trim())
+  ) {
+    throw new PostFileValidationError("published posts require a description");
+  }
+
+  if (
+    metadata.updatedAt != null &&
+    metadata.updatedAt !== "" &&
+    (typeof metadata.updatedAt !== "string" ||
+      Number.isNaN(Date.parse(metadata.updatedAt)))
+  ) {
+    throw new PostFileValidationError("updatedAt must be a valid date");
+  }
+
+  return content;
+}
+
+export async function writeFileAtomically(targetPath: string, content: string) {
+  const temporaryPath = path.join(
+    path.dirname(targetPath),
+    `.${path.basename(targetPath)}.${randomUUID()}.tmp`,
+  );
+
+  await fs.mkdir(path.dirname(targetPath), { recursive: true });
+  try {
+    await fs.writeFile(temporaryPath, content, {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o644,
+    });
+    await fs.rename(temporaryPath, targetPath);
+  } finally {
+    await fs.rm(temporaryPath, { force: true }).catch(() => undefined);
+  }
+}
+
+export async function withPostMutationLock<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = globalForPostMutations.__postMutationQueue ?? Promise.resolve();
+  let release: (() => void) | undefined;
+  globalForPostMutations.__postMutationQueue = new Promise<void>(resolve => {
+    release = resolve;
+  });
+
+  await previous.catch(() => undefined);
+  try {
+    return await operation();
+  } finally {
+    release?.();
+  }
+}
+
+export class PostFileValidationError extends Error {}
+
+function isIsoDate(value: string): boolean {
+  if (!ISO_DATE_PATTERN.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}

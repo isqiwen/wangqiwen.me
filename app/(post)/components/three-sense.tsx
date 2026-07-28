@@ -1,10 +1,9 @@
 "use client";
 
-import { OrbitControls, Html, useGLTF } from "@react-three/drei";
+import { Bounds, Html, OrbitControls, useGLTF } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import type { FC } from "react";
-import { Suspense, useEffect, useMemo } from "react";
-import { Box3, Group, Vector3 } from "three";
+import { Suspense, useMemo } from "react";
 import { mdxMutedTextClass, mdxPanelClass } from "./surface";
 
 interface ThreeSceneProps {
@@ -18,10 +17,6 @@ interface ThreeSceneProps {
 const Model: FC<{ modelUrl: string }> = ({ modelUrl }) => {
   const { scene } = useGLTF(modelUrl);
   const model = useMemo(() => scene.clone(), [scene]);
-
-  useEffect(() => {
-    centerAndScaleModel(model);
-  }, [model]);
 
   return <primitive object={model} />;
 };
@@ -44,8 +39,10 @@ export const ThreeScene: FC<ThreeSceneProps> = ({
           <Suspense fallback={<Html center className="text-sm text-white">Loading model...</Html>}>
             <ambientLight intensity={0.75} />
             <directionalLight position={[3, 4, 3]} intensity={1.2} />
-            <Model modelUrl={modelUrl} />
-            <OrbitControls enablePan={false} />
+            <Bounds fit clip observe margin={1.2}>
+              <Model modelUrl={modelUrl} />
+            </Bounds>
+            <OrbitControls makeDefault enablePan={false} />
           </Suspense>
         </Canvas>
       </div>
@@ -53,18 +50,3 @@ export const ThreeScene: FC<ThreeSceneProps> = ({
     </div>
   );
 };
-
-function centerAndScaleModel(model: Group) {
-  const box = new Box3().setFromObject(model);
-  const center = new Vector3();
-  const size = new Vector3();
-
-  box.getCenter(center);
-  box.getSize(size);
-
-  const maxDimension = Math.max(size.x, size.y, size.z, 1);
-  const scale = 2 / maxDimension;
-
-  model.scale.setScalar(scale);
-  model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-}

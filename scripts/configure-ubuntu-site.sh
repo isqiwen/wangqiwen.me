@@ -77,6 +77,7 @@ remove_site_blocks_from_main_caddyfile() {
   fi
 
   tmp_caddyfile="$(mktemp)"
+  # shellcheck disable=SC2016
   as_root awk -v names="${names}" '
     BEGIN {
       split(names, raw_names, /[ \t]+/)
@@ -220,7 +221,12 @@ TMP_CONFIG="$(mktemp)"
 cat > "${TMP_CONFIG}" <<EOF
 ${SITE_ADDRESSES} {
 	encode zstd gzip
-	reverse_proxy ${APP_HOST}:${APP_PORT}
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy ${APP_HOST}:${APP_PORT} {
+		header_up -X-Middleware-Subrequest
+	}
 }
 EOF
 

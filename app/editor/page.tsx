@@ -17,6 +17,10 @@ import {
   parsePendingEditorSnippet,
   PENDING_EDITOR_SNIPPET_KEY,
 } from "./pending-snippet";
+import {
+  parseExportedMetadata,
+  stripExportedMetadata,
+} from "@/utils/shared/post-metadata";
 
 type EditorSession = {
   enabled: boolean;
@@ -92,6 +96,23 @@ function buildTargetPath(publishedAt: string, id: string) {
   return `app/(post)/${year}/${id}/page.mdx`;
 }
 
+function validateEditorTarget(publishedAt: string, id: string) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id.length > 100) {
+    return "Post ID must use 1-100 lowercase letters, numbers, and single hyphens.";
+  }
+
+  const parsedDate = new Date(`${publishedAt}T00:00:00.000Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(publishedAt) ||
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== publishedAt
+  ) {
+    return "Published date must be a valid date in YYYY-MM-DD format.";
+  }
+
+  return null;
+}
+
 function normalizeAssetId(value: string) {
   const cleaned = value
     .toLowerCase()
@@ -114,13 +135,8 @@ function serializeWorkspaceSnapshot(snapshot: EditorWorkspaceSnapshot) {
 }
 
 function parseMetadataObject(content: string) {
-  const metadataMatch = content.match(/export const metadata =\s*\{([\s\S]*?)\};?/);
-  if (!metadataMatch) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(`{${metadataMatch[1]}}`) as Partial<{
+  return parseExportedMetadata<
+    Partial<{
       title: string;
       description: string;
       summary: string;
@@ -134,10 +150,8 @@ function parseMetadataObject(content: string) {
       featured: boolean;
       tags: string[] | string;
       cover: string;
-    }>;
-  } catch {
-    return null;
-  }
+    }>
+  >(content);
 }
 
 function normalizeStatus(
@@ -179,7 +193,7 @@ function normalizeBoolean(value: unknown): boolean {
 function parseEditorDocument(content: string, filePath: string): EditorDocumentState {
   const metadata = parseMetadataObject(content);
   const metadataTags = metadata?.tags;
-  const body = content.replace(/export const metadata =[\s\S]*?;\s*/, "").trimStart() || content;
+  const body = stripExportedMetadata(content).trimStart();
   const slugFallback = filePath.split("/").at(-2) ?? "my-post";
 
   return {
@@ -816,6 +830,12 @@ function EditorWorkspace({
     successHint?: string;
   } = {}) {
     try {
+      const targetError = validateEditorTarget(publishedAt, id);
+      if (targetError) {
+        showFeedback(targetError, "error");
+        return false;
+      }
+
       const nextStatus = options.statusOverride ?? status;
       const content = buildMdxContent({
         title,
@@ -835,7 +855,11 @@ function EditorWorkspace({
       const res = await fetch("/api/editor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: targetPath, content }),
+        body: JSON.stringify({
+          path: targetPath,
+          previousPath: activePath,
+          content,
+        }),
       });
 
       if (res.status === 401) {
@@ -1661,7 +1685,7 @@ function EditorWorkspace({
                 <input
                   ref={assetInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
                   className="hidden"
                   onChange={event => {
                     const file = event.target.files?.[0];

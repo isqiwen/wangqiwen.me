@@ -15,8 +15,12 @@ SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
 APP_DIR="${APP_DIR:-${SERVICE_HOME}/${APP_NAME}}"
 APP_PORT="${APP_PORT:-3000}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
+HEALTHCHECK_URL="${HEALTHCHECK_URL:-http://${APP_HOST}:${APP_PORT}/api/health}"
+HEALTHCHECK_ATTEMPTS="${HEALTHCHECK_ATTEMPTS:-30}"
+HEALTHCHECK_DELAY_SECONDS="${HEALTHCHECK_DELAY_SECONDS:-2}"
 ARTIFACT_TARBALL="${ARTIFACT_TARBALL:-${1:-}}"
 STAGE_DIR=""
+ROLLBACK_DIR=""
 
 SUDO_BIN=""
 if [[ "${EUID}" -ne 0 ]]; then
@@ -35,7 +39,7 @@ as_user() {
   local user="$1"
   shift
   if command -v sudo >/dev/null 2>&1; then
-    as_root sudo -u "${user}" -H "$@"
+    sudo -u "${user}" -H "$@"
   elif [[ "${EUID}" -eq 0 ]]; then
     runuser -u "${user}" -- "$@"
   else
@@ -49,10 +53,21 @@ shell_quote() {
 }
 
 assert_safe_paths() {
+  APP_DIR="$(realpath -m -- "${APP_DIR}")"
+  SERVICE_HOME="$(realpath -m -- "${SERVICE_HOME}")"
+
   case "${APP_DIR}" in
     /srv/*) ;;
     *)
       echo "Refusing to deploy outside /srv: ${APP_DIR}" >&2
+      exit 1
+      ;;
+  esac
+
+  case "${SERVICE_HOME}" in
+    /srv/*) ;;
+    *)
+      echo "Refusing to use a service home outside /srv: ${SERVICE_HOME}" >&2
       exit 1
       ;;
   esac
@@ -116,24 +131,83 @@ TimeoutStopSec=30
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
 ReadWritePaths=${APP_DIR} ${SERVICE_HOME}/shared ${SERVICE_HOME}/logs
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-  as_root install -m 0644 -o root -g root "${tmp_unit}" "${unit_file}"
-  rm -f "${tmp_unit}"
+  as_root install -m 0644 -o root -g root "${tmp_unit}" "${unit_file}" || return
+  rm -f "${tmp_unit}" || return
 
   echo "==> Reloading systemd"
-  as_root systemctl daemon-reload
-  as_root systemctl enable "${SYSTEMD_SERVICE_NAME}.service" >/dev/null
+  as_root systemctl daemon-reload || return
+  as_root systemctl enable "${SYSTEMD_SERVICE_NAME}.service" >/dev/null || return
 }
 
 restart_service() {
   echo "==> Restarting ${SYSTEMD_SERVICE_NAME}.service"
   as_root systemctl restart "${SYSTEMD_SERVICE_NAME}.service"
-  as_root systemctl --no-pager --full status "${SYSTEMD_SERVICE_NAME}.service" || true
+  as_root systemctl is-active --quiet "${SYSTEMD_SERVICE_NAME}.service"
+}
+
+wait_for_health() {
+  local attempt
+
+  echo "==> Waiting for ${HEALTHCHECK_URL}"
+  for ((attempt = 1; attempt <= HEALTHCHECK_ATTEMPTS; attempt += 1)); do
+    if curl --fail --silent --show-error --max-time 5 "${HEALTHCHECK_URL}" >/dev/null; then
+      echo "==> Health check passed"
+      return 0
+    fi
+    sleep "${HEALTHCHECK_DELAY_SECONDS}"
+  done
+
+  echo "Health check failed after ${HEALTHCHECK_ATTEMPTS} attempts." >&2
+  return 1
+}
+
+validate_artifact_entries() {
+  local invalid_entry
+
+  invalid_entry="$(
+    tar -tzf "${ARTIFACT_TARBALL}" |
+      awk '/^\// || /(^|\/)\.\.(\/|$)/ { print }'
+  )"
+  if [[ -n "${invalid_entry}" ]]; then
+    echo "Invalid artifact path: ${invalid_entry}" >&2
+    return 1
+  fi
+}
+
+rollback_artifact() {
+  echo "==> Deployment failed; restoring the previous release" >&2
+  as_root systemctl stop "${SYSTEMD_SERVICE_NAME}.service" || true
+  as_root rm -rf "${APP_DIR}"
+
+  if [[ -n "${ROLLBACK_DIR}" ]] && as_root test -d "${ROLLBACK_DIR}"; then
+    as_root mv "${ROLLBACK_DIR}" "${APP_DIR}"
+    ROLLBACK_DIR=""
+    as_root systemctl restart "${SYSTEMD_SERVICE_NAME}.service"
+    if ! wait_for_health; then
+      echo "Previous release was restored but did not pass its health check." >&2
+      return 1
+    fi
+    echo "==> Previous release restored"
+    return 0
+  fi
+
+  echo "No previous release was available to restore." >&2
+  return 1
 }
 
 deploy_artifact() {
@@ -156,6 +230,7 @@ deploy_artifact() {
   as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${SERVICE_HOME}/shared"
   as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${SERVICE_HOME}/logs"
 
+  validate_artifact_entries
   STAGE_DIR="$(as_root mktemp -d "${parent_dir}/.${app_basename}.stage.XXXXXX")"
   cleanup_stage() {
     if [[ -n "${STAGE_DIR}" ]]; then
@@ -175,17 +250,27 @@ deploy_artifact() {
     preserve_env_files "${APP_DIR}" "${STAGE_DIR}"
   fi
 
-  as_root rm -rf "${APP_DIR}"
+  ROLLBACK_DIR="${parent_dir}/.${app_basename}.rollback"
+  as_root rm -rf "${ROLLBACK_DIR}"
+  if as_root test -d "${APP_DIR}"; then
+    as_root mv "${APP_DIR}" "${ROLLBACK_DIR}"
+  fi
   as_root mv "${STAGE_DIR}" "${APP_DIR}"
   STAGE_DIR=""
   trap - EXIT
 
-  as_root chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
-
-  write_systemd_unit "/usr/bin/node ${APP_DIR}/server.js"
-  restart_service
+  if ! as_root chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}" ||
+    ! write_systemd_unit "/usr/bin/node ${APP_DIR}/server.js" ||
+    ! restart_service ||
+    ! wait_for_health; then
+    rollback_artifact || true
+    exit 1
+  fi
 
   echo "==> Artifact deploy complete"
+  if [[ -n "${ROLLBACK_DIR}" ]] && as_root test -d "${ROLLBACK_DIR}"; then
+    echo "    previous release: ${ROLLBACK_DIR}"
+  fi
 }
 
 deploy_source() {
@@ -206,6 +291,7 @@ deploy_source() {
 
   write_systemd_unit "/usr/bin/env pnpm start -- --hostname ${APP_HOST} --port ${APP_PORT}"
   restart_service
+  wait_for_health
 
   echo "==> Source deploy complete"
 }

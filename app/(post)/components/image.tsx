@@ -3,6 +3,15 @@ import { join } from "path";
 import { readFile } from "fs/promises";
 import { Caption } from "./caption";
 import NextImage from "next/image";
+import { resolvePathInside } from "@/utils/server/path-safety";
+
+const MAX_REMOTE_IMAGE_BYTES = 20 * 1024 * 1024;
+const REMOTE_IMAGE_HOSTS = new Set([
+  "pbs.twimg.com",
+  "abs.twimg.com",
+  "m.media-amazon.com",
+  "images-na.ssl-images-amazon.com",
+]);
 
 function formatImageFetchLabel(url: string) {
   try {
@@ -14,13 +23,59 @@ function formatImageFetchLabel(url: string) {
 }
 
 async function fetchImageBuffer(url: string) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch image ${formatImageFetchLabel(url)}: ${response.status}`
-    );
+  const parsedUrl = new URL(url);
+  const internalImageHost = process.env.VERCEL_URL?.trim().toLowerCase() ?? "";
+  if (
+    parsedUrl.protocol !== "https:" ||
+    (!REMOTE_IMAGE_HOSTS.has(parsedUrl.hostname) &&
+      parsedUrl.hostname.toLowerCase() !== internalImageHost)
+  ) {
+    throw new Error(`Remote image host is not allowed: ${parsedUrl.hostname}`);
   }
-  return Buffer.from(await response.arrayBuffer());
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
+  try {
+    const response = await fetch(parsedUrl, {
+      signal: controller.signal,
+      redirect: "error",
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch image ${formatImageFetchLabel(url)}: ${response.status}`,
+      );
+    }
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_REMOTE_IMAGE_BYTES) {
+      throw new Error("Remote image exceeds the 20 MB limit.");
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("Remote image response has no body.");
+    }
+
+    const chunks: Uint8Array[] = [];
+    let receivedBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_REMOTE_IMAGE_BYTES) {
+        await reader.cancel();
+        throw new Error("Remote image exceeds the 20 MB limit.");
+      }
+      chunks.push(value);
+    }
+
+    return Buffer.concat(chunks);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function buildInternalImageUrl(src: string) {
@@ -68,10 +123,10 @@ export async function Image({
         ) {
           imageBuffer = await fetchImageBuffer(buildInternalImageUrl(src));
         } else {
-          const localImagePath = join(
-            process.cwd(),
-            "public",
-            src.startsWith("/") ? src.slice(1) : src
+          const publicRoot = join(process.cwd(), "public");
+          const localImagePath = resolvePathInside(
+            publicRoot,
+            src.startsWith("/") ? src.slice(1) : src,
           );
           imageBuffer = await readFile(localImagePath);
         }

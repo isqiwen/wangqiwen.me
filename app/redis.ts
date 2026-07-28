@@ -4,6 +4,10 @@ import { logger } from "@/utils/logger";
 type RedisLike = {
   hgetall: (key: string) => Promise<Record<string, string> | null>;
   hget: (key: string, field: string) => Promise<string | null>;
+  hmget: (
+    key: string,
+    ...fields: string[]
+  ) => Promise<Record<string, string | null> | null>;
   hincrby: (key: string, field: string, increment: number) => Promise<number>;
   set: (key: string, value: unknown) => Promise<unknown>;
   get: (key: string) => Promise<unknown | null>;
@@ -58,6 +62,12 @@ function createMockRedis(): RedisLike {
     },
     async hget(key, field) {
       return hashStore.get(key)?.get(field) ?? null;
+    },
+    async hmget(key, ...fields) {
+      const map = hashStore.get(key);
+      return Object.fromEntries(
+        fields.map(field => [field, map?.get(field) ?? null]),
+      );
     },
     async hincrby(key, field, increment) {
       const map = ensureHash(key);

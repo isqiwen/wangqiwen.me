@@ -1,11 +1,12 @@
+import { promises as fs } from "fs";
+import path from "path";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import manifest from "@/posts/manifest.json";
 import {
   editorAccessCookieName,
   hashEditorAccessToken,
 } from "@/utils/shared/editor-access";
-import { setCustomHeaders } from "@/utils/server/response-helpers";
+import { logger } from "@/utils/logger";
 
 type ManifestPost = {
   status?: "draft" | "published" | "archived" | string;
@@ -14,28 +15,20 @@ type ManifestPost = {
   path?: string;
 };
 
+type Manifest = {
+  posts?: ManifestPost[];
+};
+
+export const config = {
+  runtime: "nodejs",
+};
+
+const POSTS_MANIFEST_PATH = path.join(process.cwd(), "posts", "manifest.json");
+const POST_ROUTE_PATTERN = /^\/\d{4}\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const configuredEditorAccessToken = process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
 const configuredEditorAccessHashPromise = configuredEditorAccessToken
   ? hashEditorAccessToken(configuredEditorAccessToken)
   : null;
-const englishPosts: ManifestPost[] = ((manifest as { posts?: ManifestPost[] }).posts ?? []);
-const draftPostPaths = new Set(
-  englishPosts
-    .filter(post => normalizeStatus(post) === "draft" && typeof post.path === "string")
-    .map(post => normalizePathname(post.path as string)),
-);
-const archivedPostPaths = new Set(
-  englishPosts
-    .filter(post => normalizeStatus(post) === "archived" && typeof post.path === "string")
-    .map(post => normalizePathname(post.path as string)),
-);
-
-function createResponse(response: NextResponse, startedAt: number): NextResponse {
-  return setCustomHeaders(response, {
-    "x-edge-age": String(Date.now() - startedAt),
-    "x-powered-by": "Next.js",
-  });
-}
 
 function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") {
@@ -71,27 +64,54 @@ async function canPreviewDraftRequest(req: NextRequest): Promise<boolean> {
   }
 
   const cookieValue = req.cookies.get(editorAccessCookieName)?.value ?? "";
-  if (!cookieValue) {
-    return false;
+  return Boolean(cookieValue) && cookieValue === (await configuredEditorAccessHashPromise);
+}
+
+async function loadPost(pathname: string): Promise<ManifestPost | null> {
+  const source = await fs.readFile(POSTS_MANIFEST_PATH, "utf8");
+  const manifest = JSON.parse(source) as Manifest;
+  if (!Array.isArray(manifest.posts)) {
+    throw new Error("Post manifest does not contain a posts array.");
   }
 
-  return cookieValue === (await configuredEditorAccessHashPromise);
+  return (
+    manifest.posts.find(
+      post =>
+        typeof post.path === "string" &&
+        normalizePathname(post.path) === pathname,
+    ) ?? null
+  );
 }
 
 export async function middleware(req: NextRequest) {
-  const startedAt = Date.now();
-  const pathname = normalizePathname(new URL(req.url).pathname);
-  const respond = (response: NextResponse) => createResponse(response, startedAt);
-
-  if (/^\/\d{4}\//.test(pathname)) {
-    if (archivedPostPaths.has(pathname)) {
-      return respond(new NextResponse("Not Found", { status: 404 }));
-    }
-
-    if (draftPostPaths.has(pathname) && !(await canPreviewDraftRequest(req))) {
-      return respond(new NextResponse("Not Found", { status: 404 }));
-    }
+  const pathname = normalizePathname(req.nextUrl.pathname);
+  if (!POST_ROUTE_PATTERN.test(pathname)) {
+    return NextResponse.next();
   }
 
-  return respond(NextResponse.next());
+  try {
+    const post = await loadPost(pathname);
+    if (!post) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
+
+    const status = normalizeStatus(post);
+    if (status === "archived") {
+      return new NextResponse("Not Found", { status: 404 });
+    }
+
+    if (status === "draft" && !(await canPreviewDraftRequest(req))) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    logger.error("[middleware] Failed to load the post manifest.", error);
+    return new NextResponse("Post index is temporarily unavailable.", {
+      status: 503,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 }

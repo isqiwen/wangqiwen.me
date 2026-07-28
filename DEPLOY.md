@@ -72,11 +72,11 @@ Then fill `.env.production` with the production values. This file is not committ
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `UPSTASH_REDIS_REST_URL` | Recommended | View counts and Redis-backed caching |
-| `UPSTASH_REDIS_REST_TOKEN` | Recommended | Auth token for Upstash Redis |
+| `UPSTASH_REDIS_REST_URL` | Required in production | View counts and Redis-backed caching |
+| `UPSTASH_REDIS_REST_TOKEN` | Required in production | Auth token for Upstash Redis |
 | `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Force real Redis in development |
 | `GEO_IP_API_KEY` | Optional | Enables `/api/geo` |
-| `EDITOR_ACCESS_TOKEN` | Optional but recommended | Locks `/editor` and its write APIs behind a browser unlock flow |
+| `EDITOR_ACCESS_TOKEN` | Required in production | Locks `/editor` and its write APIs behind a browser unlock flow |
 
 The standalone deployment artifact does not include `.env`, `.env.local`, `.env.production`, or other `.env*.local` files.
 
@@ -97,17 +97,15 @@ The running systemd service reads the final server file:
 Before deploying, run:
 
 ```bash
-pnpm lint
-pnpm lint:posts
-pnpm sync:posts -- --check
+pnpm check
+pnpm audit --prod --audit-level high
 pnpm build
 ```
 
 What each command protects:
 
-- `pnpm lint`: catches code, JSX, and accessibility issues
-- `pnpm lint:posts`: verifies post metadata
-- `pnpm sync:posts -- --check`: ensures `posts/manifest.json` is in sync
+- `pnpm check`: validates code, types, post metadata, and manifest consistency
+- `pnpm audit --prod --audit-level high`: blocks known high-severity runtime dependency issues
 - `pnpm build`: validates production compilation and route generation
 
 ## 5. Editor Access
@@ -410,6 +408,11 @@ sudo env \
   ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
   bash scripts/provision-ubuntu.sh
 ```
+
+The artifact deployment keeps the previous release until the new service
+passes `http://127.0.0.1:3000/api/health`. A failed start or health check
+automatically restores and restarts the previous release. The retained release
+is stored at `/srv/nextjs/.wangqiwen-me.rollback` by default.
 
 Re-run the Caddy step only when the domain, aliases, app host, or app port changes:
 

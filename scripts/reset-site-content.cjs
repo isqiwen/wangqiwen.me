@@ -22,9 +22,17 @@ async function main() {
     return;
   }
 
-  spawnSync("node", ["scripts/backup-content.cjs"], {
+  const backup = spawnSync(process.execPath, ["scripts/backup-content.cjs"], {
     stdio: "inherit",
   });
+  if (backup.error) {
+    throw new Error(`Content backup could not start: ${backup.error.message}`);
+  }
+  if (backup.status !== 0) {
+    throw new Error(
+      `Content backup failed with exit code ${backup.status}. Reset was cancelled.`,
+    );
+  }
 
   const postEntries = await safeReadDir(POSTS_ROOT);
   for (const entry of postEntries) {

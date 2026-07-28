@@ -65,7 +65,10 @@ as_root() {
 prepare_artifact() {
   local artifact_source="$1"
   local incoming_dir="${SERVICE_HOME}/shared/incoming"
-  local target_path="${incoming_dir}/$(basename "${artifact_source}")"
+  local artifact_name
+  local target_path
+  artifact_name="$(basename "${artifact_source}")"
+  target_path="${incoming_dir}/${artifact_name}"
 
   as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${incoming_dir}"
   as_root cp "${artifact_source}" "${target_path}"
@@ -76,7 +79,10 @@ prepare_artifact() {
 
 download_artifact() {
   local incoming_dir="${SERVICE_HOME}/shared/incoming"
-  local target_path="${incoming_dir}/artifact-$(date +%Y%m%d%H%M%S).tar.gz"
+  local timestamp
+  local target_path
+  timestamp="$(date +%Y%m%d%H%M%S)"
+  target_path="${incoming_dir}/artifact-${timestamp}.tar.gz"
 
   as_root install -d -o "${SERVICE_USER}" -g "${SERVICE_USER}" -m 0755 "${incoming_dir}"
   as_root curl -fL "${ARTIFACT_URL}" -o "${target_path}"

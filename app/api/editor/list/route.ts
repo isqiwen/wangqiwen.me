@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 import {
   createEditorJsonError,
   enforceEditorRateLimit,
@@ -13,7 +14,6 @@ const NO_STORE = { "Cache-Control": "no-store" };
 
 const ROOT = process.cwd();
 const BASE_DIR = path.join(ROOT, "app", "(post)");
-const METADATA_PATTERN = /export const metadata =\s*\{([\s\S]*?)\};?/;
 
 type EditorFileEntry = {
   path: string;
@@ -59,6 +59,10 @@ async function collectFiles() {
 
 async function walk(dir: string, bucket: EditorFileEntry[]) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
+  const depth = path
+    .relative(BASE_DIR, dir)
+    .split(path.sep)
+    .filter(Boolean).length;
 
   const enriched = await Promise.all(
     entries.map(async entry => {
@@ -97,11 +101,21 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
 
   for (const { entry, abs, mtime } of enriched) {
     if (entry.isDirectory()) {
-      if (dir === BASE_DIR && !/^\d{4}$/.test(entry.name)) {
+      if (depth === 0 && !/^\d{4}$/.test(entry.name)) {
+        continue;
+      }
+      if (
+        depth === 1 &&
+        (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name) ||
+          entry.name.length > 100)
+      ) {
+        continue;
+      }
+      if (depth >= 2) {
         continue;
       }
       await walk(abs, bucket);
-    } else if (entry.isFile() && entry.name === "page.mdx") {
+    } else if (depth === 2 && entry.isFile() && entry.name === "page.mdx") {
       const rel = path.relative(ROOT, abs);
       const normalizedRel = rel.replace(/\\/g, "/");
       const label = normalizedRel.replace(/^app\/\(post\)\//, "");
@@ -120,20 +134,13 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
 }
 
 function extractMetadata(content: string) {
-  const match = content.match(METADATA_PATTERN);
-  if (!match) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(`{${match[1]}}`) as Partial<{
+  return parseExportedMetadata<
+    Partial<{
       status: "draft" | "published" | "archived";
       draft: boolean;
       archived: boolean;
-    }>;
-  } catch {
-    return null;
-  }
+    }>
+  >(content);
 }
 
 function normalizeStatus(

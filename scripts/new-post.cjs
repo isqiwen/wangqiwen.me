@@ -113,8 +113,19 @@ By default, new posts are created as drafts.`);
   }
 
   const slug = args.slug.trim();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 100) {
+    throw new Error(
+      "Invalid slug. Use 1-100 lowercase letters, numbers, and single hyphens.",
+    );
+  }
+  if (args.date && !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+    throw new Error("Invalid date. Use YYYY-MM-DD.");
+  }
   const dateValue = args.date ? new Date(args.date) : new Date();
-  if (Number.isNaN(dateValue.getTime())) {
+  if (
+    Number.isNaN(dateValue.getTime()) ||
+    (args.date && dateValue.toISOString().slice(0, 10) !== args.date)
+  ) {
     throw new Error("Invalid date. Use YYYY-MM-DD.");
   }
 
@@ -153,9 +164,19 @@ By default, new posts are created as drafts.`);
   await createPostFile(year, slug, metadata, "");
   console.log(`Created post: ${year}/${slug}`);
 
-  spawnSync("node", ["scripts/normalize-post-metadata.cjs", "--silent"], {
-    stdio: "inherit",
-  });
+  const sync = spawnSync(
+    process.execPath,
+    ["scripts/normalize-post-metadata.cjs", "--silent"],
+    {
+      stdio: "inherit",
+    },
+  );
+  if (sync.error) {
+    throw new Error(`Post metadata sync could not start: ${sync.error.message}`);
+  }
+  if (sync.status !== 0) {
+    throw new Error(`Post was created, but metadata sync failed with exit code ${sync.status}.`);
+  }
   console.log("Post metadata synchronized and manifest updated.");
 }
 
