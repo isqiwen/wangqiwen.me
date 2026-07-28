@@ -2,7 +2,6 @@ import redis from "./redis";
 import commaNumber from "comma-number";
 import { join } from "path";
 import { readdir, readFile, stat } from "fs/promises";
-import { runInNewContext } from "vm";
 import { logger } from "@/utils/logger";
 
 export type PostStatus = "draft" | "published" | "archived";
@@ -356,7 +355,7 @@ function parseExportedMetadata(fileContents: string): Frontmatter {
   }
 
   try {
-    const metadata = runInNewContext(`(${objectLiteral})`);
+    const metadata = JSON.parse(objectLiteral);
     if (!metadata || typeof metadata !== "object") {
       return {};
     }

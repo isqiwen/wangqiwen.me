@@ -126,9 +126,7 @@ function extractMetadata(content: string) {
   }
 
   try {
-    // Reuse the same loose metadata shape as the editor. Files are trusted local MDX.
-    // eslint-disable-next-line no-new-func
-    return new Function(`return ({${match[1]}});`)() as Partial<{
+    return JSON.parse(`{${match[1]}}`) as Partial<{
       status: "draft" | "published" | "archived";
       draft: boolean;
       archived: boolean;

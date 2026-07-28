@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json(
     {
-      enabled: isEditorProtectionEnabled(),
+      enabled: isEditorProtectionEnabled() || process.env.NODE_ENV === "production",
       authorized: await isEditorAuthorized(),
     },
     { headers: NO_STORE },
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     return rateLimited;
   }
 
-  if (!isEditorProtectionEnabled()) {
+  if (!isEditorProtectionEnabled() && process.env.NODE_ENV !== "production") {
     return NextResponse.json(
       { enabled: false, authorized: true },
       { headers: NO_STORE },

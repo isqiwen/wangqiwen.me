@@ -1,6 +1,5 @@
 const { join } = require("path");
 const { readdir, readFile, writeFile, stat, mkdir } = require("fs/promises");
-const { runInNewContext } = require("vm");
 
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 const POSTS_MANIFEST_DIR = join(process.cwd(), "posts");
@@ -143,7 +142,7 @@ function parseMetadata(source) {
   if (!literal) return {};
 
   try {
-    const metadata = runInNewContext(`(${literal})`);
+    const metadata = JSON.parse(literal);
     if (!metadata || typeof metadata !== "object") {
       return {};
     }

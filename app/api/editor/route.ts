@@ -150,9 +150,7 @@ function extractMetadata(content: string) {
   }
 
   try {
-    // Editor files are local trusted MDX documents.
-    // eslint-disable-next-line no-new-func
-    const metadata = new Function(`return ({${match[1]}});`)() as Partial<{
+    const metadata = JSON.parse(`{${match[1]}}`) as Partial<{
       status: "draft" | "published" | "archived";
       draft: boolean;
       archived: boolean;

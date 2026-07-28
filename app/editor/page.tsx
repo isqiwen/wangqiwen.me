@@ -120,8 +120,7 @@ function parseMetadataObject(content: string) {
   }
 
   try {
-    // eslint-disable-next-line no-new-func
-    return new Function(`return ({${metadataMatch[1]}});`)() as Partial<{
+    return JSON.parse(`{${metadataMatch[1]}}`) as Partial<{
       title: string;
       description: string;
       summary: string;

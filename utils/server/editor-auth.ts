@@ -13,6 +13,10 @@ function getConfiguredToken(): string {
   return process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
 }
 
+function allowOpenEditorAccess(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
 function safeCompare(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -79,7 +83,7 @@ export function isValidEditorToken(token: string): boolean {
   const expectedToken = getConfiguredToken();
 
   if (!expectedToken) {
-    return true;
+    return allowOpenEditorAccess();
   }
 
   return safeCompare(token.trim(), expectedToken);
@@ -87,7 +91,7 @@ export function isValidEditorToken(token: string): boolean {
 
 export async function isEditorAuthorized(): Promise<boolean> {
   if (!isEditorProtectionEnabled()) {
-    return true;
+    return allowOpenEditorAccess();
   }
 
   const cookieStore = await cookies();
@@ -102,8 +106,12 @@ export async function requireEditorAccess() {
     return null;
   }
 
+  const error = isEditorProtectionEnabled()
+    ? "editor access denied"
+    : "editor access is not configured";
+
   return NextResponse.json(
-    { error: "editor access denied" },
+    { error },
     { status: 401, headers: NO_STORE },
   );
 }
