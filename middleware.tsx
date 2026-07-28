@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
@@ -7,6 +5,7 @@ import {
   hashEditorAccessToken,
 } from "@/utils/shared/editor-access";
 import { logger } from "@/utils/logger";
+import manifest from "@/posts/manifest.json";
 
 type ManifestPost = {
   status?: "draft" | "published" | "archived" | string;
@@ -19,12 +18,8 @@ type Manifest = {
   posts?: ManifestPost[];
 };
 
-export const config = {
-  runtime: "nodejs",
-};
-
-const POSTS_MANIFEST_PATH = path.join(process.cwd(), "posts", "manifest.json");
 const POST_ROUTE_PATTERN = /^\/\d{4}\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const postsManifest = manifest as Manifest;
 const configuredEditorAccessToken = process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
 const configuredEditorAccessHashPromise = configuredEditorAccessToken
   ? hashEditorAccessToken(configuredEditorAccessToken)
@@ -67,15 +62,13 @@ async function canPreviewDraftRequest(req: NextRequest): Promise<boolean> {
   return Boolean(cookieValue) && cookieValue === (await configuredEditorAccessHashPromise);
 }
 
-async function loadPost(pathname: string): Promise<ManifestPost | null> {
-  const source = await fs.readFile(POSTS_MANIFEST_PATH, "utf8");
-  const manifest = JSON.parse(source) as Manifest;
-  if (!Array.isArray(manifest.posts)) {
+function loadPost(pathname: string): ManifestPost | null {
+  if (!Array.isArray(postsManifest.posts)) {
     throw new Error("Post manifest does not contain a posts array.");
   }
 
   return (
-    manifest.posts.find(
+    postsManifest.posts.find(
       post =>
         typeof post.path === "string" &&
         normalizePathname(post.path) === pathname,
@@ -90,7 +83,7 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    const post = await loadPost(pathname);
+    const post = loadPost(pathname);
     if (!post) {
       return new NextResponse("Not Found", { status: 404 });
     }

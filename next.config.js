@@ -6,6 +6,7 @@ const withMDX = require("@next/mdx")({
 
 module.exports = withMDX({
   output: "standalone",
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
   poweredByHeader: false,
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   experimental: {
