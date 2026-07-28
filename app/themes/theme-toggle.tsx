@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import va from "@vercel/analytics";
 import { uiCopy } from "@/utils/ui-copy";
 import { themeEffect } from "./theme-effect";
 
@@ -82,10 +81,6 @@ export function ThemeToggle() {
           localStorage.setItem("userThemePreference", newPreference);
           setPreference(newPreference);
           setCurrentTheme(themeEffect());
-
-          va.track("Theme toggle", {
-            Theme: newPreference,
-          });
         }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => {

@@ -1,483 +1,137 @@
-# Deployment Guide
+# VPS Deployment
 
-This project can run on Vercel or on an Ubuntu VPS. The self-hosted production path is:
-
-1. build a Next.js standalone artifact on a development machine or CI runner
-2. upload the artifact to the VPS
-3. run the app with systemd
-4. expose the site with Caddy
-
-Secrets and deployment-only values belong in `.env.local` on the server or in the hosting platform's secret manager.
-
-## 1. Rebrand The Site
-
-Public branding and profile information live in [site.config.js](site.config.js).
-
-Update these areas first:
-
-- `site.name`, `site.title`, `site.domain`, `site.url`, `site.description`
-- `author.name`, `author.tagline`, `author.location`
-- `author.images.avatar`, `author.images.avatarMuted`
-- `social.primary`, `social.github`
-- `project.sourceUrl`
-- `navigation.headerLinks`, `navigation.followLabel`
-- `home.*`
-- `footer.*`
-- `about.en`
-- `opengraph.profileHighlights`
-
-Once these values change, the following parts of the app follow automatically:
-
-- global metadata and SEO
-- header and footer identity
-- About page
-- feed metadata
-- Open Graph images
-- post share cards
-
-## 2. Replace Personal Content
-
-For a full white-label deployment, also review:
-
-- `app/(post)/...` for posts and demos
-- `links.json` for short-link cards
-- `public/images/...` for portraits and article assets
-- sample articles that still reference the original author, company, or domain
-
-To reset content first:
-
-```bash
-pnpm reset:content -- --force
-pnpm new:post --id my-first-post
-pnpm sync:posts
-```
-
-## 3. Configure Environment Variables
-
-For local development, copy the example file to `.env.local`:
-
-```bash
-cp .env.example .env.local
-```
-
-Then fill in the values you actually use locally.
-
-For production deployment, create a separate local production env file:
-
-```bash
-cp .env.example .env.production
-```
-
-Then fill `.env.production` with the production values. This file is not committed to Git because `.gitignore` excludes it.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `UPSTASH_REDIS_REST_URL` | Required in production | View counts and Redis-backed caching |
-| `UPSTASH_REDIS_REST_TOKEN` | Required in production | Auth token for Upstash Redis |
-| `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Force real Redis in development |
-| `GEO_IP_API_KEY` | Optional | Enables `/api/geo` |
-| `EDITOR_ACCESS_TOKEN` | Required in production | Locks `/editor` and its write APIs behind a browser unlock flow |
-
-The standalone deployment artifact does not include `.env`, `.env.local`, `.env.production`, or other `.env*.local` files.
-
-Deployment env flow:
+The recommended VPS path is intentionally one-directional:
 
 ```text
-local .env.production -> upload as /tmp/prod.env -> install as /srv/nextjs/wangqiwen-me/.env.local
+local/CI Linux build -> tarball upload -> systemd restart -> Caddy proxy
 ```
 
-The running systemd service reads the final server file:
+Do not run `next build` on the small VPS. Build the standalone artifact before it reaches the server.
+
+## Normal Release
+
+From the repo root:
+
+```bash
+pnpm deploy:vps
+```
+
+That command uses these defaults:
+
+| Setting | Default |
+| --- | --- |
+| SSH target | `qiwen@wangqiwen.me` |
+| Domain | `wangqiwen.me` |
+| Alias | `www.wangqiwen.me` |
+| App name | `wangqiwen-me` |
+| Service user | `nextjs` |
+| App directory | `/srv/nextjs/wangqiwen-me` |
+| App listener | `127.0.0.1:3000` |
+| Production env source | `.env.production`, unless `UPLOAD_ENV=0` |
+
+Override only what changes:
+
+```bash
+DEPLOY_HOST=qiwen@1.2.3.4 pnpm deploy:vps
+```
+
+## Production Env
+
+The app reads production secrets from the VPS:
 
 ```text
 /srv/nextjs/wangqiwen-me/.env.local
 ```
 
-## 4. Local Verification
+For first setup or env changes, create `.env.production` locally and let the deploy command upload it.
 
-Before deploying, run:
-
-```bash
-pnpm check
-pnpm audit --prod --audit-level high
-pnpm build
-```
-
-What each command protects:
-
-- `pnpm check`: validates code, types, post metadata, and manifest consistency
-- `pnpm audit --prod --audit-level high`: blocks known high-severity runtime dependency issues
-- `pnpm build`: validates production compilation and route generation
-
-## 5. Editor Access
-
-If `EDITOR_ACCESS_TOKEN` is empty, `/editor` stays open locally. In production, set `EDITOR_ACCESS_TOKEN`.
-
-### Production Editor Behavior
-
-The self-hosted artifact deployment treats Git as the source of truth. The production app directory is a deployment target, not the canonical content repository.
-
-When `/editor` runs on the VPS, it reads and writes files relative to the systemd working directory:
-
-```text
-/srv/nextjs/wangqiwen-me
-```
-
-Typical editor writes:
-
-```text
-/srv/nextjs/wangqiwen-me/app/(post)/YYYY/slug/page.mdx
-/srv/nextjs/wangqiwen-me/public/images/<post-id>/...
-/srv/nextjs/wangqiwen-me/posts/manifest.json
-```
-
-Those changes do not automatically enter Git. The standalone artifact also does not include a `.git` directory, so production editor changes cannot be committed from the deployed app directory unless they are copied back to a real checkout first.
-
-Production editor changes are not a full CMS workflow:
-
-- post metadata and lists can update after `posts/manifest.json` changes
-- uploaded files under `public/images` can exist on the VPS filesystem
-- MDX post routes are compiled during `next build`, so changed or newly created `page.mdx` files usually require a rebuild and redeploy before the public article page is fully updated
-- the next artifact deploy replaces `/srv/nextjs/wangqiwen-me`, so unsynced production edits can be overwritten
-
-Recommended authoring flow:
-
-```text
-edit on local/home development machine -> commit to Git -> build artifact -> deploy to VPS
-```
-
-Relevant files:
-
-- [app/editor/page.tsx](app/editor/page.tsx)
-- [app/api/editor/session/route.ts](app/api/editor/session/route.ts)
-- [utils/server/editor-auth.ts](utils/server/editor-auth.ts)
-- [INIT.md](INIT.md)
-- [OPERATIONS.md](OPERATIONS.md)
-
-## 6. Deploy To Vercel
-
-Typical flow:
+For normal code-only releases, keep the existing VPS env file:
 
 ```bash
-vercel login
-vercel link
-vercel env add UPSTASH_REDIS_REST_URL
-vercel env add UPSTASH_REDIS_REST_TOKEN
-vercel env add GEO_IP_API_KEY
-vercel env add EDITOR_ACCESS_TOKEN
-vercel --prod
+UPLOAD_ENV=0 pnpm deploy:vps
 ```
 
-After deployment, check:
+If `.env.production` does not exist locally, the default deploy command fails before upload. Use `UPLOAD_ENV=0` when the VPS env file is already correct.
 
-- homepage metadata
-- `/about`
-- one article page
-- `/opengraph-image`
-- `/about/opengraph-image`
-- `/editor`
+The release installer preserves `.env`, `.env.production`, and `.env.local` when swapping app directories, so `/srv/nextjs/wangqiwen-me/.env.local` does not need to be recreated on every deploy.
 
-## 7. Self-Hosted Architecture
+## First-Time VPS Setup
 
-The recommended Ubuntu/VPS deployment uses:
-
-| Layer | Tool | Role |
-| --- | --- | --- |
-| Build | `scripts/build-deploy-artifact.sh` | Build a Next.js standalone tarball outside the VPS |
-| Process manager | systemd | Keep the Node.js app running as `wangqiwen-me.service` |
-| Reverse proxy | Caddy | Receive public HTTP/HTTPS traffic and proxy to the app |
-| App listener | Next.js standalone `server.js` | Listen on `127.0.0.1:3000` |
-
-Default paths and names:
-
-| Item | Default |
-| --- | --- |
-| App name | `wangqiwen-me` |
-| systemd service | `wangqiwen-me.service` |
-| Service user | `nextjs` |
-| App directory | `/srv/nextjs/wangqiwen-me` |
-| App listen address | `127.0.0.1:3000` |
-| Caddy site file | `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy` |
-
-Port rule:
-
-- open `80/tcp` and `443/tcp` on the VPS firewall and cloud firewall
-- keep `3000/tcp` private on `127.0.0.1`; it is only for Caddy to reach the app
-
-## 8. Build The Artifact
-
-Do not run `next build` on the small VPS. Build the artifact on a machine with enough CPU and memory, then upload the result to the VPS.
-
-Recommended build locations:
-
-- home Ubuntu development machine
-- Linux CI runner
-- another Linux server with enough memory
-
-Avoid building the production artifact on macOS when the runtime target is an Ubuntu VPS. Next.js standalone output can include platform-specific native dependencies. Building on Linux for Linux keeps the artifact closer to the production runtime.
-
-Run this in the project checkout on the build machine:
-
-```bash
-bash scripts/build-deploy-artifact.sh
-```
-
-If the build machine reports that `corepack` is missing, install Node.js from an official Node.js distribution first. On Ubuntu:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo corepack enable
-```
-
-The artifact is written to `dist/` and includes:
-
-- the standalone Node.js server from `.next/standalone`
-- `.next/static`
-- `public/`
-- runtime source files needed by the local editor and content sync flows
-
-Useful build env vars:
-
-- `ARTIFACT_DIR=dist`
-- `ARTIFACT_NAME=wangqiwen-me.tar.gz`
-- `SKIP_INSTALL=1`
-- `RUN_LINT_POSTS=0`
-- `BUILD_WITH_REMOTE_REDIS=1` allows build-time rendering to use real Upstash Redis; default is `0`
-
-The VPS receives only the finished tarball. It does not need to run:
-
-```bash
-pnpm install
-pnpm build
-next build
-```
-
-Running the standalone artifact is enough for the full dynamic app, as long as the VPS has Node.js, the production env file, writable app directory, and the systemd service.
-
-## 9. First-Time VPS Setup
-
-Upload the artifact and production env file from your local machine.
-
-If `.env.production` does not exist yet, create and fill it first:
+Create the production env file locally:
 
 ```bash
 cp .env.example .env.production
 ```
 
-Then upload it as `/tmp/prod.env`:
-
-```bash
-scp dist/<artifact>.tar.gz qiwen@wangqiwen.me:/tmp/
-scp .env.production qiwen@wangqiwen.me:/tmp/prod.env
-```
-
-Log in to the VPS:
-
-```bash
-ssh qiwen@wangqiwen.me
-```
-
-Keep a small bootstrap checkout on the VPS so the deployment scripts are available:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y git
-sudo git clone https://github.com/isqiwen/wangqiwen.me.git /opt/wangqiwen-me-bootstrap
-cd /opt/wangqiwen-me-bootstrap
-```
-
-Run the all-in-one provision script:
-
-```bash
-sudo env \
-  APP_NAME=wangqiwen-me \
-  SERVICE_USER=nextjs \
-  DOMAIN=wangqiwen.me \
-  SERVER_ALIASES=www.wangqiwen.me \
-  ENV_FILE_PATH=/tmp/prod.env \
-  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
-  bash scripts/provision-ubuntu.sh
-```
-
-The provision script will:
-
-- install Node.js, corepack, pnpm, and Caddy
-- create the `nextjs` service user
-- prepare `/srv/nextjs/wangqiwen-me`
-- copy `/tmp/prod.env` to `/srv/nextjs/wangqiwen-me/.env.local`
-- extract the standalone artifact
-- write `/etc/systemd/system/wangqiwen-me.service`
-- start and enable the systemd service
-- write the Caddy reverse proxy config
-- validate and reload Caddy
-
-## 10. Manual Step-By-Step Deploy
-
-Use this flow when you want to run each step explicitly.
-
-Install server dependencies:
-
-```bash
-cd /opt/wangqiwen-me-bootstrap
-sudo env \
-  APP_NAME=wangqiwen-me \
-  SERVICE_USER=nextjs \
-  bash scripts/install-ubuntu-env.sh
-```
-
-Install the production env file:
-
-```bash
-sudo install -d -o nextjs -g nextjs -m 0755 /srv/nextjs/wangqiwen-me
-sudo install -m 0600 -o nextjs -g nextjs /tmp/prod.env /srv/nextjs/wangqiwen-me/.env.local
-```
-
-Deploy the artifact:
-
-```bash
-sudo env \
-  APP_NAME=wangqiwen-me \
-  SERVICE_USER=nextjs \
-  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
-  bash scripts/deploy-ubuntu.sh
-```
-
-Configure Caddy:
-
-```bash
-sudo env \
-  APP_NAME=wangqiwen-me \
-  DOMAIN=wangqiwen.me \
-  SERVER_ALIASES=www.wangqiwen.me \
-  APP_HOST=127.0.0.1 \
-  APP_PORT=3000 \
-  bash scripts/configure-ubuntu-site.sh
-```
-
-Caddy requires each site address to be defined only once. By default, `scripts/configure-ubuntu-site.sh` takes ownership of the current site config:
-
-- remove existing top-level `wangqiwen.me` / `www.wangqiwen.me` site blocks from `/etc/caddy/Caddyfile`
-- remove old `.caddy` snippets under `/etc/caddy/Caddyfile.d/` that contain the same domain
-- write the new `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy`, then validate and reload Caddy
-
-To keep existing config and prevent the script from cleaning same-domain definitions, disable replacement explicitly:
-
-```bash
-sudo env \
-  REPLACE_EXISTING_SITE_CONFIG=0 \
-  APP_NAME=wangqiwen-me \
-  DOMAIN=wangqiwen.me \
-  SERVER_ALIASES=www.wangqiwen.me \
-  APP_HOST=127.0.0.1 \
-  APP_PORT=3000 \
-  bash scripts/configure-ubuntu-site.sh
-```
-
-If validation still reports:
+Fill at least:
 
 ```text
-ambiguous site definition: wangqiwen.me
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+EDITOR_ACCESS_TOKEN=
 ```
 
-That means a duplicate definition remains in a form the script did not recognize. Find it and remove it manually:
+Then run:
 
 ```bash
-sudo grep -Rni "wangqiwen.me" /etc/caddy
+SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-## 11. Updating An Existing VPS
+`SETUP_SERVER=1` installs Node.js, pnpm, Caddy, creates the `nextjs` user, deploys the app, and writes the Caddy site config. For later releases, leave it unset.
 
-Build and upload a new artifact:
+## What The Deploy Command Does
 
-```bash
-bash scripts/build-deploy-artifact.sh
-scp dist/<artifact>.tar.gz qiwen@wangqiwen.me:/tmp/
-```
+`pnpm deploy:vps` runs [scripts/vps/deploy.sh](scripts/vps/deploy.sh):
 
-Deploy it on the VPS:
+- requires a clean Git working tree by default
+- builds a standalone tarball with [scripts/vps/build-artifact.sh](scripts/vps/build-artifact.sh)
+- uploads the tarball to `/tmp`
+- uploads `.env.production` as `/tmp/prod.env` unless `UPLOAD_ENV=0`
+- uploads the current deploy scripts to `/tmp`
+- runs [scripts/vps/provision.sh](scripts/vps/provision.sh) on the VPS
+- restarts `wangqiwen-me.service`
+- checks `http://127.0.0.1:3000/api/health`
 
-```bash
-ssh qiwen@wangqiwen.me
-cd /opt/wangqiwen-me-bootstrap
-git pull --ff-only
-sudo env \
-  RUN_INSTALL=0 \
-  RUN_SITE_CONFIG=0 \
-  APP_NAME=wangqiwen-me \
-  SERVICE_USER=nextjs \
-  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
-  bash scripts/provision-ubuntu.sh
-```
+If the new release fails to start or fails health check, [scripts/vps/install-release.sh](scripts/vps/install-release.sh) restores the previous release automatically.
 
-The artifact deployment keeps the previous release until the new service
-passes `http://127.0.0.1:3000/api/health`. A failed start or health check
-automatically restores and restarts the previous release. The retained release
-is stored at `/srv/nextjs/.wangqiwen-me.rollback` by default.
+## Dependency Changes
 
-Re-run the Caddy step only when the domain, aliases, app host, or app port changes:
+Yes, dependency changes are handled by repeated `pnpm deploy:vps` runs as long as `package.json` and `pnpm-lock.yaml` are committed together.
 
-```bash
-sudo env \
-  APP_NAME=wangqiwen-me \
-  DOMAIN=wangqiwen.me \
-  SERVER_ALIASES=www.wangqiwen.me \
-  APP_PORT=3000 \
-  bash scripts/configure-ubuntu-site.sh
-```
+The deploy command:
 
-## 12. Check The Deployment
+- runs `pnpm install --frozen-lockfile` locally before building
+- fails before upload if the lockfile is stale
+- builds a fresh standalone artifact for every run
+- deploys the artifact to a temporary stage directory on the VPS
+- swaps the new release into `/srv/nextjs/wangqiwen-me`
+- keeps the previous release for automatic rollback
+- cleans temporary upload files after the command exits
 
-Process status:
+The VPS does not run `pnpm install` during a normal release. It only runs the finished standalone artifact, so dependency changes must succeed during the local Linux build.
+
+For native dependencies, the build machine should match the VPS operating system and CPU architecture. The script requires Linux by default and checks the VPS architecture before building.
+
+## Verification
+
+On the VPS:
 
 ```bash
 sudo systemctl status wangqiwen-me
 sudo journalctl -u wangqiwen-me -n 100 --no-pager
-```
-
-Local app check on the VPS:
-
-```bash
-curl -I http://127.0.0.1:3000
 curl -s http://127.0.0.1:3000/api/health
 ```
 
-Caddy check:
-
-```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl status caddy
-sudo journalctl -u caddy -n 100 --no-pager
-```
-
-Public check:
+From outside:
 
 ```bash
 curl -I https://wangqiwen.me
 curl -s https://wangqiwen.me/api/health
 ```
 
-## 13. Operational Notes
+## Notes
 
-The artifact replaces the contents of `APP_DIR`. If the built-in editor changes posts or uploaded assets on the production server, sync those changes back to the source repo before the next release.
-
-Default production paths:
-
-```text
-APP_DIR=/srv/nextjs/wangqiwen-me
-ENV_FILE=/srv/nextjs/wangqiwen-me/.env.local
-SYSTEMD_UNIT=/etc/systemd/system/wangqiwen-me.service
-CADDY_SITE=/etc/caddy/Caddyfile.d/wangqiwen.me.caddy
-```
-
-Production source of truth:
-
-- code and content: Git repository
-- runtime secrets: server `.env.local`
-- public ingress: Caddy
-- app process: systemd
-
-Related docs:
-
-- [README.md](README.md)
-- [OPERATIONS.md](OPERATIONS.md)
-- [INIT.md](INIT.md)
+- Runtime secrets live on the VPS at `/srv/nextjs/wangqiwen-me/.env.local`.
+- The app listens only on `127.0.0.1:3000`; public traffic goes through Caddy on ports `80` and `443`.
+- Production `/editor` changes are written inside `/srv/nextjs/wangqiwen-me`; sync them back to Git before the next artifact deploy if they must be kept.
+- Operational details and recovery commands are in [OPERATIONS.md](OPERATIONS.md).

@@ -12,7 +12,7 @@ set -euo pipefail
 #   RUN_LINT_POSTS=1                  Run `pnpm lint:posts` before the build
 #   BUILD_WITH_REMOTE_REDIS=0         Use real Upstash Redis during build
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
 RUN_LINT_POSTS="${RUN_LINT_POSTS:-1}"
@@ -38,7 +38,7 @@ On Ubuntu, install an official Node.js package first:
 
 Then rerun:
 
-  bash scripts/build-deploy-artifact.sh
+  bash scripts/vps/build-artifact.sh
 EOF
 }
 
@@ -140,7 +140,6 @@ tar \
   --exclude="node_modules" \
   --exclude=".next" \
   --exclude="dist" \
-  --exclude=".vercel" \
   --exclude=".env" \
   --exclude=".env.local" \
   --exclude=".env.production" \

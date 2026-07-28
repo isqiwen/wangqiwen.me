@@ -28,28 +28,7 @@ function safeCompare(left: string, right: string): boolean {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function parseBooleanEnv(value: string | undefined): boolean | null {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "1" || normalized === "true" || normalized === "yes") {
-    return true;
-  }
-  if (normalized === "0" || normalized === "false" || normalized === "no") {
-    return false;
-  }
-
-  return null;
-}
-
 function shouldUseSecureCookie(req?: Request): boolean {
-  const explicit = parseBooleanEnv(process.env.EDITOR_ACCESS_COOKIE_SECURE);
-  if (explicit !== null) {
-    return explicit;
-  }
-
   if (!req) {
     return process.env.NODE_ENV === "production";
   }

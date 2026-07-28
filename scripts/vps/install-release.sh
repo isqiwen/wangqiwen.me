@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy wangqiwen.me to an Ubuntu server.
+# Install a prebuilt standalone release on the VPS.
 #
-# Preferred mode:
-#   ARTIFACT_TARBALL=dist/nextjs-standalone-xxxx.tar.gz ./scripts/deploy-ubuntu.sh
+# Usage:
+#   ARTIFACT_TARBALL=dist/nextjs-standalone-xxxx.tar.gz ./scripts/vps/install-release.sh
 #
 # The artifact must contain Next.js standalone output with server.js at root.
 
@@ -35,23 +35,6 @@ as_root() {
   fi
 }
 
-as_user() {
-  local user="$1"
-  shift
-  if command -v sudo >/dev/null 2>&1; then
-    sudo -u "${user}" -H "$@"
-  elif [[ "${EUID}" -eq 0 ]]; then
-    runuser -u "${user}" -- "$@"
-  else
-    echo "sudo is required when not running as root." >&2
-    exit 1
-  fi
-}
-
-shell_quote() {
-  printf "%q" "$1"
-}
-
 assert_safe_paths() {
   APP_DIR="$(realpath -m -- "${APP_DIR}")"
   SERVICE_HOME="$(realpath -m -- "${SERVICE_HOME}")"
@@ -76,7 +59,7 @@ assert_safe_paths() {
 ensure_service_user() {
   if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
     echo "Service user does not exist: ${SERVICE_USER}" >&2
-    echo "Run scripts/install-ubuntu-env.sh first." >&2
+    echo "Run scripts/vps/install-runtime.sh first." >&2
     exit 1
   fi
 }
@@ -273,35 +256,13 @@ deploy_artifact() {
   fi
 }
 
-deploy_source() {
-  local quoted_app_dir
-
-  if ! as_root test -d "${APP_DIR}/.git"; then
-    echo "Source deploy requires an existing git checkout at ${APP_DIR}." >&2
-    echo "Artifact deploy is recommended for this project." >&2
-    exit 1
-  fi
-
-  quoted_app_dir="$(shell_quote "${APP_DIR}")"
-
-  echo "==> Pulling and building source on server"
-  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && git pull --ff-only"
-  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && corepack enable && pnpm install --frozen-lockfile"
-  as_user "${SERVICE_USER}" bash -lc "cd ${quoted_app_dir} && pnpm sync:posts -- --silent && pnpm lint:posts && pnpm build"
-
-  write_systemd_unit "/usr/bin/env pnpm start -- --hostname ${APP_HOST} --port ${APP_PORT}"
-  restart_service
-  wait_for_health
-
-  echo "==> Source deploy complete"
-}
-
 assert_safe_paths
 ensure_service_user
 normalize_artifact_path
 
-if [[ -n "${ARTIFACT_TARBALL}" ]]; then
-  deploy_artifact
-else
-  deploy_source
+if [[ -z "${ARTIFACT_TARBALL}" ]]; then
+  echo "ARTIFACT_TARBALL is required. Build with scripts/vps/build-artifact.sh first." >&2
+  exit 1
 fi
+
+deploy_artifact

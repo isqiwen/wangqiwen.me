@@ -4,7 +4,7 @@ set -euo pipefail
 # Bootstrap an Ubuntu server for a Next.js standalone app managed by systemd
 # and exposed through Caddy.
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 NODE_MAJOR="${NODE_MAJOR:-20}"
 APP_NAME="${APP_NAME:-wangqiwen-me}"

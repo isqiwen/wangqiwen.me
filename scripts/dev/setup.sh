@@ -4,10 +4,10 @@ set -euo pipefail
 # Development setup for macOS/Linux (bash)
 # - Ensures pnpm via corepack
 # - Installs dependencies
-# - Copies .env.example if missing
+# - Leaves .env.local optional
 # - Synchronizes post metadata so the local manifest is ready
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 get_pnpm_spec() {
   node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); const v=p.packageManager || ''; console.log(typeof v === 'string' ? v.replace(/\\+.*/, '') : '')" "${ROOT_DIR}/package.json"
@@ -25,7 +25,7 @@ On Ubuntu, install an official Node.js package first:
 
 Then rerun:
 
-  bash scripts/setup-dev.sh
+  bash scripts/dev/setup.sh
 EOF
 }
 
@@ -83,16 +83,10 @@ echo "==> Installing dependencies via pnpm"
 cd "${ROOT_DIR}"
 pnpm install
 
-echo "==> Preparing env file"
-if [[ -f ".env.example" && ! -f ".env.local" ]]; then
-  cp .env.example .env.local
-  echo "Created .env.local from .env.example"
-fi
-
 echo "==> Synchronizing post metadata"
 pnpm sync:posts -- --silent
 
 echo "==> Done. Next steps:"
-echo "    1. Update .env.local if needed"
-echo "    2. Run: pnpm dev"
-echo "    3. Open: http://localhost:3000"
+echo "    1. Run: pnpm dev"
+echo "    2. Open: http://localhost:3000"
+echo "    3. Create .env.local only if you need real external services locally"

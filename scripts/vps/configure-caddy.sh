@@ -39,7 +39,7 @@ if ! [[ "${APP_PORT}" =~ ^[0-9]+$ ]]; then
 fi
 
 if ! command -v caddy >/dev/null 2>&1; then
-  echo "Caddy is not installed. Run scripts/install-ubuntu-env.sh first." >&2
+  echo "Caddy is not installed. Run scripts/vps/install-runtime.sh first." >&2
   exit 1
 fi
 

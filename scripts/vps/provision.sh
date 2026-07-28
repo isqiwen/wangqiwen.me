@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-command Ubuntu provisioning flow for wangqiwen.me.
+# VPS provisioning flow for wangqiwen.me on Ubuntu.
 # It can:
 # - install Node.js, pnpm, Caddy, service user and directories
 # - deploy a prebuilt Next.js standalone artifact
@@ -29,7 +29,7 @@ set -euo pipefail
 #   RUN_DEPLOY=1
 #   RUN_SITE_CONFIG=1
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 APP_NAME="${APP_NAME:-wangqiwen-me}"
 DOMAIN="${DOMAIN:-}"
@@ -111,7 +111,7 @@ if [[ "${RUN_INSTALL}" == "1" ]]; then
     INSTALL_CADDY="${INSTALL_CADDY:-1}" \
     INSTALL_UFW="${INSTALL_UFW:-0}" \
     OPEN_HTTP3="${OPEN_HTTP3:-0}" \
-    bash "${ROOT_DIR}/scripts/install-ubuntu-env.sh"
+    bash "${ROOT_DIR}/scripts/vps/install-runtime.sh"
 fi
 
 if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
@@ -147,7 +147,7 @@ if [[ "${RUN_DEPLOY}" == "1" ]]; then
       APP_HOST="${APP_HOST}" \
       APP_PORT="${APP_PORT}" \
       ARTIFACT_TARBALL="${DEPLOYABLE_ARTIFACT}" \
-      bash "${ROOT_DIR}/scripts/deploy-ubuntu.sh"
+      bash "${ROOT_DIR}/scripts/vps/install-release.sh"
   else
     echo "==> Skipping application deploy"
     echo "    Provide ARTIFACT_TARBALL=/path/to/artifact.tar.gz or ARTIFACT_URL=https://..."
@@ -163,7 +163,7 @@ if [[ "${RUN_SITE_CONFIG}" == "1" ]]; then
     DOMAIN="${DOMAIN}" \
     SERVER_ALIASES="${SERVER_ALIASES}" \
     SITE_NAME="${SITE_NAME:-}" \
-    bash "${ROOT_DIR}/scripts/configure-ubuntu-site.sh"
+    bash "${ROOT_DIR}/scripts/vps/configure-caddy.sh"
 fi
 
 echo

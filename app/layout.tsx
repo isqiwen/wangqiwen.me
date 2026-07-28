@@ -1,7 +1,6 @@
 import "@/styles/globals.css";
 import "katex/dist/katex.min.css";
 import { themeEffect } from "./themes/theme-effect";
-import { Analytics } from "./analytics";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
@@ -56,7 +55,6 @@ export default function RootLayout({
         </main>
 
         <Footer />
-        <Analytics />
       </body>
     </html>
   );

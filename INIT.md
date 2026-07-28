@@ -70,11 +70,11 @@ Optional variables:
 If you prefer a scripted local setup first, run one of these:
 
 ```bash
-bash scripts/setup-dev.sh
+bash scripts/dev/setup.sh
 ```
 
 ```powershell
-pwsh ./scripts/setup-dev.ps1
+pwsh ./scripts/dev/setup.ps1
 ```
 
 ## 5. Create Your First Content

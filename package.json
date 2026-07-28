@@ -15,8 +15,6 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@upstash/redis": "^1.20.1",
-    "@vercel/analytics": "^1.4.1",
-    "@vercel/speed-insights": "^1.1.0",
     "comma-number": "^2.1.0",
     "date-fns": "^2.29.3",
     "image-size": "^1.0.2",
@@ -63,7 +61,6 @@
       "use-sync-external-store": "1.6.0"
     },
     "ignoredBuiltDependencies": [
-      "@vercel/speed-insights",
       "esbuild",
       "sharp"
     ]
@@ -74,11 +71,12 @@
     "start": "next start",
     "lint": "next lint",
     "check": "pnpm sync:posts -- --check && pnpm lint:posts && pnpm lint && tsc --noEmit",
-    "new:post": "node scripts/new-post.cjs",
-    "sync:posts": "node scripts/normalize-post-metadata.cjs",
-    "lint:posts": "node scripts/lint-posts.cjs",
-    "backup:content": "node scripts/backup-content.cjs",
-    "reset:content": "node scripts/reset-site-content.cjs",
+    "deploy:vps": "bash scripts/vps/deploy.sh",
+    "new:post": "node scripts/content/new-post.cjs",
+    "sync:posts": "node scripts/content/sync-posts.cjs",
+    "lint:posts": "node scripts/content/lint-posts.cjs",
+    "backup:content": "node scripts/content/backup.cjs",
+    "reset:content": "node scripts/content/reset.cjs",
     "postinstall": "node ./fonts/init.mjs"
   },
   "prettier": {

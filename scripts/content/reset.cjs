@@ -22,7 +22,7 @@ async function main() {
     return;
   }
 
-  const backup = spawnSync(process.execPath, ["scripts/backup-content.cjs"], {
+  const backup = spawnSync(process.execPath, ["scripts/content/backup.cjs"], {
     stdio: "inherit",
   });
   if (backup.error) {

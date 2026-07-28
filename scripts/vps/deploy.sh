@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Build locally, upload the artifact, and deploy it to the VPS.
+#
+# Normal release:
+#   pnpm deploy:vps
+#
+# First VPS setup or Caddy reconfiguration:
+#   SETUP_SERVER=1 pnpm deploy:vps
+#
+# Common env vars:
+#   DEPLOY_HOST=qiwen@wangqiwen.me
+#   ENV_FILE=.env.production
+#   UPLOAD_ENV=1
+#   SETUP_SERVER=0
+#   ALLOW_NON_LINUX_BUILD=0
+#   SKIP_REMOTE_PLATFORM_CHECK=0
+#   CLEAN_REMOTE_ON_EXIT=1
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+APP_NAME="${APP_NAME:-wangqiwen-me}"
+SERVICE_USER="${SERVICE_USER:-nextjs}"
+SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
+DEPLOY_HOST="${DEPLOY_HOST:-${VPS_HOST:-qiwen@wangqiwen.me}}"
+DOMAIN="${DOMAIN:-wangqiwen.me}"
+SERVER_ALIASES="${SERVER_ALIASES:-www.wangqiwen.me}"
+APP_HOST="${APP_HOST:-127.0.0.1}"
+APP_PORT="${APP_PORT:-3000}"
+
+ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env.production}"
+UPLOAD_ENV="${UPLOAD_ENV:-1}"
+SETUP_SERVER="${SETUP_SERVER:-0}"
+RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
+RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
+ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
+ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
+SKIP_REMOTE_PLATFORM_CHECK="${SKIP_REMOTE_PLATFORM_CHECK:-0}"
+CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
+
+REMOTE_TMP="${REMOTE_TMP:-/tmp}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
+REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+STAMP="$(date -u +%Y%m%d%H%M%S)"
+ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}-${STAMP}.tar.gz}"
+ARTIFACT_PATH="${ARTIFACT_DIR}/${ARTIFACT_NAME}"
+REMOTE_ARTIFACT="${REMOTE_TMP}/${ARTIFACT_NAME}"
+REMOTE_ENV="${REMOTE_TMP}/prod.env"
+REMOTE_WORK_DIR="${REMOTE_TMP}/${APP_NAME}-deploy-${REVISION}-${STAMP}"
+REMOTE_INCOMING_ARTIFACT="${SERVICE_HOME}/shared/incoming/${ARTIFACT_NAME}"
+CLEANUP_ARMED="0"
+
+usage() {
+  cat <<'EOF'
+Deploy the site to the Ubuntu VPS.
+
+Normal release:
+  pnpm deploy:vps
+
+First setup or Caddy changes:
+  SETUP_SERVER=1 pnpm deploy:vps
+
+Useful env vars:
+  DEPLOY_HOST=qiwen@wangqiwen.me   SSH target
+  ENV_FILE=.env.production         Production env file uploaded as /tmp/prod.env
+  UPLOAD_ENV=0                     Keep the server's existing .env.local
+  ALLOW_DIRTY=1                    Build from an uncommitted working tree
+  ALLOW_NON_LINUX_BUILD=1          Permit building the VPS artifact off Linux
+  SKIP_REMOTE_PLATFORM_CHECK=1     Skip local/VPS architecture comparison
+  CLEAN_REMOTE_ON_EXIT=0           Keep uploaded temp files on the VPS
+EOF
+}
+
+remote_quote() {
+  local value="$1"
+  value="${value//\'/\'\\\'\'}"
+  printf "'%s'" "${value}"
+}
+
+need_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing command: $1" >&2
+    exit 1
+  fi
+}
+
+cleanup_remote() {
+  if [[ "${CLEAN_REMOTE_ON_EXIT}" != "1" || "${CLEANUP_ARMED}" != "1" ]]; then
+    return
+  fi
+
+  local cleanup_cmd
+  cleanup_cmd="rm -rf $(remote_quote "${REMOTE_WORK_DIR}") $(remote_quote "${REMOTE_ARTIFACT}")"
+  if [[ "${UPLOAD_ENV}" == "1" ]]; then
+    cleanup_cmd+=" $(remote_quote "${REMOTE_ENV}")"
+  fi
+  cleanup_cmd+="; sudo rm -f $(remote_quote "${REMOTE_INCOMING_ARTIFACT}")"
+
+  echo "==> Cleaning remote temporary files"
+  # shellcheck disable=SC2029
+  ssh "${DEPLOY_HOST}" "${cleanup_cmd}" >/dev/null 2>&1 || true
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+need_cmd git
+need_cmd ssh
+need_cmd scp
+need_cmd tar
+
+if [[ -z "${DEPLOY_HOST}" ]]; then
+  echo "DEPLOY_HOST is required, for example: DEPLOY_HOST=qiwen@wangqiwen.me" >&2
+  exit 1
+fi
+
+if [[ "${ALLOW_DIRTY}" != "1" ]]; then
+  if ! git -C "${ROOT_DIR}" diff --quiet || ! git -C "${ROOT_DIR}" diff --cached --quiet; then
+    echo "Working tree has uncommitted changes. Commit them first or set ALLOW_DIRTY=1." >&2
+    exit 1
+  fi
+fi
+
+LOCAL_UNAME_S="$(uname -s)"
+LOCAL_UNAME_M="$(uname -m)"
+
+if [[ "${LOCAL_UNAME_S}" != "Linux" && "${ALLOW_NON_LINUX_BUILD}" != "1" ]]; then
+  echo "Build VPS artifacts on Linux so native dependencies match the Ubuntu runtime." >&2
+  echo "Use ALLOW_NON_LINUX_BUILD=1 only if you know the artifact is runtime-compatible." >&2
+  exit 1
+fi
+
+if [[ "${SKIP_REMOTE_PLATFORM_CHECK}" != "1" ]]; then
+  echo "==> Checking target platform"
+  # shellcheck disable=SC2029
+  REMOTE_UNAME_M="$(ssh "${DEPLOY_HOST}" "uname -m" | tr -d '\r')"
+  if [[ -n "${REMOTE_UNAME_M}" && "${REMOTE_UNAME_M}" != "${LOCAL_UNAME_M}" ]]; then
+    echo "Build host architecture (${LOCAL_UNAME_M}) does not match VPS (${REMOTE_UNAME_M})." >&2
+    echo "Build the artifact on matching Linux hardware or set SKIP_REMOTE_PLATFORM_CHECK=1." >&2
+    exit 1
+  fi
+fi
+
+if [[ "${UPLOAD_ENV}" == "1" && ! -f "${ENV_FILE}" ]]; then
+  echo "Production env file not found: ${ENV_FILE}" >&2
+  echo "Create it from .env.example, or set UPLOAD_ENV=0 to keep the server env file." >&2
+  exit 1
+fi
+
+echo "==> Deploying ${APP_NAME} to ${DEPLOY_HOST}"
+echo "    revision: ${REVISION}"
+echo "    setup server: ${SETUP_SERVER}"
+echo "    configure site: ${RUN_SITE_CONFIG}"
+
+ARTIFACT_DIR="${ARTIFACT_DIR}" \
+ARTIFACT_NAME="${ARTIFACT_NAME}" \
+  bash "${ROOT_DIR}/scripts/vps/build-artifact.sh"
+
+if [[ ! -f "${ARTIFACT_PATH}" ]]; then
+  echo "Artifact was not created: ${ARTIFACT_PATH}" >&2
+  exit 1
+fi
+
+echo "==> Preparing remote work directory"
+REMOTE_MKDIR_CMD="mkdir -p $(remote_quote "${REMOTE_WORK_DIR}")"
+# shellcheck disable=SC2029
+ssh "${DEPLOY_HOST}" "${REMOTE_MKDIR_CMD}"
+CLEANUP_ARMED="1"
+trap cleanup_remote EXIT
+
+echo "==> Uploading deploy scripts"
+REMOTE_UNPACK_CMD="tar -xzf - -C $(remote_quote "${REMOTE_WORK_DIR}")"
+# shellcheck disable=SC2029
+tar -C "${ROOT_DIR}" -czf - scripts package.json |
+  ssh "${DEPLOY_HOST}" "${REMOTE_UNPACK_CMD}"
+
+echo "==> Uploading artifact"
+scp "${ARTIFACT_PATH}" "${DEPLOY_HOST}:${REMOTE_ARTIFACT}"
+
+if [[ "${UPLOAD_ENV}" == "1" ]]; then
+  echo "==> Uploading production env"
+  scp "${ENV_FILE}" "${DEPLOY_HOST}:${REMOTE_ENV}"
+fi
+
+REMOTE_CMD="sudo env"
+REMOTE_CMD+=" APP_NAME=$(remote_quote "${APP_NAME}")"
+REMOTE_CMD+=" SERVICE_USER=$(remote_quote "${SERVICE_USER}")"
+REMOTE_CMD+=" SERVICE_HOME=$(remote_quote "${SERVICE_HOME}")"
+REMOTE_CMD+=" DOMAIN=$(remote_quote "${DOMAIN}")"
+REMOTE_CMD+=" SERVER_ALIASES=$(remote_quote "${SERVER_ALIASES}")"
+REMOTE_CMD+=" APP_HOST=$(remote_quote "${APP_HOST}")"
+REMOTE_CMD+=" APP_PORT=$(remote_quote "${APP_PORT}")"
+REMOTE_CMD+=" RUN_INSTALL=$(remote_quote "${RUN_INSTALL}")"
+REMOTE_CMD+=" RUN_DEPLOY=1"
+REMOTE_CMD+=" RUN_SITE_CONFIG=$(remote_quote "${RUN_SITE_CONFIG}")"
+REMOTE_CMD+=" ARTIFACT_TARBALL=$(remote_quote "${REMOTE_ARTIFACT}")"
+if [[ "${UPLOAD_ENV}" == "1" ]]; then
+  REMOTE_CMD+=" ENV_FILE_PATH=$(remote_quote "${REMOTE_ENV}")"
+fi
+REMOTE_CMD+=" bash $(remote_quote "${REMOTE_WORK_DIR}/scripts/vps/provision.sh")"
+
+echo "==> Running remote deployment"
+# shellcheck disable=SC2029
+ssh "${DEPLOY_HOST}" "${REMOTE_CMD}"
+
+echo
+echo "==> VPS deploy complete"
+echo "Check: https://${DOMAIN}"
+echo "Logs:  ssh ${DEPLOY_HOST} 'sudo journalctl -u ${APP_NAME} -n 100 --no-pager'"

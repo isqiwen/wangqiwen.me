@@ -37,36 +37,38 @@ corepack -v
 pnpm install
 ```
 
-2. Create your local environment file:
-
-```bash
-cp .env.example .env.local
-```
-
-3. Fill in the values you need in `.env.local`.
-
-4. Start the development server:
+2. Start the development server:
 
 ```bash
 pnpm dev
 ```
 
-5. Open:
+3. Open:
 
 ```text
 http://localhost:3000
 ```
 
+No local env file is required for the default development flow.
+
+Create `.env.local` only when you need real external services locally:
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill only the values you need.
+
 If you want a one-command local setup first, use:
 
 ```bash
-bash scripts/setup-dev.sh
+bash scripts/dev/setup.sh
 ```
 
 On Windows PowerShell:
 
 ```powershell
-pwsh ./scripts/setup-dev.ps1
+pwsh ./scripts/dev/setup.ps1
 ```
 
 ## Environment Variables
@@ -79,7 +81,9 @@ pwsh ./scripts/setup-dev.ps1
 | `GEO_IP_API_KEY` | Optional | Enables the demo geo API route |
 | `EDITOR_ACCESS_TOKEN` | Required in production | Protects `/editor` and its write APIs |
 
-See [DEPLOY.md](DEPLOY.md) for where to get each value.
+In local development, missing Redis credentials use an in-memory mock, `/editor` is open, and `/api/geo` stays disabled without `GEO_IP_API_KEY`.
+
+See [DEPLOY.md](DEPLOY.md) for production env handling.
 
 ## Common Commands
 
@@ -147,7 +151,7 @@ To turn this into your own site:
 
 1. Update `site.config.js`
 2. Replace old posts and images if needed
-3. Configure `.env.local`
+3. Optionally configure `.env.local`
 4. Run the verification commands above
 
 Related guides:
@@ -163,44 +167,25 @@ Related guides:
 - `posts/manifest.json` generated post index
 - `site.config.js` public site identity and copy
 - `styles/` global styles
-- `scripts/` project maintenance and content scripts
+- `scripts/` project maintenance and VPS deployment scripts; see [scripts/README.md](scripts/README.md)
 
 ## Deployment
 
-The site works well on Vercel. For the self-hosted `wangqiwen.me` deployment, the recommended path is:
-
-- build a Next.js standalone artifact on a development machine or CI runner
-- upload the artifact to the VPS
-- run the app as `wangqiwen-me.service` with systemd
-- expose `https://wangqiwen.me` with Caddy
-
-Build an artifact:
+For the self-hosted `wangqiwen.me` VPS:
 
 ```bash
-bash scripts/build-deploy-artifact.sh
+pnpm deploy:vps
 ```
 
-Deploy on the VPS:
+For first-time server setup or Caddy changes:
 
 ```bash
-sudo env \
-  APP_NAME=wangqiwen-me \
-  SERVICE_USER=nextjs \
-  DOMAIN=wangqiwen.me \
-  SERVER_ALIASES=www.wangqiwen.me \
-  ENV_FILE_PATH=/tmp/prod.env \
-  ARTIFACT_TARBALL=/tmp/<artifact>.tar.gz \
-  bash scripts/provision-ubuntu.sh
+SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-Runtime defaults:
+The deploy command builds a standalone artifact locally, uploads it to the VPS, restarts `wangqiwen-me.service`, and checks `/api/health`.
 
-- app directory: `/srv/nextjs/wangqiwen-me`
-- process: `wangqiwen-me.service`
-- local app listener: `127.0.0.1:3000`
-- public ingress: Caddy on `80/tcp` and `443/tcp`
+Details:
 
-For deployment and operational details, use:
-
-- [DEPLOY.md](DEPLOY.md)
-- [OPERATIONS.md](OPERATIONS.md)
+- [DEPLOY.md](DEPLOY.md) for the short release flow
+- [OPERATIONS.md](OPERATIONS.md) for runtime checks and recovery

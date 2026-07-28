@@ -166,7 +166,7 @@ By default, new posts are created as drafts.`);
 
   const sync = spawnSync(
     process.execPath,
-    ["scripts/normalize-post-metadata.cjs", "--silent"],
+    ["scripts/content/sync-posts.cjs", "--silent"],
     {
       stdio: "inherit",
     },
