@@ -36,8 +36,10 @@ Day-to-day deployment should use only:
 pnpm deploy:vps
 ```
 
-First server setup or Caddy changes should use:
+First server setup with env upload should use:
 
 ```bash
-SETUP_SERVER=1 pnpm deploy:vps
+UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
+
+`SETUP_SERVER=1` installs and configures the VPS runtime environment. Normal later releases should use only `pnpm deploy:vps`.

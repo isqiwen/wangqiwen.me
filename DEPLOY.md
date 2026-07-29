@@ -73,15 +73,19 @@ For first setup or env changes, create `.env.production` locally and upload it e
 UPLOAD_ENV=1 pnpm deploy:vps
 ```
 
+Do not commit `.env.production`; it is ignored by Git and should stay local.
+
 The release installer preserves `.env`, `.env.production`, and `.env.local` when swapping app directories, so `/srv/nextjs/wangqiwen-me/.env.local` does not need to be recreated on every deploy.
 
-## First-Time VPS Setup
+## First-Time VPS Runtime Setup
 
 Create the production env file locally:
 
 ```bash
 cp .env.example .env.production
 ```
+
+This file contains production secrets and must not be committed.
 
 Fill at least:
 
@@ -97,7 +101,13 @@ Then run:
 UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-`SETUP_SERVER=1` installs Node.js, pnpm, Caddy, creates the `nextjs` user, deploys the app, and writes the Caddy site config. For later releases, leave it unset.
+`SETUP_SERVER=1` changes the VPS runtime environment. It installs Node.js, pnpm, Caddy, creates the `nextjs` service user, prepares `/srv/nextjs`, deploys the app, and writes the Caddy site config.
+
+For normal later releases, leave `SETUP_SERVER` unset:
+
+```bash
+pnpm deploy:vps
+```
 
 ## What The Deploy Command Does
 

@@ -177,11 +177,13 @@ For the self-hosted `wangqiwen.me` VPS:
 pnpm deploy:vps
 ```
 
-For first-time server setup or Caddy changes:
+For first-time VPS setup with env upload:
 
 ```bash
-SETUP_SERVER=1 pnpm deploy:vps
+UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
+
+`SETUP_SERVER=1` installs and configures the VPS runtime environment: Node.js, pnpm, Caddy, the `nextjs` service user, `/srv/nextjs`, systemd, and the Caddy site config. Leave it unset for normal later releases.
 
 The deploy command builds a standalone artifact locally, uploads it to the VPS, restarts `wangqiwen-me.service`, and checks `/api/health`.
 
