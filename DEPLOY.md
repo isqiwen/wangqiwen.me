@@ -27,7 +27,7 @@ That command uses these defaults:
 | Service user | `nextjs` |
 | App directory | `/srv/nextjs/wangqiwen-me` |
 | App listener | `127.0.0.1:3000` |
-| Production env source | `.env.production`, unless `UPLOAD_ENV=0` |
+| Production env source | VPS `.env.local`; upload `.env.production` only with `UPLOAD_ENV=1` |
 
 Override only what changes:
 
@@ -43,15 +43,17 @@ The app reads production secrets from the VPS:
 /srv/nextjs/wangqiwen-me/.env.local
 ```
 
-For first setup or env changes, create `.env.production` locally and let the deploy command upload it.
-
-For normal code-only releases, keep the existing VPS env file:
+For normal code-only releases, the deploy command keeps the existing VPS env file:
 
 ```bash
-UPLOAD_ENV=0 pnpm deploy:vps
+pnpm deploy:vps
 ```
 
-If `.env.production` does not exist locally, the default deploy command fails before upload. Use `UPLOAD_ENV=0` when the VPS env file is already correct.
+For first setup or env changes, create `.env.production` locally and upload it explicitly:
+
+```bash
+UPLOAD_ENV=1 pnpm deploy:vps
+```
 
 The release installer preserves `.env`, `.env.production`, and `.env.local` when swapping app directories, so `/srv/nextjs/wangqiwen-me/.env.local` does not need to be recreated on every deploy.
 
@@ -74,7 +76,7 @@ EDITOR_ACCESS_TOKEN=
 Then run:
 
 ```bash
-SETUP_SERVER=1 pnpm deploy:vps
+UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
 
 `SETUP_SERVER=1` installs Node.js, pnpm, Caddy, creates the `nextjs` user, deploys the app, and writes the Caddy site config. For later releases, leave it unset.
@@ -86,7 +88,8 @@ SETUP_SERVER=1 pnpm deploy:vps
 - requires a clean Git working tree by default
 - builds a standalone tarball with [scripts/vps/build-artifact.sh](scripts/vps/build-artifact.sh)
 - uploads the tarball to `/tmp`
-- uploads `.env.production` as `/tmp/prod.env` unless `UPLOAD_ENV=0`
+- keeps the existing VPS `.env.local` by default
+- uploads `.env.production` as `/tmp/prod.env` only when `UPLOAD_ENV=1`
 - uploads the current deploy scripts to `/tmp`
 - runs [scripts/vps/provision.sh](scripts/vps/provision.sh) on the VPS
 - restarts `wangqiwen-me.service`

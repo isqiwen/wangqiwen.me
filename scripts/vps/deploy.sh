@@ -6,13 +6,13 @@ set -euo pipefail
 # Normal release:
 #   pnpm deploy:vps
 #
-# First VPS setup or Caddy reconfiguration:
-#   SETUP_SERVER=1 pnpm deploy:vps
+# First VPS setup with env upload:
+#   UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 #
 # Common env vars:
 #   DEPLOY_HOST=qiwen@wangqiwen.me
 #   ENV_FILE=.env.production
-#   UPLOAD_ENV=1
+#   UPLOAD_ENV=0
 #   SETUP_SERVER=0
 #   ALLOW_NON_LINUX_BUILD=0
 #   SKIP_REMOTE_PLATFORM_CHECK=0
@@ -30,7 +30,7 @@ APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3000}"
 
 ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env.production}"
-UPLOAD_ENV="${UPLOAD_ENV:-1}"
+UPLOAD_ENV="${UPLOAD_ENV:-0}"
 SETUP_SERVER="${SETUP_SERVER:-0}"
 RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
 RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
@@ -58,13 +58,16 @@ Deploy the site to the Ubuntu VPS.
 Normal release:
   pnpm deploy:vps
 
-First setup or Caddy changes:
+First setup with env upload:
+  UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
+
+Caddy-only changes:
   SETUP_SERVER=1 pnpm deploy:vps
 
 Useful env vars:
   DEPLOY_HOST=qiwen@wangqiwen.me   SSH target
-  ENV_FILE=.env.production         Production env file uploaded as /tmp/prod.env
-  UPLOAD_ENV=0                     Keep the server's existing .env.local
+  ENV_FILE=.env.production         Production env file to upload when UPLOAD_ENV=1
+  UPLOAD_ENV=1                     Upload ENV_FILE as the server's .env.local
   ALLOW_DIRTY=1                    Build from an uncommitted working tree
   ALLOW_NON_LINUX_BUILD=1          Permit building the VPS artifact off Linux
   SKIP_REMOTE_PLATFORM_CHECK=1     Skip local/VPS architecture comparison
@@ -146,7 +149,7 @@ fi
 
 if [[ "${UPLOAD_ENV}" == "1" && ! -f "${ENV_FILE}" ]]; then
   echo "Production env file not found: ${ENV_FILE}" >&2
-  echo "Create it from .env.example, or set UPLOAD_ENV=0 to keep the server env file." >&2
+  echo "Create it from .env.example, or leave UPLOAD_ENV=0 to keep the server env file." >&2
   exit 1
 fi
 

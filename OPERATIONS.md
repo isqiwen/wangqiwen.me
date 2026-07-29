@@ -73,10 +73,16 @@ Production secrets live on the VPS at:
 /srv/nextjs/wangqiwen-me/.env.local
 ```
 
-Set this once and update it only when values change. For normal code-only deploys, keep the VPS env file:
+Set this once and update it only when values change. Normal code-only deploys keep the VPS env file by default:
 
 ```bash
-UPLOAD_ENV=0 pnpm deploy:vps
+pnpm deploy:vps
+```
+
+When values change, upload `.env.production` explicitly:
+
+```bash
+UPLOAD_ENV=1 pnpm deploy:vps
 ```
 
 Required in production:
