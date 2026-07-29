@@ -17,7 +17,7 @@ export default async function Layout({ children }) {
         min-[1200px]:relative min-[1200px]:left-1/2 min-[1200px]:grid
         min-[1200px]:w-[calc(100vw-3rem)] min-[1200px]:max-w-7xl
         min-[1200px]:-translate-x-1/2
-        min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(0,42rem)_minmax(0,1fr)]
+        min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(0,39rem)_minmax(0,1fr)]
       "
     >
       <TableOfContents />
