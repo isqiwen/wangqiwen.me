@@ -18,6 +18,24 @@ Use [DEPLOY.md](DEPLOY.md) to release code. Use this file after deploys, during 
 
 The app listens only on localhost. Public traffic enters through Caddy on `80/tcp` and `443/tcp`.
 
+The deploy SSH user is `qiwen` by default. It needs passwordless sudo for install, systemd, and Caddy changes:
+
+```bash
+ssh qiwen@wangqiwen.me 'sudo -n true'
+```
+
+If needed, configure it on the VPS with:
+
+```bash
+sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+```
+
+```text
+qiwen ALL=(root) NOPASSWD: ALL
+```
+
+The deploy script reuses one SSH connection by default, so password-based SSH should normally prompt once per deploy. SSH keys are still preferred.
+
 Keep production secrets private:
 
 ```bash

@@ -35,6 +35,24 @@ Override only what changes:
 DEPLOY_HOST=qiwen@1.2.3.4 pnpm deploy:vps
 ```
 
+The SSH user must have passwordless sudo because the remote install writes `/srv`, systemd, and Caddy config:
+
+```bash
+ssh qiwen@wangqiwen.me 'sudo -n true'
+```
+
+If that fails, add a sudoers rule on the VPS:
+
+```bash
+sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+```
+
+```text
+qiwen ALL=(root) NOPASSWD: ALL
+```
+
+The deploy script reuses one SSH connection by default. With SSH password auth, a single deploy should normally ask for the SSH password once. SSH keys are still the preferred long-term setup.
+
 ## Production Env
 
 The app reads production secrets from the VPS:
@@ -86,6 +104,7 @@ UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 `pnpm deploy:vps` runs [scripts/vps/deploy.sh](scripts/vps/deploy.sh):
 
 - requires a clean Git working tree by default
+- checks that the SSH user has passwordless sudo before build/upload
 - builds a standalone tarball with [scripts/vps/build-artifact.sh](scripts/vps/build-artifact.sh)
 - uploads the tarball to `/tmp`
 - keeps the existing VPS `.env.local` by default

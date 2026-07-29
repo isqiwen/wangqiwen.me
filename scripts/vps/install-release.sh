@@ -145,10 +145,13 @@ restart_service() {
 
 wait_for_health() {
   local attempt
+  local curl_error
 
   echo "==> Waiting for ${HEALTHCHECK_URL}"
   for ((attempt = 1; attempt <= HEALTHCHECK_ATTEMPTS; attempt += 1)); do
-    if curl --fail --silent --show-error --max-time 5 "${HEALTHCHECK_URL}" >/dev/null; then
+    if curl_error="$(
+      curl --fail --silent --show-error --max-time 5 "${HEALTHCHECK_URL}" 2>&1 >/dev/null
+    )"; then
       echo "==> Health check passed"
       return 0
     fi
@@ -156,6 +159,9 @@ wait_for_health() {
   done
 
   echo "Health check failed after ${HEALTHCHECK_ATTEMPTS} attempts." >&2
+  if [[ -n "${curl_error}" ]]; then
+    echo "${curl_error}" >&2
+  fi
   return 1
 }
 

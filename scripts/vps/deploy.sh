@@ -16,6 +16,8 @@ set -euo pipefail
 #   SETUP_SERVER=0
 #   ALLOW_NON_LINUX_BUILD=0
 #   SKIP_REMOTE_PLATFORM_CHECK=0
+#   SKIP_REMOTE_SUDO_CHECK=0
+#   SSH_CONTROL=1
 #   CLEAN_REMOTE_ON_EXIT=1
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -37,9 +39,12 @@ RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
 SKIP_REMOTE_PLATFORM_CHECK="${SKIP_REMOTE_PLATFORM_CHECK:-0}"
+SKIP_REMOTE_SUDO_CHECK="${SKIP_REMOTE_SUDO_CHECK:-0}"
+SSH_CONTROL="${SSH_CONTROL:-1}"
 CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
 
 REMOTE_TMP="${REMOTE_TMP:-/tmp}"
+LOCAL_TMP_DIR="${TMPDIR:-/tmp}"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
@@ -49,6 +54,7 @@ REMOTE_ARTIFACT="${REMOTE_TMP}/${ARTIFACT_NAME}"
 REMOTE_ENV="${REMOTE_TMP}/prod.env"
 REMOTE_WORK_DIR="${REMOTE_TMP}/${APP_NAME}-deploy-${REVISION}-${STAMP}"
 REMOTE_INCOMING_ARTIFACT="${SERVICE_HOME}/shared/incoming/${ARTIFACT_NAME}"
+SSH_CONTROL_PATH="${SSH_CONTROL_PATH:-${LOCAL_TMP_DIR}/${APP_NAME}-ssh-${REVISION}-${STAMP}.sock}"
 CLEANUP_ARMED="0"
 
 usage() {
@@ -71,6 +77,8 @@ Useful env vars:
   ALLOW_DIRTY=1                    Build from an uncommitted working tree
   ALLOW_NON_LINUX_BUILD=1          Permit building the VPS artifact off Linux
   SKIP_REMOTE_PLATFORM_CHECK=1     Skip local/VPS architecture comparison
+  SKIP_REMOTE_SUDO_CHECK=1         Skip passwordless sudo preflight
+  SSH_CONTROL=0                    Disable SSH connection reuse
   CLEAN_REMOTE_ON_EXIT=0           Keep uploaded temp files on the VPS
 EOF
 }
@@ -88,6 +96,52 @@ need_cmd() {
   fi
 }
 
+ssh_options() {
+  if [[ "${SSH_CONTROL}" == "1" ]]; then
+    printf "%s\n" \
+      -o ControlMaster=auto \
+      -o ControlPersist=10m \
+      -o "ControlPath=${SSH_CONTROL_PATH}"
+  fi
+}
+
+ssh_cmd() {
+  local options=()
+  while IFS= read -r option; do
+    options+=("${option}")
+  done < <(ssh_options)
+
+  # shellcheck disable=SC2029
+  ssh "${options[@]}" "$@"
+}
+
+scp_cmd() {
+  local options=()
+  while IFS= read -r option; do
+    options+=("${option}")
+  done < <(ssh_options)
+
+  scp "${options[@]}" "$@"
+}
+
+start_ssh_control() {
+  if [[ "${SSH_CONTROL}" != "1" ]]; then
+    return
+  fi
+
+  echo "==> Opening shared SSH connection"
+  ssh_cmd -Nf "${DEPLOY_HOST}"
+}
+
+close_ssh_control() {
+  if [[ "${SSH_CONTROL}" != "1" ]]; then
+    return
+  fi
+
+  ssh_cmd -O exit "${DEPLOY_HOST}" >/dev/null 2>&1 || true
+  rm -f "${SSH_CONTROL_PATH}" || true
+}
+
 cleanup_remote() {
   if [[ "${CLEAN_REMOTE_ON_EXIT}" != "1" || "${CLEANUP_ARMED}" != "1" ]]; then
     return
@@ -102,7 +156,45 @@ cleanup_remote() {
 
   echo "==> Cleaning remote temporary files"
   # shellcheck disable=SC2029
-  ssh "${DEPLOY_HOST}" "${cleanup_cmd}" >/dev/null 2>&1 || true
+  ssh_cmd "${DEPLOY_HOST}" "${cleanup_cmd}" >/dev/null 2>&1 || true
+}
+
+remote_ssh_user() {
+  if [[ "${DEPLOY_HOST}" == *@* ]]; then
+    printf "%s" "${DEPLOY_HOST%%@*}"
+  else
+    printf "%s" "${USER:-your-ssh-user}"
+  fi
+}
+
+check_remote_sudo() {
+  local ssh_user
+  ssh_user="$(remote_ssh_user)"
+
+  echo "==> Checking passwordless sudo on ${DEPLOY_HOST}"
+  if ssh_cmd "${DEPLOY_HOST}" "sudo -n true" >/dev/null 2>&1; then
+    echo "==> Passwordless sudo is ready"
+    return
+  fi
+
+  cat >&2 <<EOF
+Passwordless sudo is required before deploying.
+
+The SSH user must pass this check:
+
+  ssh ${DEPLOY_HOST} 'sudo -n true'
+
+On the VPS, configure it with:
+
+  sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+
+Then add:
+
+  ${ssh_user} ALL=(root) NOPASSWD: ALL
+
+Set SKIP_REMOTE_SUDO_CHECK=1 only if you know the remote sudo command will work.
+EOF
+  exit 1
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -119,6 +211,9 @@ if [[ -z "${DEPLOY_HOST}" ]]; then
   echo "DEPLOY_HOST is required, for example: DEPLOY_HOST=qiwen@wangqiwen.me" >&2
   exit 1
 fi
+
+trap close_ssh_control EXIT
+start_ssh_control
 
 if [[ "${ALLOW_DIRTY}" != "1" ]]; then
   if ! git -C "${ROOT_DIR}" diff --quiet || ! git -C "${ROOT_DIR}" diff --cached --quiet; then
@@ -139,12 +234,16 @@ fi
 if [[ "${SKIP_REMOTE_PLATFORM_CHECK}" != "1" ]]; then
   echo "==> Checking target platform"
   # shellcheck disable=SC2029
-  REMOTE_UNAME_M="$(ssh "${DEPLOY_HOST}" "uname -m" | tr -d '\r')"
+  REMOTE_UNAME_M="$(ssh_cmd "${DEPLOY_HOST}" "uname -m" | tr -d '\r')"
   if [[ -n "${REMOTE_UNAME_M}" && "${REMOTE_UNAME_M}" != "${LOCAL_UNAME_M}" ]]; then
     echo "Build host architecture (${LOCAL_UNAME_M}) does not match VPS (${REMOTE_UNAME_M})." >&2
     echo "Build the artifact on matching Linux hardware or set SKIP_REMOTE_PLATFORM_CHECK=1." >&2
     exit 1
   fi
+fi
+
+if [[ "${SKIP_REMOTE_SUDO_CHECK}" != "1" ]]; then
+  check_remote_sudo
 fi
 
 if [[ "${UPLOAD_ENV}" == "1" && ! -f "${ENV_FILE}" ]]; then
@@ -170,22 +269,22 @@ fi
 echo "==> Preparing remote work directory"
 REMOTE_MKDIR_CMD="mkdir -p $(remote_quote "${REMOTE_WORK_DIR}")"
 # shellcheck disable=SC2029
-ssh "${DEPLOY_HOST}" "${REMOTE_MKDIR_CMD}"
+ssh_cmd "${DEPLOY_HOST}" "${REMOTE_MKDIR_CMD}"
 CLEANUP_ARMED="1"
-trap cleanup_remote EXIT
+trap 'cleanup_remote; close_ssh_control' EXIT
 
 echo "==> Uploading deploy scripts"
 REMOTE_UNPACK_CMD="tar -xzf - -C $(remote_quote "${REMOTE_WORK_DIR}")"
 # shellcheck disable=SC2029
 tar -C "${ROOT_DIR}" -czf - scripts package.json |
-  ssh "${DEPLOY_HOST}" "${REMOTE_UNPACK_CMD}"
+  ssh_cmd "${DEPLOY_HOST}" "${REMOTE_UNPACK_CMD}"
 
 echo "==> Uploading artifact"
-scp "${ARTIFACT_PATH}" "${DEPLOY_HOST}:${REMOTE_ARTIFACT}"
+scp_cmd "${ARTIFACT_PATH}" "${DEPLOY_HOST}:${REMOTE_ARTIFACT}"
 
 if [[ "${UPLOAD_ENV}" == "1" ]]; then
   echo "==> Uploading production env"
-  scp "${ENV_FILE}" "${DEPLOY_HOST}:${REMOTE_ENV}"
+  scp_cmd "${ENV_FILE}" "${DEPLOY_HOST}:${REMOTE_ENV}"
 fi
 
 REMOTE_CMD="sudo env"
@@ -207,7 +306,7 @@ REMOTE_CMD+=" bash $(remote_quote "${REMOTE_WORK_DIR}/scripts/vps/provision.sh")
 
 echo "==> Running remote deployment"
 # shellcheck disable=SC2029
-ssh "${DEPLOY_HOST}" "${REMOTE_CMD}"
+ssh_cmd "${DEPLOY_HOST}" "${REMOTE_CMD}"
 
 echo
 echo "==> VPS deploy complete"
