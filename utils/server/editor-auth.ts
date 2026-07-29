@@ -9,12 +9,27 @@ import {
 const NO_STORE = { "Cache-Control": "no-store" };
 const EDITOR_ACCESS_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
+export function isLocalEditorAvailable(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+export function requireLocalEditor() {
+  if (isLocalEditorAvailable()) {
+    return null;
+  }
+
+  return NextResponse.json(
+    { error: "not found" },
+    { status: 404, headers: NO_STORE },
+  );
+}
+
 function getConfiguredToken(): string {
   return process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
 }
 
 function allowOpenEditorAccess(): boolean {
-  return process.env.NODE_ENV !== "production";
+  return isLocalEditorAvailable();
 }
 
 function safeCompare(left: string, right: string): boolean {
@@ -55,10 +70,14 @@ function getCookieOptions(req?: Request) {
 }
 
 export function isEditorProtectionEnabled(): boolean {
-  return getConfiguredToken().length > 0;
+  return isLocalEditorAvailable() && getConfiguredToken().length > 0;
 }
 
 export function isValidEditorToken(token: string): boolean {
+  if (!isLocalEditorAvailable()) {
+    return false;
+  }
+
   const expectedToken = getConfiguredToken();
 
   if (!expectedToken) {
@@ -69,6 +88,10 @@ export function isValidEditorToken(token: string): boolean {
 }
 
 export async function isEditorAuthorized(): Promise<boolean> {
+  if (!isLocalEditorAvailable()) {
+    return false;
+  }
+
   if (!isEditorProtectionEnabled()) {
     return allowOpenEditorAccess();
   }
@@ -79,6 +102,11 @@ export async function isEditorAuthorized(): Promise<boolean> {
 }
 
 export async function requireEditorAccess() {
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
+  }
+
   const authorized = await isEditorAuthorized();
 
   if (authorized) {
@@ -96,10 +124,12 @@ export async function requireEditorAccess() {
 }
 
 export async function canPreviewDrafts(): Promise<boolean> {
+  if (!isLocalEditorAvailable()) {
+    return false;
+  }
+
   if (!isEditorProtectionEnabled()) {
-    // Keep local authoring ergonomic, but avoid accidentally exposing drafts
-    // on a deployed site that has no explicit editor token configured.
-    return process.env.NODE_ENV !== "production";
+    return true;
   }
 
   return isEditorAuthorized();

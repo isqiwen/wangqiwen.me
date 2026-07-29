@@ -17,7 +17,9 @@ Open:
 http://localhost:3000/editor
 ```
 
-No environment file is required locally. Production `/editor` requires `EDITOR_ACCESS_TOKEN`; access is denied when the token is not configured.
+No environment file is required locally. Set `EDITOR_ACCESS_TOKEN` in `.env.local` only when the local editor needs password protection.
+
+The editor is unavailable in production. Editing, previewing, and changing post status happen locally; the public site changes only after the resulting files are committed and deployed.
 
 ## Post Lifecycle
 
@@ -101,15 +103,22 @@ pnpm build
 
 `pnpm check` verifies post metadata, the generated manifest, lint rules, and TypeScript.
 
-## Local and Production Publishing
+## Deploy Published Content
 
-Local editor changes remain in the local Git worktree. Review and commit the MDX, manifest, and image changes before deploying:
+Editor changes remain in the local Git worktree. Review and validate the MDX, manifest, and image changes:
 
 ```bash
 git status
+pnpm check
+pnpm build
+git add 'app/(post)' posts/manifest.json public/images
+git commit
+```
+
+Then deploy the committed version:
+
+```bash
 pnpm deploy:vps
 ```
 
-Using `/editor` on the VPS changes files directly under `/srv/nextjs/wangqiwen-me`. Those changes do not enter Git and can be overwritten by a later artifact deployment.
-
-Before deploying after production editing, sync the VPS content back into the local repository. Follow [Production Editor Content](operations.md#production-editor-content) in `operations.md`.
+Production `/editor` and `/api/editor/*` return `404`. The VPS only runs content included in a deployed artifact.

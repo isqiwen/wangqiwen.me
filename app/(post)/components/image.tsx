@@ -79,18 +79,21 @@ async function fetchImageBuffer(url: string) {
 export async function Image({
   src,
   alt: originalAlt,
+  title,
   width = null,
   height = null,
 }: {
   src: string;
   alt?: string;
-  width: number | null;
-  height: number | null;
+  title?: string;
+  width?: number | null;
+  height?: number | null;
 }) {
+  const { alt, factor } = parseImageAlt(originalAlt);
   const isDataImage = src.startsWith("data:");
   if (isDataImage) {
     /* eslint-disable @next/next/no-img-element */
-    return <img src={src} alt={originalAlt ?? ""} />;
+    return <img src={src} alt={alt} title={title} />;
   } else {
     if (width === null || height === null) {
       let imageBuffer: Buffer | null = null;
@@ -116,27 +119,13 @@ export async function Image({
       height = computedSize.height;
     }
 
-    let alt: string | null = null;
-    let dividedBy = 100;
-
-    if ("string" === typeof originalAlt) {
-      const match = originalAlt.match(/(.*) (\[(\d+)%\])?$/);
-      if (match != null) {
-        alt = match[1];
-        dividedBy = match[3] ? parseInt(match[3]) : 100;
-      }
-    } else {
-      alt = originalAlt ?? null;
-    }
-
-    const factor = dividedBy / 100;
-
     return (
       <span className="my-5 flex flex-col items-center">
         <NextImage
-          width={width * factor}
-          height={height * factor}
-          alt={alt ?? ""}
+          width={Math.max(1, Math.round(width * factor))}
+          height={Math.max(1, Math.round(height * factor))}
+          alt={alt}
+          title={title}
           src={src}
           unoptimized={src.endsWith(".gif")}
         />
@@ -145,4 +134,22 @@ export async function Image({
       </span>
     );
   }
+}
+
+function parseImageAlt(value?: string): { alt: string; factor: number } {
+  const alt = value?.trim() ?? "";
+  const match = alt.match(/^(.*?)\s+\[(\d+(?:\.\d+)?)%\]$/);
+  if (!match) {
+    return { alt, factor: 1 };
+  }
+
+  const percentage = Number(match[2]);
+  if (!Number.isFinite(percentage) || percentage <= 0) {
+    return { alt, factor: 1 };
+  }
+
+  return {
+    alt: match[1].trimEnd(),
+    factor: percentage / 100,
+  };
 }

@@ -92,7 +92,6 @@ Fill at least:
 ```text
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
-EDITOR_ACCESS_TOKEN=
 ```
 
 Then run:
@@ -165,5 +164,5 @@ curl -s https://wangqiwen.me/api/health
 
 - Runtime secrets live on the VPS at `/srv/nextjs/wangqiwen-me/.env.local`.
 - The app listens only on `127.0.0.1:3000`; public traffic goes through Caddy on ports `80` and `443`.
-- Production `/editor` changes are written inside `/srv/nextjs/wangqiwen-me`; sync them back to Git before the next artifact deploy if they must be kept.
+- Production `/editor` and `/api/editor/*` return `404`; author and validate content locally, commit it, then deploy the artifact.
 - Operational details and recovery commands are in [operations.md](operations.md).

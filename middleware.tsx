@@ -19,6 +19,7 @@ type Manifest = {
 };
 
 const POST_ROUTE_PATTERN = /^\/\d{4}\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const EDITOR_ROUTE_PATTERN = /^\/(?:editor|api\/editor)(?:\/|$)/;
 const postsManifest = manifest as Manifest;
 const configuredEditorAccessToken = process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
 const configuredEditorAccessHashPromise = configuredEditorAccessToken
@@ -54,8 +55,12 @@ function normalizeStatus(post?: ManifestPost): "draft" | "published" | "archived
 }
 
 async function canPreviewDraftRequest(req: NextRequest): Promise<boolean> {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
   if (!configuredEditorAccessHashPromise) {
-    return process.env.NODE_ENV !== "production";
+    return true;
   }
 
   const cookieValue = req.cookies.get(editorAccessCookieName)?.value ?? "";
@@ -78,6 +83,18 @@ function loadPost(pathname: string): ManifestPost | null {
 
 export async function middleware(req: NextRequest) {
   const pathname = normalizePathname(req.nextUrl.pathname);
+  if (
+    process.env.NODE_ENV === "production" &&
+    EDITOR_ROUTE_PATTERN.test(pathname)
+  ) {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   if (!POST_ROUTE_PATTERN.test(pathname)) {
     return NextResponse.next();
   }

@@ -79,9 +79,9 @@ pwsh ./scripts/dev/setup.ps1
 | `UPSTASH_REDIS_REST_TOKEN` | Required in production | Redis auth token |
 | `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Use the real Redis instance in local development |
 | `GEO_IP_API_KEY` | Optional | Enables the demo geo API route |
-| `EDITOR_ACCESS_TOKEN` | Required in production | Protects `/editor` and its write APIs |
+| `EDITOR_ACCESS_TOKEN` | Optional locally | Protects the local `/editor` and its write APIs |
 
-In local development, missing Redis credentials use an in-memory mock, `/editor` is open, and `/api/geo` stays disabled without `GEO_IP_API_KEY`.
+In local development, missing Redis credentials use an in-memory mock, `/editor` is open unless `EDITOR_ACCESS_TOKEN` is set, and `/api/geo` stays disabled without `GEO_IP_API_KEY`. The editor and its APIs are unavailable in production.
 
 See [deployment.md](docs/deployment.md) for production env handling.
 
@@ -128,10 +128,10 @@ pnpm build
 
 ## Editor
 
-The editor is intended as a local or self-hosted authoring tool, not a public CMS.
+The editor is a local authoring tool, not a production CMS.
 Use [editor.md](docs/editor.md) for authoring and lifecycle operations.
 
-Production `/editor` changes are written to the VPS app directory and do not automatically enter Git. Read [Production Editor Content](docs/operations.md#production-editor-content) before editing on the public server.
+Edit and preview locally, commit the resulting MDX, manifest, and image changes, then deploy them with `pnpm deploy:vps`. Production `/editor` and `/api/editor/*` return `404`.
 
 ## White-Labeling
 

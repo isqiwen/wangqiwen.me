@@ -108,7 +108,6 @@ Required in production:
 ```text
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
-EDITOR_ACCESS_TOKEN=
 ```
 
 Optional:
@@ -128,30 +127,6 @@ If restart or health check fails, the deploy script restores the previous releas
 ```
 
 Do not run multiple deploys at the same time.
-
-## Production Editor Content
-
-Use [editor.md](editor.md) for the article authoring and status workflow. This section covers only production file persistence and recovery.
-
-On the VPS, `/editor` writes inside the deployed app directory:
-
-```text
-/srv/nextjs/wangqiwen-me/app/(post)/YYYY/slug/page.mdx
-/srv/nextjs/wangqiwen-me/public/images/<post-id>/...
-/srv/nextjs/wangqiwen-me/posts/manifest.json
-```
-
-Those files are not committed to Git. A later artifact deploy can overwrite unsynced production edits.
-
-If production editor changes must be kept, sync them back before the next deploy:
-
-```bash
-rsync -av 'qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/app/(post)/' 'app/(post)/'
-rsync -av 'qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/public/images/' 'public/images/'
-scp qiwen@wangqiwen.me:/srv/nextjs/wangqiwen-me/posts/manifest.json posts/manifest.json
-pnpm sync:posts
-git status
-```
 
 ## Backups
 

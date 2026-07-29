@@ -50,7 +50,7 @@ Post-specific assets will be uploaded by the editor into `/public/images/<post-i
 
 ## 4. Configure Environment Variables
 
-Copy the sample file and fill in your real values:
+No environment file is required for the default local workflow. Create one only when you need real external services or local editor password protection:
 
 ```bash
 cp .env.example .env.local
@@ -60,12 +60,12 @@ Recommended variables:
 
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
-- `EDITOR_ACCESS_TOKEN`
 
 Optional variables:
 
 - `GEO_IP_API_KEY`
 - `UPSTASH_REDIS_FORCE_REMOTE`
+- `EDITOR_ACCESS_TOKEN`
 
 If you prefer a scripted local setup first, run one of these:
 
@@ -101,7 +101,6 @@ pnpm build
 
 Before putting the site on a real server:
 
-- configure `EDITOR_ACCESS_TOKEN`
 - monitor `/api/health`
 - create regular backups with `pnpm backup:content`
 - review [operations.md](operations.md)

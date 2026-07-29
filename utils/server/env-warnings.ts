@@ -29,7 +29,6 @@ export function getEnvironmentChecks(): EnvironmentCheck[] {
   const hasRedisCredentials =
     Boolean(process.env.UPSTASH_REDIS_REST_URL) &&
     Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
-  const hasEditorToken = Boolean(process.env.EDITOR_ACCESS_TOKEN?.trim());
   const hasGeoKey = Boolean(process.env.GEO_IP_API_KEY?.trim());
 
   return [
@@ -42,16 +41,6 @@ export function getEnvironmentChecks(): EnvironmentCheck[] {
         : process.env.NODE_ENV === "production"
           ? "UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are missing. Redis-backed features will use the in-memory fallback."
           : "Upstash Redis credentials are missing in development. An in-memory fallback will be used.",
-    },
-    {
-      name: "editor",
-      ok: hasEditorToken || process.env.NODE_ENV !== "production",
-      optional: false,
-      message: hasEditorToken
-        ? "EDITOR_ACCESS_TOKEN is configured."
-        : process.env.NODE_ENV === "production"
-          ? "EDITOR_ACCESS_TOKEN is missing. /editor and its APIs are disabled in production."
-          : "EDITOR_ACCESS_TOKEN is not set. /editor is currently open in local development.",
     },
     {
       name: "geo",

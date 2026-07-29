@@ -5,6 +5,7 @@ import {
   isEditorAuthorized,
   isEditorProtectionEnabled,
   isValidEditorToken,
+  requireLocalEditor,
 } from "@/utils/server/editor-auth";
 import {
   enforceEditorRateLimit,
@@ -16,6 +17,11 @@ export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
 
 export async function GET(req: Request) {
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
+  }
+
   const rateLimited = enforceEditorRateLimit(req, {
     action: "session-state",
     limit: 240,
@@ -27,7 +33,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json(
     {
-      enabled: isEditorProtectionEnabled() || process.env.NODE_ENV === "production",
+      enabled: isEditorProtectionEnabled(),
       authorized: await isEditorAuthorized(),
     },
     { headers: NO_STORE },
@@ -35,6 +41,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
+  }
+
   const rateLimited = enforceEditorRateLimit(req, {
     action: "session-unlock",
     limit: 20,
@@ -44,7 +55,7 @@ export async function POST(req: Request) {
     return rateLimited;
   }
 
-  if (!isEditorProtectionEnabled() && process.env.NODE_ENV !== "production") {
+  if (!isEditorProtectionEnabled()) {
     return NextResponse.json(
       { enabled: false, authorized: true },
       { headers: NO_STORE },
@@ -76,6 +87,11 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
+  }
+
   const rateLimited = enforceEditorRateLimit(req, {
     action: "session-signout",
     limit: 40,
