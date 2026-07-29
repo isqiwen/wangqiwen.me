@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uiCopy } from "@/utils/ui-copy";
 
 type TableOfContentsItem = {
@@ -12,9 +12,12 @@ type TableOfContentsItem = {
 
 const HEADING_SELECTOR = "h2[id], h3[id]";
 const ACTIVE_HEADING_OFFSET = 112;
+const CONTENT_END_THRESHOLD = 2;
+const TOC_SCROLL_PADDING = 12;
 
 export function TableOfContents() {
   const pathname = usePathname();
+  const containerRef = useRef<HTMLElement>(null);
   const [items, setItems] = useState<TableOfContentsItem[]>([]);
   const [activeId, setActiveId] = useState("");
 
@@ -54,16 +57,27 @@ export function TableOfContents() {
     const updateActiveHeading = () => {
       frame = 0;
       let nextActiveId = items[0].id;
+      const content = document.querySelector<HTMLElement>(
+        "[data-post-content]"
+      );
+      const hasReachedContentEnd =
+        content !== null &&
+        content.getBoundingClientRect().bottom <=
+          window.innerHeight + CONTENT_END_THRESHOLD;
 
-      for (const item of items) {
-        const heading = document.getElementById(item.id);
-        if (
-          heading &&
-          heading.getBoundingClientRect().top <= ACTIVE_HEADING_OFFSET
-        ) {
-          nextActiveId = item.id;
-        } else {
-          break;
+      if (hasReachedContentEnd) {
+        nextActiveId = items[items.length - 1].id;
+      } else {
+        for (const item of items) {
+          const heading = document.getElementById(item.id);
+          if (
+            heading &&
+            heading.getBoundingClientRect().top <= ACTIVE_HEADING_OFFSET
+          ) {
+            nextActiveId = item.id;
+          } else {
+            break;
+          }
         }
       }
 
@@ -91,12 +105,37 @@ export function TableOfContents() {
     };
   }, [items]);
 
+  useEffect(() => {
+    if (!activeId) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const activeLink = container?.querySelector<HTMLElement>(
+      '[aria-current="location"]'
+    );
+    if (!container || !activeLink) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeLink.getBoundingClientRect();
+    if (activeRect.top < containerRect.top + TOC_SCROLL_PADDING) {
+      container.scrollTop -=
+        containerRect.top + TOC_SCROLL_PADDING - activeRect.top;
+    } else if (activeRect.bottom > containerRect.bottom - TOC_SCROLL_PADDING) {
+      container.scrollTop +=
+        activeRect.bottom - (containerRect.bottom - TOC_SCROLL_PADDING);
+    }
+  }, [activeId]);
+
   if (items.length === 0) {
     return null;
   }
 
   return (
     <aside
+      ref={containerRef}
       className="sticky top-6 col-start-1 row-start-1 mr-8 hidden max-h-[calc(100vh-3rem)] w-[calc(100%-2rem)] max-w-56 self-start justify-self-end overflow-y-auto min-[1200px]:block"
       aria-label={uiCopy.post.tableOfContents}
     >

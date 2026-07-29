@@ -4,6 +4,7 @@ import { readFile } from "fs/promises";
 import { Caption } from "./caption";
 import NextImage from "next/image";
 import { resolvePathInside } from "@/utils/server/path-safety";
+import { Children, isValidElement, type ReactNode } from "react";
 
 const MAX_REMOTE_IMAGE_BYTES = 20 * 1024 * 1024;
 const REMOTE_IMAGE_HOSTS = new Set([
@@ -41,7 +42,9 @@ async function fetchImageBuffer(url: string) {
     });
     if (!response.ok) {
       throw new Error(
-        `Failed to fetch image ${formatImageFetchLabel(url)}: ${response.status}`,
+        `Failed to fetch image ${formatImageFetchLabel(url)}: ${
+          response.status
+        }`
       );
     }
 
@@ -84,16 +87,16 @@ export async function Image({
   height = null,
 }: {
   src: string;
-  alt?: string;
+  alt?: ReactNode;
   title?: string;
   width?: number | null;
   height?: number | null;
 }) {
-  const { alt, factor } = parseImageAlt(originalAlt);
+  const { altText, caption, factor } = parseImageAlt(originalAlt);
   const isDataImage = src.startsWith("data:");
   if (isDataImage) {
     /* eslint-disable @next/next/no-img-element */
-    return <img src={src} alt={alt} title={title} />;
+    return <img src={src} alt={altText} title={title} />;
   } else {
     if (width === null || height === null) {
       let imageBuffer: Buffer | null = null;
@@ -104,7 +107,7 @@ export async function Image({
         const publicRoot = join(process.cwd(), "public");
         const localImagePath = resolvePathInside(
           publicRoot,
-          src.startsWith("/") ? src.slice(1) : src,
+          src.startsWith("/") ? src.slice(1) : src
         );
         imageBuffer = await readFile(localImagePath);
       }
@@ -124,32 +127,62 @@ export async function Image({
         <NextImage
           width={Math.max(1, Math.round(width * factor))}
           height={Math.max(1, Math.round(height * factor))}
-          alt={alt}
+          alt={altText}
           title={title}
           src={src}
           unoptimized={src.endsWith(".gif")}
         />
 
-        {alt && <Caption>{alt}</Caption>}
+        {caption && <Caption>{caption}</Caption>}
       </span>
     );
   }
 }
 
-function parseImageAlt(value?: string): { alt: string; factor: number } {
-  const alt = value?.trim() ?? "";
+function parseImageAlt(value?: ReactNode): {
+  altText: string;
+  caption: ReactNode;
+  factor: number;
+} {
+  if (typeof value !== "string") {
+    return {
+      altText: getTextContent(value).trim(),
+      caption: value ?? null,
+      factor: 1,
+    };
+  }
+
+  const alt = value.trim();
   const match = alt.match(/^(.*?)\s+\[(\d+(?:\.\d+)?)%\]$/);
   if (!match) {
-    return { alt, factor: 1 };
+    return { altText: alt, caption: alt, factor: 1 };
   }
 
   const percentage = Number(match[2]);
   if (!Number.isFinite(percentage) || percentage <= 0) {
-    return { alt, factor: 1 };
+    return { altText: alt, caption: alt, factor: 1 };
   }
 
+  const altText = match[1].trimEnd();
   return {
-    alt: match[1].trimEnd(),
+    altText,
+    caption: altText,
     factor: percentage / 100,
   };
+}
+
+function getTextContent(value: ReactNode): string {
+  return Children.toArray(value)
+    .map(child => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+
+      if (!isValidElement(child)) {
+        return "";
+      }
+
+      return getTextContent((child.props as { children?: ReactNode }).children);
+    })
+    .join("");
 }
