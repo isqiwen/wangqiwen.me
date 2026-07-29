@@ -1,32 +1,40 @@
+import type { SVGProps } from "react";
+
 export function Diagram() {
   return (
-    <div className="my-5" style={{ height: "710px" }}>
+    <figure
+      className="
+        relative left-1/2 my-8 w-[calc(100vw-3rem)] max-w-[52rem] -translate-x-1/2
+        min-[1200px]:left-0 min-[1200px]:w-[52rem] min-[1200px]:translate-x-0
+      "
+    >
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          width: "100%",
-          background: "#eee",
-          padding: "30px 0 35px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        aria-label="Static hoisting and legacy CDN architecture comparison"
+        className="overflow-x-auto bg-[#eee] px-4 py-6 sm:px-6 sm:py-8"
+        role="group"
+        tabIndex={0}
       >
-        <div className="mobile-diagram-wrapper">
-          <SVG />
-        </div>
+        <SVG />
       </div>
-    </div>
+    </figure>
   );
 }
 
 const DIAGRAM_FONT =
   '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace';
 
-function SVG(props) {
+function SVG(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg width={827} height={655} {...props}>
+    <svg
+      aria-labelledby="static-hoisting-diagram-title"
+      className="h-auto w-full min-w-[40rem] sm:min-w-0"
+      role="img"
+      viewBox="0 0 827 655"
+      {...props}
+    >
+      <title id="static-hoisting-diagram-title">
+        Static hoisting compared with a legacy CDN and server
+      </title>
       <g fill="none" fillRule="evenodd">
         <text fontFamily={DIAGRAM_FONT} fontSize={15} fill="#000">
           <tspan x={354} y={14}>
