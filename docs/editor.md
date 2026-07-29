@@ -17,7 +17,7 @@ Open:
 http://localhost:3000/editor
 ```
 
-No environment file is required locally. Set `EDITOR_ACCESS_TOKEN` in `.env.local` only when the local editor needs password protection.
+No environment file is required locally.
 
 The editor is unavailable in production. Editing, previewing, and changing post status happen locally; the public site changes only after the resulting files are committed and deployed.
 

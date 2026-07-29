@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { requireLocalEditor } from "@/utils/server/local-editor";
 import { syncPostsMetadata } from "@/utils/server/sync-posts";
 import { withPostMutationLock } from "@/utils/server/post-files";
 import {
@@ -20,9 +20,9 @@ export async function POST(req: Request) {
     return rateLimited;
   }
 
-  const denied = await requireEditorAccess();
-  if (denied) {
-    return denied;
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
   }
 
   try {

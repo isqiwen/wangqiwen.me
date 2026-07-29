@@ -50,7 +50,7 @@ Post-specific assets will be uploaded by the editor into `/public/images/<post-i
 
 ## 4. Configure Environment Variables
 
-No environment file is required for the default local workflow. Create one only when you need real external services or local editor password protection:
+No environment file is required for the default local workflow. Create one only when you need real external services:
 
 ```bash
 cp .env.example .env.local
@@ -65,7 +65,6 @@ Optional variables:
 
 - `GEO_IP_API_KEY`
 - `UPSTASH_REDIS_FORCE_REMOTE`
-- `EDITOR_ACCESS_TOKEN`
 
 If you prefer a scripted local setup first, run one of these:
 

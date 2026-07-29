@@ -4,15 +4,15 @@ set -euo pipefail
 # Configure a Caddy reverse proxy site for this app.
 #
 # Optional env vars:
-#   APP_NAME=wangqiwen-me
+#   APP_NAME=nextjs-app
 #   APP_PORT=3000
 #   APP_HOST=127.0.0.1
-#   DOMAIN=wangqiwen.me
-#   SERVER_ALIASES="www.wangqiwen.me"
-#   SITE_NAME=wangqiwen.me
+#   DOMAIN=example.com
+#   SERVER_ALIASES="www.example.com"
+#   SITE_NAME=example.com
 #   REPLACE_EXISTING_SITE_CONFIG=1
 
-APP_NAME="${APP_NAME:-wangqiwen-me}"
+APP_NAME="${APP_NAME:-nextjs-app}"
 APP_PORT="${APP_PORT:-3000}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 DOMAIN="${DOMAIN:-}"

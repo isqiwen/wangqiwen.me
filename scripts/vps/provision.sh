@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# VPS provisioning flow for wangqiwen.me on Ubuntu.
+# VPS provisioning flow for a Next.js standalone app on Ubuntu.
 # It can:
 # - install Node.js, pnpm, Caddy, service user and directories
 # - deploy a prebuilt Next.js standalone artifact
 # - create/update the Caddy reverse proxy site
 #
 # Common env vars:
-#   APP_NAME=wangqiwen-me
+#   APP_NAME=nextjs-app
 #   SERVICE_USER=nextjs
-#   DOMAIN=wangqiwen.me
-#   SERVER_ALIASES="www.wangqiwen.me"
+#   DOMAIN=example.com
+#   SERVER_ALIASES="www.example.com"
 #   ARTIFACT_TARBALL=/tmp/nextjs-standalone-xxxx.tar.gz
 #   ARTIFACT_URL=https://example.com/nextjs-standalone-xxxx.tar.gz
 #   ENV_FILE_PATH=/tmp/prod.env
@@ -24,14 +24,14 @@ set -euo pipefail
 #   OPEN_HTTP3=0
 #   APP_HOST=127.0.0.1
 #   APP_PORT=3000
-#   SITE_NAME=wangqiwen.me
+#   SITE_NAME=example.com
 #   RUN_INSTALL=1
 #   RUN_DEPLOY=1
 #   RUN_SITE_CONFIG=1
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-APP_NAME="${APP_NAME:-wangqiwen-me}"
+APP_NAME="${APP_NAME:-nextjs-app}"
 DOMAIN="${DOMAIN:-}"
 SERVER_ALIASES="${SERVER_ALIASES:-}"
 ARTIFACT_TARBALL="${ARTIFACT_TARBALL:-}"

@@ -27,7 +27,7 @@ ssh qiwen@wangqiwen.me 'sudo -n true'
 If needed, configure it on the VPS with:
 
 ```bash
-sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+sudo visudo -f /etc/sudoers.d/wangqiwen-me-deploy
 ```
 
 ```text

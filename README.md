@@ -79,9 +79,8 @@ pwsh ./scripts/dev/setup.ps1
 | `UPSTASH_REDIS_REST_TOKEN` | Required in production | Redis auth token |
 | `UPSTASH_REDIS_FORCE_REMOTE` | Optional | Use the real Redis instance in local development |
 | `GEO_IP_API_KEY` | Optional | Enables the demo geo API route |
-| `EDITOR_ACCESS_TOKEN` | Optional locally | Protects the local `/editor` and its write APIs |
 
-In local development, missing Redis credentials use an in-memory mock, `/editor` is open unless `EDITOR_ACCESS_TOKEN` is set, and `/api/geo` stays disabled without `GEO_IP_API_KEY`. The editor and its APIs are unavailable in production.
+In local development, missing Redis credentials use an in-memory mock, `/editor` is available without authentication, and `/api/geo` stays disabled without `GEO_IP_API_KEY`. The editor and its APIs are unavailable in production.
 
 See [deployment.md](docs/deployment.md) for production env handling.
 
@@ -157,6 +156,7 @@ Related guides:
 - `docs/` authoring, customization, deployment, and operations guides
 - `posts/manifest.json` generated post index
 - `site.config.js` public site identity and copy
+- `deploy.env` non-secret VPS deployment settings
 - `styles/` global styles
 - `scripts/` project maintenance and VPS deployment scripts; see [scripts/README.md](scripts/README.md)
 
@@ -167,6 +167,8 @@ For the self-hosted `wangqiwen.me` VPS:
 ```bash
 pnpm deploy:vps
 ```
+
+The command reads its non-secret target settings from [`deploy.env`](deploy.env). Command environment variables can override individual values for one deployment.
 
 For first-time VPS setup with env upload:
 

@@ -4,7 +4,7 @@ import commaNumber from "comma-number";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { logger } from "@/utils/logger";
-import { canPreviewDrafts } from "@/utils/server/editor-auth";
+import { canPreviewDrafts } from "@/utils/server/local-editor";
 import {
   consumeRateLimitToken,
   getRequestClientIp,
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   }
 
   const post = await getPostById(id, {
-    includeDrafts: await canPreviewDrafts(),
+    includeDrafts: canPreviewDrafts(),
     includeViews: false,
   });
 

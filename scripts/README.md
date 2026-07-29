@@ -6,7 +6,7 @@ Normal commands:
 
 | Script | Run directly? | Purpose |
 | --- | --- | --- |
-| `vps/deploy.sh` | Yes | Build locally, upload the artifact, deploy to the VPS, restart systemd, and run the health check. This is exposed as `pnpm deploy:vps`. |
+| `vps/deploy.sh` | Yes | Read `deploy.env`, build locally, upload the artifact, deploy to the VPS, restart systemd, and run the health check. This is exposed as `pnpm deploy:vps`. |
 | `dev/setup.sh` | Yes | Prepare a local macOS/Linux development checkout. |
 | `dev/setup.ps1` | Yes | Prepare a local Windows PowerShell development checkout. |
 
@@ -17,7 +17,7 @@ VPS deployment internals:
 | `vps/build-artifact.sh` | Rarely | Build the standalone Next.js artifact on a Linux machine. `vps/deploy.sh` calls this automatically. |
 | `vps/provision.sh` | No | Remote orchestrator used by `vps/deploy.sh`; installs runtime packages when requested, installs the release, and configures Caddy when requested. |
 | `vps/install-runtime.sh` | No | Install Node.js, pnpm, Caddy, and the `nextjs` service user on Ubuntu. |
-| `vps/install-release.sh` | No | Install one prebuilt artifact under `/srv/nextjs/wangqiwen-me`, write systemd, restart the app, check health, and rollback on failure. |
+| `vps/install-release.sh` | No | Install one prebuilt artifact under the configured service directory, write systemd, restart the app, check health, and rollback on failure. |
 | `vps/configure-caddy.sh` | No | Write and reload the Caddy reverse proxy config for the VPS site. |
 
 Content maintenance:
@@ -35,6 +35,8 @@ Day-to-day deployment should use only:
 ```bash
 pnpm deploy:vps
 ```
+
+Non-secret target settings such as the SSH host, app name, domain, service user, and port live in the repository root [`deploy.env`](../deploy.env). Command environment variables override that file for a single deployment.
 
 First server setup with env upload should use:
 

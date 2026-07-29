@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import sizeOf from "image-size";
-import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { requireLocalEditor } from "@/utils/server/local-editor";
 import { resolvePathInside } from "@/utils/server/path-safety";
 import {
   createEditorJsonError,
@@ -37,9 +37,9 @@ export async function GET(req: Request) {
     return rateLimited;
   }
 
-  const denied = await requireEditorAccess();
-  if (denied) {
-    return denied;
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
   }
 
   try {
@@ -63,9 +63,9 @@ export async function DELETE(req: Request) {
     return rateLimited;
   }
 
-  const denied = await requireEditorAccess();
-  if (denied) {
-    return denied;
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
   }
 
   try {

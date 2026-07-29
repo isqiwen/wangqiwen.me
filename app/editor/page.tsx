@@ -2,7 +2,7 @@
 
 import NextImage from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ClipboardEvent, DragEvent, FormEvent, ReactNode } from "react";
+import type { ClipboardEvent, DragEvent, ReactNode } from "react";
 import {
   componentsPalette,
   getComponentCategories,
@@ -21,11 +21,6 @@ import {
   parseExportedMetadata,
   stripExportedMetadata,
 } from "@/utils/shared/post-metadata";
-
-type EditorSession = {
-  enabled: boolean;
-  authorized: boolean;
-};
 
 type EditorFileOption = {
   path: string;
@@ -267,182 +262,11 @@ function parseLocalAutosave(rawValue: string | null): EditorLocalAutosave | null
   }
 }
 
-function unauthorizedMessage() {
-  return "Editor access expired. Enter the access token again.";
-}
-
 export default function EditorPage() {
-  const [session, setSession] = useState<EditorSession | null>(null);
-  const [token, setToken] = useState("");
-  const [authHint, setAuthHint] = useState("");
-  const [isUnlocking, setIsUnlocking] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadSession() {
-      try {
-        const res = await fetch("/api/editor/session", {
-          cache: "no-store",
-        });
-        const data = (await res.json()) as Partial<EditorSession>;
-
-        if (!cancelled) {
-          setSession({
-            enabled: Boolean(data.enabled),
-            authorized: Boolean(data.authorized),
-          });
-        }
-      } catch {
-        if (!cancelled) {
-          setSession({ enabled: false, authorized: true });
-          setAuthHint("Failed to read editor session state. Falling back to local open mode.");
-        }
-      }
-    }
-
-    void loadSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function handleUnlock(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setIsUnlocking(true);
-    setAuthHint("");
-
-    try {
-      const res = await fetch("/api/editor/session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (res.status === 401) {
-        setAuthHint("Incorrect access token. Please try again.");
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error("failed");
-      }
-
-      setSession({ enabled: true, authorized: true });
-      setToken("");
-      setAuthHint("");
-    } catch {
-      setAuthHint("Failed to unlock the editor. Please try again.");
-    } finally {
-      setIsUnlocking(false);
-    }
-  }
-
-  async function handleSignOut() {
-    try {
-      await fetch("/api/editor/session", {
-        method: "DELETE",
-      });
-    } finally {
-      setSession({ enabled: true, authorized: false });
-      setToken("");
-      setAuthHint("Signed out of editor access.");
-    }
-  }
-
-  if (session == null) {
-    return (
-      <EditorScreen>
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-          Loading editor session...
-        </div>
-      </EditorScreen>
-    );
-  }
-
-  if (session.enabled && !session.authorized) {
-    return (
-      <EditorScreen>
-        <form
-          onSubmit={handleUnlock}
-          className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
-        >
-          <div className="space-y-2">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-slate-500">
-              Editor Access
-            </p>
-            <h1 className="text-2xl font-semibold text-slate-900">Enter Access Token</h1>
-            <p className="text-sm leading-6 text-slate-600">
-              Minimal access protection is enabled. After unlocking, this browser
-              stores an HttpOnly session cookie so you can keep using save,
-              publish, and upload actions.
-            </p>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-              Access Token
-              <input
-                type="password"
-                value={token}
-                onChange={event => setToken(event.target.value)}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                placeholder="EDITOR_ACCESS_TOKEN"
-                autoComplete="current-password"
-              />
-            </label>
-
-            {authHint ? <p className="text-sm text-rose-600">{authHint}</p> : null}
-
-            <button
-              type="submit"
-              disabled={isUnlocking || token.trim().length === 0}
-              className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {isUnlocking ? "Unlocking..." : "Unlock Editor"}
-            </button>
-          </div>
-        </form>
-      </EditorScreen>
-    );
-  }
-
-  return (
-    <EditorWorkspace
-      protectionEnabled={session.enabled}
-      onSignOut={session.enabled ? handleSignOut : undefined}
-      onAuthExpired={() => {
-        setSession(current => (current ? { ...current, authorized: false } : current));
-        setAuthHint(unauthorizedMessage());
-      }}
-    />
-  );
+  return <EditorWorkspace />;
 }
 
-function EditorScreen({ children }: { children: ReactNode }) {
-  return (
-    <main
-      className="flex min-h-[70vh] w-screen max-w-none items-center justify-center px-4 py-10"
-      style={{ marginLeft: "calc(50% - 50vw)" }}
-    >
-      {children}
-    </main>
-  );
-}
-
-function EditorWorkspace({
-  protectionEnabled,
-  onSignOut,
-  onAuthExpired,
-}: {
-  protectionEnabled: boolean;
-  onSignOut?: () => void | Promise<void>;
-  onAuthExpired: () => void;
-}) {
+function EditorWorkspace() {
   const [title, setTitle] = useState("Untitled Post");
   const [description, setDescription] = useState("Add a short summary for this post.");
   const [summary, setSummary] = useState("");
@@ -676,13 +500,6 @@ function EditorWorkspace({
           cache: "no-store",
         });
 
-        if (res.status === 401) {
-          onAuthExpired();
-          showPickerFeedback(unauthorizedMessage(), "error");
-          showFeedback(unauthorizedMessage(), "error");
-          return false;
-        }
-
         if (res.status === 404) {
           showPickerFeedback("The selected file was not found.", "error");
           return false;
@@ -720,7 +537,7 @@ function EditorWorkspace({
         return false;
       }
     },
-    [applyWorkspaceState, clearPickerFeedback, onAuthExpired, restoreLocalAutosave, showFeedback, showPickerFeedback],
+    [applyWorkspaceState, clearPickerFeedback, restoreLocalAutosave, showFeedback, showPickerFeedback],
   );
 
   const refreshFileList = useCallback(
@@ -729,12 +546,6 @@ function EditorWorkspace({
         const res = await fetch("/api/editor/list", {
           cache: "no-store",
         });
-
-        if (res.status === 401) {
-          onAuthExpired();
-          showPickerFeedback(unauthorizedMessage(), "error");
-          return;
-        }
 
         if (!res.ok) {
           throw new Error(await readResponseError(res, "Failed to load the file list."));
@@ -782,7 +593,7 @@ function EditorWorkspace({
         showPickerFeedback(message, "error");
       }
     },
-    [loadFromPath, onAuthExpired, restoreLocalAutosave, showPickerFeedback],
+    [loadFromPath, restoreLocalAutosave, showPickerFeedback],
   );
 
   const refreshAssets = useCallback(
@@ -793,14 +604,6 @@ function EditorWorkspace({
         const res = await fetch(`/api/editor/assets?id=${encodeURIComponent(assetFolderId)}`, {
           cache: "no-store",
         });
-
-        if (res.status === 401) {
-          onAuthExpired();
-          if (!options.silent) {
-            showFeedback(unauthorizedMessage(), "error");
-          }
-          return;
-        }
 
         if (!res.ok) {
           throw new Error(await readResponseError(res, "Failed to load assets."));
@@ -821,7 +624,7 @@ function EditorWorkspace({
         setIsAssetsLoading(false);
       }
     },
-    [assetFolderId, onAuthExpired, showFeedback],
+    [assetFolderId, showFeedback],
   );
 
   async function saveFile(options: {
@@ -861,14 +664,6 @@ function EditorWorkspace({
           content,
         }),
       });
-
-      if (res.status === 401) {
-        onAuthExpired();
-        if (options.showHint !== false) {
-          showFeedback(unauthorizedMessage(), "error");
-        }
-        return false;
-      }
 
       if (!res.ok) {
         throw new Error(await readResponseError(res, "Save failed. Check the file path and permissions."));
@@ -935,12 +730,6 @@ function EditorWorkspace({
     try {
       const res = await fetch("/api/editor/publish", { method: "POST" });
 
-      if (res.status === 401) {
-        onAuthExpired();
-        showFeedback(unauthorizedMessage(), "error");
-        return;
-      }
-
       if (!res.ok) {
         throw new Error(await readResponseError(res, "Publish failed. Check the server logs."));
       }
@@ -1004,12 +793,6 @@ function EditorWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: activePath }),
       });
-
-      if (res.status === 401) {
-        onAuthExpired();
-        showFeedback(unauthorizedMessage(), "error");
-        return;
-      }
 
       if (res.status === 409) {
         showFeedback("Published posts must be archived before they can be deleted.", "error");
@@ -1256,12 +1039,6 @@ function EditorWorkspace({
         body: formData,
       });
 
-      if (res.status === 401) {
-        onAuthExpired();
-        showFeedback(unauthorizedMessage(), "error");
-        return;
-      }
-
       const data = await res.json();
       if (!res.ok || !data?.path) {
         throw new Error(resolveApiError(data, "Upload failed. Please try again."));
@@ -1380,12 +1157,6 @@ function EditorWorkspace({
         body: JSON.stringify({ path: asset.path }),
       });
 
-      if (res.status === 401) {
-        onAuthExpired();
-        showFeedback(unauthorizedMessage(), "error");
-        return;
-      }
-
       if (!res.ok) {
         throw new Error(await readResponseError(res, "Failed to delete asset."));
       }
@@ -1427,21 +1198,8 @@ function EditorWorkspace({
             Publishing first switches the post out of draft mode and then
             synchronizes the post index.
           </p>
-          {protectionEnabled ? (
-            <p className="mt-2 text-xs text-slate-400">
-              Access token protection is enabled. This browser is currently unlocked.
-            </p>
-          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          {onSignOut ? (
-            <button
-              onClick={() => void onSignOut()}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Sign Out
-            </button>
-          ) : null}
           {canOpenPreview ? (
             <a
               href={previewHref}

@@ -1,6 +1,6 @@
 import { Header } from "./header";
 import { getPosts } from "../get-posts";
-import { canPreviewDrafts } from "@/utils/server/editor-auth";
+import { canPreviewDrafts } from "@/utils/server/local-editor";
 import { EquationNumbering } from "./components/equation-numbering";
 import { TableOfContents } from "./components/table-of-contents";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Layout({ children }) {
   const posts = await getPosts({
-    includeDrafts: await canPreviewDrafts(),
+    includeDrafts: canPreviewDrafts(),
   });
 
   return (

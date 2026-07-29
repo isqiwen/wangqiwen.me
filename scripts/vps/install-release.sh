@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # The artifact must contain Next.js standalone output with server.js at root.
 
-APP_NAME="${APP_NAME:-wangqiwen-me}"
+APP_NAME="${APP_NAME:-nextjs-app}"
 SYSTEMD_SERVICE_NAME="${SYSTEMD_SERVICE_NAME:-${APP_NAME}}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
 SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"

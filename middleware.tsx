@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import {
-  editorAccessCookieName,
-  hashEditorAccessToken,
-} from "@/utils/shared/editor-access";
 import { logger } from "@/utils/logger";
 import manifest from "@/posts/manifest.json";
 
@@ -21,10 +17,6 @@ type Manifest = {
 const POST_ROUTE_PATTERN = /^\/\d{4}\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const EDITOR_ROUTE_PATTERN = /^\/(?:editor|api\/editor)(?:\/|$)/;
 const postsManifest = manifest as Manifest;
-const configuredEditorAccessToken = process.env.EDITOR_ACCESS_TOKEN?.trim() ?? "";
-const configuredEditorAccessHashPromise = configuredEditorAccessToken
-  ? hashEditorAccessToken(configuredEditorAccessToken)
-  : null;
 
 function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") {
@@ -54,17 +46,8 @@ function normalizeStatus(post?: ManifestPost): "draft" | "published" | "archived
   return "published";
 }
 
-async function canPreviewDraftRequest(req: NextRequest): Promise<boolean> {
-  if (process.env.NODE_ENV === "production") {
-    return false;
-  }
-
-  if (!configuredEditorAccessHashPromise) {
-    return true;
-  }
-
-  const cookieValue = req.cookies.get(editorAccessCookieName)?.value ?? "";
-  return Boolean(cookieValue) && cookieValue === (await configuredEditorAccessHashPromise);
+function canPreviewDraftRequest(): boolean {
+  return process.env.NODE_ENV !== "production";
 }
 
 function loadPost(pathname: string): ManifestPost | null {
@@ -110,7 +93,7 @@ export async function middleware(req: NextRequest) {
       return new NextResponse("Not Found", { status: 404 });
     }
 
-    if (status === "draft" && !(await canPreviewDraftRequest(req))) {
+    if (status === "draft" && !canPreviewDraftRequest()) {
       return new NextResponse("Not Found", { status: 404 });
     }
 

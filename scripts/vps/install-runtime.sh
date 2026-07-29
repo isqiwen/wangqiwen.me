@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 NODE_MAJOR="${NODE_MAJOR:-20}"
-APP_NAME="${APP_NAME:-wangqiwen-me}"
+APP_NAME="${APP_NAME:-nextjs-app}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
 SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
 APP_DIR="${APP_DIR:-${SERVICE_HOME}/${APP_NAME}}"

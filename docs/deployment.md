@@ -16,9 +16,10 @@ From the repo root:
 pnpm deploy:vps
 ```
 
-That command uses these defaults:
+That command reads the tracked, non-secret deployment defaults from
+[`deploy.env`](../deploy.env):
 
-| Setting | Default |
+| Setting | Config value |
 | --- | --- |
 | SSH target | `qiwen@wangqiwen.me` |
 | Domain | `wangqiwen.me` |
@@ -29,11 +30,19 @@ That command uses these defaults:
 | App listener | `127.0.0.1:3000` |
 | Production env source | VPS `.env.local`; upload `.env.production` only with `UPLOAD_ENV=1` |
 
-Override only what changes:
+Edit `deploy.env` when the deployment target changes. Command environment variables take precedence for one-off overrides:
 
 ```bash
 DEPLOY_HOST=qiwen@1.2.3.4 pnpm deploy:vps
 ```
+
+Use `DEPLOY_CONFIG` to read a different config file:
+
+```bash
+DEPLOY_CONFIG=deploy.staging.env pnpm deploy:vps
+```
+
+`deploy.env` contains no secrets and is committed to Git. Do not put SSH passwords, private keys, sudo passwords, application tokens, or production environment variables in it.
 
 The SSH user must have passwordless sudo because the remote install writes `/srv`, systemd, and Caddy config:
 
@@ -44,7 +53,7 @@ ssh qiwen@wangqiwen.me 'sudo -n true'
 If that fails, add a sudoers rule on the VPS:
 
 ```bash
-sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+sudo visudo -f /etc/sudoers.d/wangqiwen-me-deploy
 ```
 
 ```text
@@ -112,6 +121,7 @@ pnpm deploy:vps
 
 `pnpm deploy:vps` runs [scripts/vps/deploy.sh](../scripts/vps/deploy.sh):
 
+- reads non-secret deployment settings from `deploy.env`
 - requires a clean Git working tree by default
 - checks that the SSH user has passwordless sudo before build/upload
 - builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh)

@@ -10,7 +10,7 @@ set -euo pipefail
 #   UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 #
 # Common env vars:
-#   DEPLOY_HOST=qiwen@wangqiwen.me
+#   DEPLOY_HOST=user@example.com
 #   ENV_FILE=.env.production
 #   UPLOAD_ENV=0
 #   SETUP_SERVER=0
@@ -21,13 +21,63 @@ set -euo pipefail
 #   CLEAN_REMOTE_ON_EXIT=1
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+DEPLOY_CONFIG="${DEPLOY_CONFIG:-${ROOT_DIR}/deploy.env}"
 
-APP_NAME="${APP_NAME:-wangqiwen-me}"
+if [[ "${DEPLOY_CONFIG}" != /* ]]; then
+  DEPLOY_CONFIG="${ROOT_DIR}/${DEPLOY_CONFIG}"
+fi
+
+# Keep explicit command-line environment variables above tracked config values.
+load_deploy_config() {
+  local config_file="$1"
+  local configurable_vars=(
+    DEPLOY_HOST
+    APP_NAME
+    SERVICE_USER
+    DOMAIN
+    SERVER_ALIASES
+    APP_HOST
+    APP_PORT
+  )
+  local override_names=()
+  local override_values=()
+  local name
+  local index
+
+  if [[ ! -f "${config_file}" ]]; then
+    echo "Deployment config not found: ${config_file}" >&2
+    exit 1
+  fi
+
+  for name in "${configurable_vars[@]}"; do
+    if [[ -v "${name}" ]]; then
+      override_names+=("${name}")
+      override_values+=("${!name}")
+    fi
+  done
+
+  # deploy.env is a trusted, tracked shell configuration file.
+  # shellcheck disable=SC1090
+  source "${config_file}"
+
+  for index in "${!override_names[@]}"; do
+    printf -v "${override_names[$index]}" "%s" "${override_values[$index]}"
+  done
+}
+
+# Preserve the old VPS_HOST alias as a command-line override.
+if [[ -z "${DEPLOY_HOST+x}" && -n "${VPS_HOST+x}" ]]; then
+  DEPLOY_HOST="${VPS_HOST}"
+fi
+
+load_deploy_config "${DEPLOY_CONFIG}"
+
+APP_NAME="${APP_NAME:-}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
 SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
-DEPLOY_HOST="${DEPLOY_HOST:-${VPS_HOST:-qiwen@wangqiwen.me}}"
-DOMAIN="${DOMAIN:-wangqiwen.me}"
-SERVER_ALIASES="${SERVER_ALIASES:-www.wangqiwen.me}"
+DEPLOY_HOST="${DEPLOY_HOST:-}"
+DOMAIN="${DOMAIN:-}"
+SERVER_ALIASES="${SERVER_ALIASES:-}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3000}"
 
@@ -71,15 +121,16 @@ Caddy-only changes:
   SETUP_SERVER=1 pnpm deploy:vps
 
 Useful env vars:
-  DEPLOY_HOST=qiwen@wangqiwen.me   SSH target
-  ENV_FILE=.env.production         Production env file to upload when UPLOAD_ENV=1
-  UPLOAD_ENV=1                     Upload ENV_FILE as the server's .env.local
-  ALLOW_DIRTY=1                    Build from an uncommitted working tree
-  ALLOW_NON_LINUX_BUILD=1          Permit building the VPS artifact off Linux
-  SKIP_REMOTE_PLATFORM_CHECK=1     Skip local/VPS architecture comparison
-  SKIP_REMOTE_SUDO_CHECK=1         Skip passwordless sudo preflight
-  SSH_CONTROL=0                    Disable SSH connection reuse
-  CLEAN_REMOTE_ON_EXIT=0           Keep uploaded temp files on the VPS
+  DEPLOY_CONFIG=deploy.env          Deployment config file
+  DEPLOY_HOST=user@example.com      Override the configured SSH target
+  ENV_FILE=.env.production          Production env file to upload when UPLOAD_ENV=1
+  UPLOAD_ENV=1                      Upload ENV_FILE as the server's .env.local
+  ALLOW_DIRTY=1                     Build from an uncommitted working tree
+  ALLOW_NON_LINUX_BUILD=1           Permit building the VPS artifact off Linux
+  SKIP_REMOTE_PLATFORM_CHECK=1      Skip local/VPS architecture comparison
+  SKIP_REMOTE_SUDO_CHECK=1          Skip passwordless sudo preflight
+  SSH_CONTROL=0                     Disable SSH connection reuse
+  CLEAN_REMOTE_ON_EXIT=0            Keep uploaded temp files on the VPS
 EOF
 }
 
@@ -186,7 +237,7 @@ The SSH user must pass this check:
 
 On the VPS, configure it with:
 
-  sudo visudo -f /etc/sudoers.d/wangqiwen-deploy
+  sudo visudo -f /etc/sudoers.d/${APP_NAME}-deploy
 
 Then add:
 
@@ -208,7 +259,17 @@ need_cmd scp
 need_cmd tar
 
 if [[ -z "${DEPLOY_HOST}" ]]; then
-  echo "DEPLOY_HOST is required, for example: DEPLOY_HOST=qiwen@wangqiwen.me" >&2
+  echo "DEPLOY_HOST is required in ${DEPLOY_CONFIG} or the command environment." >&2
+  exit 1
+fi
+
+if [[ -z "${APP_NAME}" ]]; then
+  echo "APP_NAME is required in ${DEPLOY_CONFIG} or the command environment." >&2
+  exit 1
+fi
+
+if [[ -z "${DOMAIN}" ]]; then
+  echo "DOMAIN is required in ${DEPLOY_CONFIG} or the command environment." >&2
   exit 1
 fi
 
@@ -253,6 +314,7 @@ if [[ "${UPLOAD_ENV}" == "1" && ! -f "${ENV_FILE}" ]]; then
 fi
 
 echo "==> Deploying ${APP_NAME} to ${DEPLOY_HOST}"
+echo "    config: ${DEPLOY_CONFIG}"
 echo "    revision: ${REVISION}"
 echo "    setup server: ${SETUP_SERVER}"
 echo "    configure site: ${RUN_SITE_CONFIG}"

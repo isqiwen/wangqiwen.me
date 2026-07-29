@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import sizeOf from "image-size";
 import { assertPathInside } from "@/utils/server/path-safety";
-import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { requireLocalEditor } from "@/utils/server/local-editor";
 import { logger } from "@/utils/logger";
 import { enforceEditorRateLimit, logEditorInfo } from "@/utils/server/editor-api";
 
@@ -38,9 +38,9 @@ export async function POST(req: Request) {
     return rateLimited;
   }
 
-  const denied = await requireEditorAccess();
-  if (denied) {
-    return denied;
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
   }
 
   try {

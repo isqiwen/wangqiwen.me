@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { requireEditorAccess } from "@/utils/server/editor-auth";
+import { requireLocalEditor } from "@/utils/server/local-editor";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 import {
   createEditorJsonError,
@@ -32,9 +32,9 @@ export async function GET(req: Request) {
     return rateLimited;
   }
 
-  const denied = await requireEditorAccess();
-  if (denied) {
-    return denied;
+  const unavailable = requireLocalEditor();
+  if (unavailable) {
+    return unavailable;
   }
 
   try {
