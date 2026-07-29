@@ -9,6 +9,7 @@ export const uiCopy = {
     title: "title",
     views: "views",
     readingTime: "min read",
+    tableOfContents: "Table of Contents",
   },
   about: "About",
   follow: "Follow",

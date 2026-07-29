@@ -111,20 +111,20 @@ pnpm deploy:vps
 
 ## What The Deploy Command Does
 
-`pnpm deploy:vps` runs [scripts/vps/deploy.sh](scripts/vps/deploy.sh):
+`pnpm deploy:vps` runs [scripts/vps/deploy.sh](../scripts/vps/deploy.sh):
 
 - requires a clean Git working tree by default
 - checks that the SSH user has passwordless sudo before build/upload
-- builds a standalone tarball with [scripts/vps/build-artifact.sh](scripts/vps/build-artifact.sh)
+- builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh)
 - uploads the tarball to `/tmp`
 - keeps the existing VPS `.env.local` by default
 - uploads `.env.production` as `/tmp/prod.env` only when `UPLOAD_ENV=1`
 - uploads the current deploy scripts to `/tmp`
-- runs [scripts/vps/provision.sh](scripts/vps/provision.sh) on the VPS
+- runs [scripts/vps/provision.sh](../scripts/vps/provision.sh) on the VPS
 - restarts `wangqiwen-me.service`
 - checks `http://127.0.0.1:3000/api/health`
 
-If the new release fails to start or fails health check, [scripts/vps/install-release.sh](scripts/vps/install-release.sh) restores the previous release automatically.
+If the new release fails to start or fails health check, [scripts/vps/install-release.sh](../scripts/vps/install-release.sh) restores the previous release automatically.
 
 ## Dependency Changes
 
@@ -166,4 +166,4 @@ curl -s https://wangqiwen.me/api/health
 - Runtime secrets live on the VPS at `/srv/nextjs/wangqiwen-me/.env.local`.
 - The app listens only on `127.0.0.1:3000`; public traffic goes through Caddy on ports `80` and `443`.
 - Production `/editor` changes are written inside `/srv/nextjs/wangqiwen-me`; sync them back to Git before the next artifact deploy if they must be kept.
-- Operational details and recovery commands are in [OPERATIONS.md](OPERATIONS.md).
+- Operational details and recovery commands are in [operations.md](operations.md).

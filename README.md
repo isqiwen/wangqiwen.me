@@ -83,7 +83,7 @@ pwsh ./scripts/dev/setup.ps1
 
 In local development, missing Redis credentials use an in-memory mock, `/editor` is open, and `/api/geo` stays disabled without `GEO_IP_API_KEY`.
 
-See [DEPLOY.md](DEPLOY.md) for production env handling.
+See [deployment.md](docs/deployment.md) for production env handling.
 
 ## Common Commands
 
@@ -113,17 +113,11 @@ This creates:
 app/(post)/<year>/<slug>/page.mdx
 ```
 
-Then open `/editor` to:
-- edit metadata
-- write MDX content
-- upload images
-- manage drafts, published posts, and archived posts
+Then open `/editor` to write, preview, and publish it.
 
-After content changes, sync metadata:
+See [editor.md](docs/editor.md) for the complete create, edit, publish, archive, restore, and delete workflow.
 
-```bash
-pnpm sync:posts
-```
+Editor saves synchronize post metadata automatically. After editing MDX files manually, run `pnpm sync:posts`.
 
 Before shipping, verify:
 
@@ -135,15 +129,9 @@ pnpm build
 ## Editor
 
 The editor is intended as a local or self-hosted authoring tool, not a public CMS.
-For the self-hosted artifact deployment, production `/editor` changes are written to the VPS app directory and do not automatically enter Git; see [DEPLOY.md](DEPLOY.md) and [OPERATIONS.md](OPERATIONS.md) before using it on the public server.
+Use [editor.md](docs/editor.md) for authoring and lifecycle operations.
 
-Current editor features:
-- draft, published, and archived status workflow
-- autosave and unsaved-change warnings
-- recent draft restore
-- image asset upload and management
-- MDX component insertion
-- protected access when `EDITOR_ACCESS_TOKEN` is set
+Production `/editor` changes are written to the VPS app directory and do not automatically enter Git. Read [Production Editor Content](docs/operations.md#production-editor-content) before editing on the public server.
 
 ## White-Labeling
 
@@ -155,15 +143,18 @@ To turn this into your own site:
 4. Run the verification commands above
 
 Related guides:
-- [DEPLOY.md](DEPLOY.md)
-- [INIT.md](INIT.md)
-- [OPERATIONS.md](OPERATIONS.md)
+
+- [Editor guide](docs/editor.md)
+- [VPS deployment](docs/deployment.md)
+- [Site customization](docs/customization.md)
+- [Operations runbook](docs/operations.md)
 
 ## Project Structure
 
 - `app/` application routes, API routes, editor, and posts
 - `app/(post)/` post content and post-specific components
 - `app/api/` local APIs for editor, posts, views, and health
+- `docs/` authoring, customization, deployment, and operations guides
 - `posts/manifest.json` generated post index
 - `site.config.js` public site identity and copy
 - `styles/` global styles
@@ -189,5 +180,5 @@ The deploy command builds a standalone artifact locally, uploads it to the VPS, 
 
 Details:
 
-- [DEPLOY.md](DEPLOY.md) for the short release flow
-- [OPERATIONS.md](OPERATIONS.md) for runtime checks and recovery
+- [VPS deployment](docs/deployment.md) for the short release flow
+- [Operations runbook](docs/operations.md) for runtime checks and recovery

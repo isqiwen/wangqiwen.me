@@ -27,7 +27,7 @@ That command will:
 
 ## 2. Rebrand The Site
 
-Update [site.config.js](site.config.js):
+Update [site.config.js](../site.config.js):
 
 - `site.*`
 - `author.*`
@@ -104,4 +104,4 @@ Before putting the site on a real server:
 - configure `EDITOR_ACCESS_TOKEN`
 - monitor `/api/health`
 - create regular backups with `pnpm backup:content`
-- review [OPERATIONS.md](OPERATIONS.md)
+- review [operations.md](operations.md)

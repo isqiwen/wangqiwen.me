@@ -2,7 +2,7 @@
 
 Production runbook for the self-hosted `wangqiwen.me` VPS.
 
-Use [DEPLOY.md](DEPLOY.md) to release code. Use this file after deploys, during incidents, or before content recovery.
+Use [deployment.md](deployment.md) to release code. Use this file after deploys, during incidents, or before content recovery.
 
 ## Runtime
 
@@ -130,6 +130,8 @@ If restart or health check fails, the deploy script restores the previous releas
 Do not run multiple deploys at the same time.
 
 ## Production Editor Content
+
+Use [editor.md](editor.md) for the article authoring and status workflow. This section covers only production file persistence and recovery.
 
 On the VPS, `/editor` writes inside the deployed app directory:
 
