@@ -7,6 +7,7 @@ import commaNumber from "comma-number";
 import { formatString } from "@/utils/common/string-helper";
 import { uiCopy } from "@/utils/ui-copy";
 import type { Post } from "./get-posts";
+import { PostList } from "./post-list";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
@@ -42,8 +43,14 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
 export function Posts({ posts: initialPosts }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1);
-  const initialBasePosts = useMemo(() => initialPosts.map(stripPost), [initialPosts]);
-  const initialViewsMap = useMemo(() => buildViewsMap(initialPosts), [initialPosts]);
+  const initialBasePosts = useMemo(
+    () => initialPosts.map(stripPost),
+    [initialPosts]
+  );
+  const initialViewsMap = useMemo(
+    () => buildViewsMap(initialPosts),
+    [initialPosts]
+  );
 
   const { data: basePosts = initialBasePosts } = useSWR(
     "/api/posts",
@@ -90,7 +97,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
       fallbackData: initialBasePosts,
       keepPreviousData: true,
       revalidateOnFocus: true,
-    },
+    }
   );
 
   const ids = useMemo(() => basePosts.map(post => post.id), [basePosts]);
@@ -98,7 +105,9 @@ export function Posts({ posts: initialPosts }: PostsProps) {
   const { data: viewsMap = initialViewsMap } = useSWR(
     ids.length ? ["/api/posts/views", ids.join(",")] : null,
     async ([, idsParam]) => {
-      const response = await fetch(`/api/posts/views?ids=${idsParam}`, { cache: "no-store" });
+      const response = await fetch(`/api/posts/views?ids=${idsParam}`, {
+        cache: "no-store",
+      });
       if (!response.ok) {
         return {};
       }
@@ -109,8 +118,11 @@ export function Posts({ posts: initialPosts }: PostsProps) {
       fallbackData: initialViewsMap,
       revalidateOnFocus: true,
       refreshInterval: () =>
-        typeof document !== "undefined" && document.visibilityState === "visible" ? 60000 : 0,
-    },
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible"
+          ? 60000
+          : 0,
+    }
   );
 
   const posts = useMemo(
@@ -123,7 +135,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
           viewsFormatted: commaNumber(views),
         } satisfies Post;
       }),
-    [basePosts, viewsMap],
+    [basePosts, viewsMap]
   );
 
   const sortedPosts = useMemo(() => {
@@ -132,8 +144,10 @@ export function Posts({ posts: initialPosts }: PostsProps) {
     return [...posts].sort((a, b) => {
       if (sortKey === "date") {
         return sortDirection === "desc"
-          ? new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-          : new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
+          ? new Date(b.publishedAt).getTime() -
+              new Date(a.publishedAt).getTime()
+          : new Date(a.publishedAt).getTime() -
+              new Date(b.publishedAt).getTime();
       }
 
       return sortDirection === "desc" ? b.views - a.views : a.views - b.views;
@@ -157,7 +171,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
     setSort(current =>
       current[0] === "date"
         ? ["date", current[1] === "asc" ? "desc" : "asc"]
-        : ["date", "desc"],
+        : ["date", "desc"]
     );
   }
 
@@ -165,7 +179,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
     setSort(current =>
       current[0] === "views"
         ? ["views", current[1] === "asc" ? "desc" : "asc"]
-        : ["views", "desc"],
+        : ["views", "desc"]
     );
   }
 
@@ -194,11 +208,12 @@ export function Posts({ posts: initialPosts }: PostsProps) {
           </button>
         </header>
 
-        <List posts={paginatedPosts} />
+        <PostList posts={paginatedPosts} />
 
         <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
           {formatString(uiCopy.pagination, {
-            start: posts.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1,
+            start:
+              posts.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1,
             end: Math.min(currentPage * ITEMS_PER_PAGE, posts.length),
             total: posts.length,
           })}
@@ -220,7 +235,11 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: PaginationProps) {
   const pageItems = useMemo(() => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -247,7 +266,11 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
     }
 
     if (currentPage + windowSize >= totalPages - 1) {
-      for (let page = Math.max(2, totalPages - 3); page < totalPages; page += 1) {
+      for (
+        let page = Math.max(2, totalPages - 3);
+        page < totalPages;
+        page += 1
+      ) {
         visiblePages.add(page);
       }
     }
@@ -276,7 +299,10 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   };
 
   return (
-    <nav className="mt-4 flex items-center justify-center gap-2" aria-label={uiCopy.pagination}>
+    <nav
+      className="mt-4 flex items-center justify-center gap-2"
+      aria-label={uiCopy.pagination}
+    >
       <button
         type="button"
         onClick={() => changePage(currentPage - 1)}
@@ -302,7 +328,9 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
             type="button"
             onClick={() => changePage(item)}
             className={`w-12 rounded px-4 py-2 ${
-              isActive ? "bg-blue-500 text-white" : "bg-gray-200 dark:bg-[#313131]"
+              isActive
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200 dark:bg-[#313131]"
             }`}
             aria-current={isActive ? "page" : undefined}
           >
@@ -321,51 +349,6 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
       </button>
     </nav>
   );
-}
-
-function List({ posts }: { posts: Post[] }) {
-  return (
-    <ul>
-      {posts.map((post, index) => {
-        const year = getYear(post.publishedAt);
-        const previousYear = posts[index - 1] ? getYear(posts[index - 1].publishedAt) : null;
-        const nextYear = posts[index + 1] ? getYear(posts[index + 1].publishedAt) : null;
-        const firstOfYear = previousYear !== year;
-        const lastOfYear = nextYear !== year;
-
-        return (
-          <li key={post.id}>
-            <Link href={`/${year}/${post.id}`}>
-              <span
-                className={`flex border-y border-gray-200 transition-[background-color] hover:bg-gray-100 active:bg-gray-200 dark:border-[#313131] dark:hover:bg-[#242424] dark:active:bg-[#222]
-                ${!firstOfYear ? "border-t-0" : ""}
-                ${lastOfYear ? "border-b-0" : ""}
-              `}
-              >
-                <span className={`flex grow items-center py-3 ${!firstOfYear ? "ml-14" : ""}`}>
-                  {firstOfYear && (
-                    <span className="inline-block w-14 shrink-0 self-start text-gray-500 dark:text-gray-500">
-                      {year}
-                    </span>
-                  )}
-
-                  <span className="grow dark:text-gray-100">{post.title}</span>
-
-                  <span className="text-xs text-gray-500 dark:text-gray-500">
-                    {post.viewsFormatted}
-                  </span>
-                </span>
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function getYear(date: string) {
-  return new Date(date).getFullYear();
 }
 
 function stripPost(post: Post): BasePost {

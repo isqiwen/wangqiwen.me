@@ -95,7 +95,9 @@ test("serves a topic page", async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
-  assert.match(await response.text(), /Frontend/);
+  const body = await response.text();
+  assert.match(body, /Frontend/);
+  assert.match(body, /data-post-list="chronological"/);
 });
 
 test("serves the Atom feed", async () => {
