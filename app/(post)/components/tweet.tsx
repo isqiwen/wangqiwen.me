@@ -1,5 +1,5 @@
 import { type ReactNode, Suspense } from "react";
-import { type Tweet, getTweet } from "react-tweet/api";
+import { fetchTweet, type Tweet } from "react-tweet/api";
 
 import {
   EmbeddedTweet,
@@ -18,12 +18,12 @@ interface TweetArgs {
 }
 
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
-  // Tweet embeds are optional. Private or deleted tweets should quietly fall
-  // back to the unavailable state instead of producing a development overlay.
-  const tweet = await getTweet(id).catch(() => undefined);
+  // `getTweet` logs tombstones with console.error. Read the raw result instead
+  // so private or deleted embeds can quietly use the unavailable fallback.
+  const result = await fetchTweet(id).catch(() => undefined);
+  const tweet = result?.data;
 
-  // @ts-ignore
-  if (tweet && !tweet.tombstone) {
+  if (tweet) {
     // we populate the cache if we have a fresh tweet
     try {
       await redis.set(`tweet:${id}`, tweet);
@@ -33,12 +33,17 @@ async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
     return tweet;
   }
 
+  // Do not render a previously cached copy when an author has deleted or made
+  // a tweet private. Only network failures may fall back to a cached copy.
+  if (result?.tombstone || result?.notFound) {
+    return undefined;
+  }
+
   try {
     const cached = await redis.get(`tweet:${id}`);
     const cachedTweet = (cached ?? null) as Tweet | null;
 
-    // @ts-ignore
-    if (!cachedTweet || cachedTweet.tombstone) return undefined;
+    if (!cachedTweet) return undefined;
 
     return cachedTweet;
   } catch (error) {

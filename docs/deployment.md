@@ -25,15 +25,15 @@ pnpm deploy:vps
 That command reads the tracked, non-secret deployment defaults from
 [`deploy.env`](../deploy.env):
 
-| Setting | Config value |
-| --- | --- |
-| SSH target | `qiwen@wangqiwen.me` |
-| Domain | `wangqiwen.me` |
-| Alias | `www.wangqiwen.me` |
-| App name | `wangqiwen-me` |
-| Service user | `nextjs` |
-| App directory | `/srv/nextjs/wangqiwen-me` |
-| App listener | `127.0.0.1:3000` |
+| Setting               | Config value                                                        |
+| --------------------- | ------------------------------------------------------------------- |
+| SSH target            | `qiwen@wangqiwen.me`                                                |
+| Domain                | `wangqiwen.me`                                                      |
+| Alias                 | `www.wangqiwen.me`                                                  |
+| App name              | `wangqiwen-me`                                                      |
+| Service user          | `nextjs`                                                            |
+| App directory         | `/srv/nextjs/wangqiwen-me`                                          |
+| App listener          | `127.0.0.1:3000`                                                    |
 | Production env source | VPS `.env.local`; upload `.env.production` only with `UPLOAD_ENV=1` |
 
 Edit `deploy.env` when the deployment target changes. Command environment variables take precedence for one-off overrides:
@@ -147,6 +147,7 @@ pnpm deploy:vps
 
 - reads non-secret deployment settings from `deploy.env`
 - requires a clean Git working tree by default
+- runs `pnpm install --frozen-lockfile`, `pnpm test`, and `pnpm check` locally before opening an SSH connection
 - checks that the SSH user has passwordless sudo before build/upload
 - builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh)
 - uploads the tarball to `/tmp`
@@ -156,6 +157,8 @@ pnpm deploy:vps
 - runs [scripts/vps/provision.sh](../scripts/vps/provision.sh) on the VPS
 - restarts `wangqiwen-me.service`
 - checks `http://127.0.0.1:3000/api/health`
+
+If the local test suite or project checks fail, the command exits before connecting to, building for, or uploading to the VPS. External link health reporting remains a separate weekly workflow and does not block deployments.
 
 If the new release fails to start or fails health check, [scripts/vps/install-release.sh](../scripts/vps/install-release.sh) restores the previous release automatically.
 

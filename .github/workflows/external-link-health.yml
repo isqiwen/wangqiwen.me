@@ -1,0 +1,50 @@
+name: External link health
+
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate external link report
+        continue-on-error: true
+        run: |
+          report_dir="$RUNNER_TEMP/external-link-health"
+          pnpm check:external-links -- --report-dir "$report_dir"
+          if [ -f "$report_dir/report.md" ]; then
+            cat "$report_dir/report.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload external link report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-link-health
+          path: ${{ runner.temp }}/external-link-health
+          if-no-files-found: warn
+          retention-days: 90

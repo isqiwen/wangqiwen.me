@@ -6,11 +6,26 @@ const {
   normalizeStatus,
   normalizeTags,
 } = require("./lib/posts");
+const { validateContentQuality } = require("./lib/content-quality");
 
 async function main() {
   const entries = await collectPosts();
   const errors = [];
   const seenIds = new Map();
+  const articlePaths = new Set(
+    Array.from(entries.values())
+      .filter(entry => {
+        const { metadata, frontmatter } = entry;
+        return (
+          normalizeStatus(
+            metadata.status ?? frontmatter.status,
+            metadata.draft ?? frontmatter.draft,
+            metadata.archived ?? frontmatter.archived
+          ) === "published"
+        );
+      })
+      .map(entry => `/${entry.year}/${entry.id}`)
+  );
 
   for (const [key, entry] of entries) {
     const [pathYear, pathId] = key.split("/");
@@ -32,15 +47,10 @@ async function main() {
     const statusValue = metadata.status ?? frontmatter.status;
     const rawTags = metadata.tags ?? frontmatter.tags;
     const tags = normalizeTags(rawTags);
-    const status = normalizeStatus(
-      statusValue,
-      metadata.draft ?? frontmatter.draft,
-      metadata.archived ?? frontmatter.archived,
-    );
     const featuredRaw = metadata.featured ?? frontmatter.featured;
     const readingTimeMinutes = metadata.readingTimeMinutes;
 
-    if (!title) {
+    if (typeof title !== "string" || !title.trim()) {
       errors.push(`${key} is missing title`);
     }
 
@@ -71,13 +81,15 @@ async function main() {
     if (
       statusValue != null &&
       (typeof statusValue !== "string" ||
-        !["draft", "published", "archived"].includes(statusValue.trim().toLowerCase()))
+        !["draft", "published", "archived"].includes(
+          statusValue.trim().toLowerCase()
+        ))
     ) {
       errors.push(`${key} has an invalid status value`);
     }
 
-    if (status === "published" && !description) {
-      errors.push(`${key} is published but missing description`);
+    if (typeof description !== "string" || !description.trim()) {
+      errors.push(`${key} is missing description or summary`);
     }
 
     if (summary && typeof summary !== "string") {
@@ -90,7 +102,8 @@ async function main() {
 
     if (
       updatedAt &&
-      (typeof updatedAt !== "string" || Number.isNaN(new Date(updatedAt).getTime()))
+      (typeof updatedAt !== "string" ||
+        Number.isNaN(new Date(updatedAt).getTime()))
     ) {
       errors.push(`${key} has an invalid updatedAt value`);
     }
@@ -110,26 +123,40 @@ async function main() {
       errors.push(`${key} has tags but none could be parsed`);
     }
 
-    if (readingTimeMinutes != null && normalizePositiveInteger(readingTimeMinutes) === 0) {
+    if (
+      readingTimeMinutes != null &&
+      normalizePositiveInteger(readingTimeMinutes) === 0
+    ) {
       errors.push(`${key} has an invalid readingTimeMinutes value`);
     }
 
     if (id) {
       if (seenIds.has(id) && seenIds.get(id) !== key) {
-        errors.push(`id "${id}" is duplicated by ${seenIds.get(id)} and ${key}`);
+        errors.push(
+          `id "${id}" is duplicated by ${seenIds.get(id)} and ${key}`
+        );
       } else {
         seenIds.set(id, key);
       }
     }
+
+    for (const issue of validateContentQuality(entry.source, {
+      articlePaths,
+    })) {
+      errors.push(`${key} ${issue}`);
+    }
   }
 
   if (errors.length > 0) {
-    console.error("Post metadata validation failed.\n" + errors.map(msg => ` - ${msg}`).join("\n"));
+    console.error(
+      "Post metadata validation failed.\n" +
+        errors.map(msg => ` - ${msg}`).join("\n")
+    );
     process.exitCode = 1;
     return;
   }
 
-  console.log("All post metadata checks passed.");
+  console.log("All post metadata and content quality checks passed.");
 }
 
 main().catch(error => {
@@ -139,5 +166,8 @@ main().catch(error => {
 
 function isIsoDate(value) {
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }

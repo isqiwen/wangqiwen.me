@@ -20,6 +20,10 @@ set -euo pipefail
 #   SKIP_REMOTE_SUDO_CHECK=0
 #   SSH_CONTROL=1
 #   CLEAN_REMOTE_ON_EXIT=1
+#
+# Before any SSH connection, deploys install locked dependencies and run:
+#   pnpm test
+#   pnpm check
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEPLOY_CONFIG="${DEPLOY_CONFIG:-${ROOT_DIR}/deploy.env}"
@@ -208,6 +212,7 @@ build_artifact_with_docker() {
     --workdir /workspace \
     --env ARTIFACT_DIR=/artifacts \
     --env ARTIFACT_NAME="${ARTIFACT_NAME}" \
+    --env RUN_LINT_POSTS=0 \
     "${DOCKER_IMAGE}" \
     bash scripts/vps/build-artifact.sh
 }
@@ -313,6 +318,19 @@ EOF
   exit 1
 }
 
+run_pre_deploy_checks() {
+  cd "${ROOT_DIR}"
+
+  echo "==> Installing dependencies for pre-deploy checks"
+  pnpm install --frozen-lockfile
+
+  echo "==> Running unit tests"
+  pnpm test
+
+  echo "==> Running project checks"
+  pnpm check
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
@@ -322,6 +340,8 @@ need_cmd git
 need_cmd ssh
 need_cmd scp
 need_cmd tar
+need_cmd node
+need_cmd pnpm
 
 if [[ -z "${DEPLOY_HOST}" ]]; then
   echo "DEPLOY_HOST is required in ${DEPLOY_CONFIG} or the command environment." >&2
@@ -338,15 +358,17 @@ if [[ -z "${DOMAIN}" ]]; then
   exit 1
 fi
 
-trap close_ssh_control EXIT
-start_ssh_control
-
 if [[ "${ALLOW_DIRTY}" != "1" ]]; then
   if ! git -C "${ROOT_DIR}" diff --quiet || ! git -C "${ROOT_DIR}" diff --cached --quiet; then
     echo "Working tree has uncommitted changes. Commit them first or set ALLOW_DIRTY=1." >&2
     exit 1
   fi
 fi
+
+run_pre_deploy_checks
+
+trap close_ssh_control EXIT
+start_ssh_control
 
 LOCAL_UNAME_S="$(uname -s)"
 LOCAL_UNAME_M="$(uname -m)"
@@ -413,6 +435,8 @@ if [[ "${BUILD_WITH_DOCKER}" == "1" ]]; then
 else
   ARTIFACT_DIR="${ARTIFACT_DIR}" \
   ARTIFACT_NAME="${ARTIFACT_NAME}" \
+  SKIP_INSTALL=1 \
+  RUN_LINT_POSTS=0 \
     bash "${ROOT_DIR}/scripts/vps/build-artifact.sh"
 fi
 

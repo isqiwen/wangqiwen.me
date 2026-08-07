@@ -6,15 +6,15 @@ Use [deployment.md](deployment.md) to release code. Use this file after deploys,
 
 ## Runtime
 
-| Item | Value |
-| --- | --- |
-| App directory | `/srv/nextjs/wangqiwen-me` |
-| Service user | `nextjs` |
-| systemd service | `wangqiwen-me.service` |
-| App listener | `127.0.0.1:3000` |
-| Public proxy | Caddy |
+| Item            | Value                                       |
+| --------------- | ------------------------------------------- |
+| App directory   | `/srv/nextjs/wangqiwen-me`                  |
+| Service user    | `nextjs`                                    |
+| systemd service | `wangqiwen-me.service`                      |
+| App listener    | `127.0.0.1:3000`                            |
+| Public proxy    | Caddy                                       |
 | Caddy site file | `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy` |
-| Production env | `/srv/nextjs/wangqiwen-me/.env.local` |
+| Production env  | `/srv/nextjs/wangqiwen-me/.env.local`       |
 
 The app listens only on localhost. Public traffic enters through Caddy on `80/tcp` and `443/tcp`.
 
@@ -64,6 +64,54 @@ How to split failures:
 
 - `http://127.0.0.1:3000` fails: app, env, or systemd problem
 - localhost works but public HTTPS fails: Caddy, DNS, certificate, or firewall problem
+
+## Search Discovery and External Monitoring
+
+The site publishes these public discovery files:
+
+```text
+https://wangqiwen.me/sitemap.xml
+https://wangqiwen.me/robots.txt
+```
+
+After a production deployment, add the production domain as a property in Google
+Search Console, complete its ownership verification, then submit
+`https://wangqiwen.me/sitemap.xml` in the Sitemaps report. Check the Pages report
+and individual URL inspection over time: a sitemap helps Google discover URLs but
+does not guarantee that they will be indexed.
+
+Configure an external uptime monitor to make a public HTTPS `GET` request to:
+
+```text
+https://wangqiwen.me/api/health
+```
+
+Use a five-minute interval and a ten-second timeout. It should expect HTTP `200`
+and a JSON body with `status: "ok"`. A `503` response means a required runtime
+dependency, such as Redis, is unavailable. Keep the monitor outside the VPS so it
+can also detect DNS, TLS, proxy, and network failures.
+
+### UptimeRobot Setup
+
+[UptimeRobot](https://uptimerobot.com/) is the recommended monitor for this
+site. Create an `HTTP(s)` monitor with these settings:
+
+| Setting                   | Value                             |
+| ------------------------- | --------------------------------- |
+| Friendly name             | `wangqiwen.me health`             |
+| URL                       | `https://wangqiwen.me/api/health` |
+| Monitoring interval       | 5 minutes                         |
+| Request timeout           | 10 seconds                        |
+| Internet Protocol version | `IPv4 / IPv6 (IPv4 Priority)`     |
+| Follow redirections       | On                                |
+| Up HTTP status codes      | `2xx` only; remove `3xx`          |
+| Authentication            | None                              |
+
+Assign your email notification contact to this monitor and enable both `Down`
+and `Up` notifications. Without assigning a contact, the monitor can change
+state without sending an alert. After creating it, wait for the first request:
+`Up` means the endpoint returned a permitted response; `Down` means it timed
+out, failed to connect, or returned a status outside `2xx`.
 
 ## Service Commands
 
