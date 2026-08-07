@@ -42,6 +42,12 @@ Edit `deploy.env` when the deployment target changes. Command environment variab
 DEPLOY_HOST=qiwen@1.2.3.4 pnpm deploy:vps
 ```
 
+`DEPLOY_HOST` is also how the script discovers the VPS architecture: before
+building, it connects over SSH and runs `uname -m`. It maps `x86_64` to
+`linux/amd64` and `arm64`/`aarch64` to `linux/arm64` for the Docker build. Do
+not add a CPU architecture setting to `deploy.env`; checking the live VPS keeps
+the build target from becoming stale.
+
 Use `DEPLOY_CONFIG` to read a different config file:
 
 ```bash

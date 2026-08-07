@@ -416,7 +416,7 @@ trap 'cleanup_remote; close_ssh_control' EXIT
 echo "==> Uploading deploy scripts"
 REMOTE_UNPACK_CMD="tar -xzf - -C $(remote_quote "${REMOTE_WORK_DIR}")"
 # shellcheck disable=SC2029
-tar -C "${ROOT_DIR}" -czf - scripts package.json |
+tar --no-xattrs -C "${ROOT_DIR}" -czf - scripts package.json |
   ssh_cmd "${DEPLOY_HOST}" "${REMOTE_UNPACK_CMD}"
 
 echo "==> Uploading artifact"
