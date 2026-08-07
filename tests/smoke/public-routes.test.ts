@@ -73,6 +73,7 @@ test("serves a published article", async () => {
   const body = await response.text();
   assert.match(body, /href="\/topics\//);
   assert.match(body, /Related writing/);
+  assert.doesNotMatch(body, /data-view-count/);
 });
 
 test("does not serve an unpublished article URL", async () => {

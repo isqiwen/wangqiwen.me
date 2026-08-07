@@ -1,7 +1,7 @@
 "use client";
 
 import { useSelectedLayoutSegments } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import useSWR, { type KeyedMutator } from "swr";
 import type { Post } from "@/app/get-posts";
@@ -21,13 +21,21 @@ const fetcher = async (url: string): Promise<Post> => {
 
 export function Header({ posts }: { posts: Post[] }) {
   const segments = useSelectedLayoutSegments();
-  const initialPost = posts.find(post => post.id === segments[segments.length - 1]);
+  const initialPost = posts.find(
+    post => post.id === segments[segments.length - 1]
+  );
   const post = initialPost ?? null;
-  const viewEndpoint = post ? `/api/view?id=${encodeURIComponent(post.id)}` : null;
+  const viewEndpoint = post
+    ? `/api/view?id=${encodeURIComponent(post.id)}`
+    : null;
+  const [liveViewPostId, setLiveViewPostId] = useState<string | null>(null);
 
   const { data: hydratedPost, mutate } = useSWR<Post>(viewEndpoint, fetcher, {
     fallbackData: post ?? undefined,
     refreshInterval: post ? 60000 : 0,
+    onSuccess: latestPost => {
+      setLiveViewPostId(latestPost.id);
+    },
   });
 
   if (post == null || hydratedPost == null) {
@@ -36,7 +44,9 @@ export function Header({ posts }: { posts: Post[] }) {
 
   return (
     <>
-      <h1 className="mb-1 text-2xl font-bold dark:text-gray-100">{hydratedPost.title}</h1>
+      <h1 className="mb-1 text-2xl font-bold dark:text-gray-100">
+        {hydratedPost.title}
+      </h1>
 
       <p className="flex font-mono text-xs text-gray-500 dark:text-gray-500">
         <span className="flex-grow">
@@ -58,16 +68,21 @@ export function Header({ posts }: { posts: Post[] }) {
 
           <span className="mx-2">|</span>
 
-          <span>{formatReadingTime(hydratedPost.readingTimeMinutes, uiCopy.post.readingTime)}</span>
+          <span>
+            {formatReadingTime(
+              hydratedPost.readingTimeMinutes,
+              uiCopy.post.readingTime
+            )}
+          </span>
         </span>
 
-        <span className="pr-1.5">
-          <Views
-            id={hydratedPost.id}
-            mutate={mutate}
-            defaultValue={hydratedPost.viewsFormatted}
-          />
-        </span>
+        <Views
+          id={hydratedPost.id}
+          mutate={mutate}
+          defaultValue={hydratedPost.viewsFormatted}
+          show={liveViewPostId === hydratedPost.id}
+          onLoaded={setLiveViewPostId}
+        />
       </p>
 
       {hydratedPost.tags.length > 0 ? (
@@ -94,10 +109,14 @@ function Views({
   id,
   mutate,
   defaultValue,
+  show,
+  onLoaded,
 }: {
   id: string;
   mutate: KeyedMutator<Post>;
   defaultValue: string;
+  show: boolean;
+  onLoaded: (postId: string) => void;
 }) {
   const views = defaultValue;
   const didLogViewRef = useRef(false);
@@ -119,15 +138,24 @@ function Views({
         })
         .then(obj => {
           mutate(obj);
+          onLoaded(obj.id);
         })
         .catch(error => {
           logger.error("Failed to record page view.", error);
         });
       didLogViewRef.current = true;
     }
-  }, [id, mutate]);
+  }, [id, mutate, onLoaded]);
 
-  return <>{views != null ? <span>{views} {uiCopy.post.views}</span> : null}</>;
+  if (!show || views == null) {
+    return null;
+  }
+
+  return (
+    <span className="pr-1.5" data-view-count="true">
+      {views} {uiCopy.post.views}
+    </span>
+  );
 }
 
 function PostDate({ post }: { post: { date: string; publishedAt: string } }) {
