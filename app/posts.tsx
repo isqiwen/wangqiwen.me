@@ -7,12 +7,15 @@ import commaNumber from "comma-number";
 import { formatString } from "@/utils/common/string-helper";
 import { uiCopy } from "@/utils/ui-copy";
 import type { Post } from "./get-posts";
-import { PostList } from "./post-list";
+import { PostList, PostListHeader } from "./post-list";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
 interface PostsProps {
   posts: Post[];
+  as?: "div" | "main";
+  className?: string;
+  postIds?: string[];
 }
 
 type BasePost = {
@@ -40,7 +43,12 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-export function Posts({ posts: initialPosts }: PostsProps) {
+export function Posts({
+  posts: initialPosts,
+  as: Container = "main",
+  className = "m-auto mb-10 max-w-2xl font-mono text-sm",
+  postIds,
+}: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1);
   const initialBasePosts = useMemo(
@@ -100,7 +108,19 @@ export function Posts({ posts: initialPosts }: PostsProps) {
     }
   );
 
-  const ids = useMemo(() => basePosts.map(post => post.id), [basePosts]);
+  const scopedBasePosts = useMemo(() => {
+    if (!postIds) {
+      return basePosts;
+    }
+
+    const allowedPostIds = new Set(postIds);
+    return basePosts.filter(post => allowedPostIds.has(post.id));
+  }, [basePosts, postIds]);
+
+  const ids = useMemo(
+    () => scopedBasePosts.map(post => post.id),
+    [scopedBasePosts]
+  );
 
   const { data: viewsMap = initialViewsMap } = useSWR(
     ids.length ? ["/api/posts/views", ids.join(",")] : null,
@@ -127,7 +147,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
 
   const posts = useMemo(
     () =>
-      basePosts.map(post => {
+      scopedBasePosts.map(post => {
         const views = viewsMap[post.id] ?? 0;
         return {
           ...post,
@@ -135,7 +155,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
           viewsFormatted: commaNumber(views),
         } satisfies Post;
       }),
-    [basePosts, viewsMap]
+    [scopedBasePosts, viewsMap]
   );
 
   const sortedPosts = useMemo(() => {
@@ -185,28 +205,31 @@ export function Posts({ posts: initialPosts }: PostsProps) {
 
   return (
     <Suspense fallback={null}>
-      <main className="m-auto mb-10 max-w-2xl font-mono text-sm">
-        <header className="flex items-center text-xs text-gray-500 dark:text-gray-600">
-          <button
-            onClick={sortDate}
-            className={`h-9 w-12 text-left ${
-              sort[0] === "date" ? "text-gray-700 dark:text-gray-400" : ""
-            }`}
-            aria-label={`Sort by ${uiCopy.post.date}`}
-          >
-            {uiCopy.post.date}
-          </button>
-          <span className="grow pl-2">{uiCopy.post.title}</span>
-          <button
-            onClick={sortViews}
-            className={`h-9 pl-4 ${
-              sort[0] === "views" ? "text-gray-700 dark:text-gray-400" : ""
-            }`}
-            aria-label={`Sort by ${uiCopy.post.views}`}
-          >
-            {uiCopy.post.views}
-          </button>
-        </header>
+      <Container className={className}>
+        <PostListHeader
+          dateControl={
+            <button
+              onClick={sortDate}
+              className={`h-9 w-12 text-left ${
+                sort[0] === "date" ? "text-gray-700 dark:text-gray-400" : ""
+              }`}
+              aria-label={`Sort by ${uiCopy.post.date}`}
+            >
+              {uiCopy.post.date}
+            </button>
+          }
+          viewsControl={
+            <button
+              onClick={sortViews}
+              className={`h-9 pl-4 ${
+                sort[0] === "views" ? "text-gray-700 dark:text-gray-400" : ""
+              }`}
+              aria-label={`Sort by ${uiCopy.post.views}`}
+            >
+              {uiCopy.post.views}
+            </button>
+          }
+        />
 
         <PostList posts={paginatedPosts} />
 
@@ -224,7 +247,7 @@ export function Posts({ posts: initialPosts }: PostsProps) {
           totalPages={totalPages}
           onPageChange={page => setCurrentPage(page)}
         />
-      </main>
+      </Container>
     </Suspense>
   );
 }

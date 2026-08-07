@@ -1,5 +1,32 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { uiCopy } from "@/utils/ui-copy";
 import type { Post } from "./get-posts";
+
+type PostListHeaderProps = {
+  dateControl?: ReactNode;
+  viewsControl?: ReactNode;
+};
+
+export function PostListHeader({
+  dateControl,
+  viewsControl,
+}: PostListHeaderProps) {
+  return (
+    <header
+      className="flex items-center text-xs text-gray-500 dark:text-gray-600"
+      data-post-list-header="true"
+    >
+      {dateControl ?? (
+        <span className="flex h-9 w-12 items-center">{uiCopy.post.date}</span>
+      )}
+      <span className="grow pl-2">{uiCopy.post.title}</span>
+      {viewsControl ?? (
+        <span className="flex h-9 items-center pl-4">{uiCopy.post.views}</span>
+      )}
+    </header>
+  );
+}
 
 export function PostList({ posts }: { posts: Post[] }) {
   return (
@@ -37,7 +64,10 @@ export function PostList({ posts }: { posts: Post[] }) {
 
                   <span className="grow dark:text-gray-100">{post.title}</span>
 
-                  <span className="text-xs text-gray-500 dark:text-gray-500">
+                  <span
+                    className="text-xs text-gray-500 dark:text-gray-500"
+                    data-post-list-views="true"
+                  >
                     {post.viewsFormatted}
                   </span>
                 </span>

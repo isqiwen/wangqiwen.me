@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPosts } from "@/app/get-posts";
-import { PostList } from "@/app/post-list";
+import { Posts } from "@/app/posts";
 import { getSiteUrl } from "@/utils/site-config";
 import { getPostsForTopic, getTopics } from "@/utils/topics";
 
@@ -45,7 +45,7 @@ export default async function TopicPage({ params }: TopicPageProps) {
 
   return (
     <section className="m-auto mb-10 max-w-2xl">
-      <header className="border-b border-gray-200 pb-6 dark:border-[#303030]">
+      <header className="pb-3">
         <Link
           href="/topics"
           className="font-mono text-xs text-gray-500 underline-offset-4 hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
@@ -55,15 +55,14 @@ export default async function TopicPage({ params }: TopicPageProps) {
         <h1 className="mt-3 text-3xl font-bold tracking-tight dark:text-gray-100">
           {topic.name}
         </h1>
-        <p className="mt-3 leading-7 text-gray-600 dark:text-gray-400">
-          {topic.count} {topic.count === 1 ? "article" : "articles"} about{" "}
-          {topic.name}.
-        </p>
       </header>
 
-      <div className="mt-6 font-mono text-sm">
-        <PostList posts={topicPosts} />
-      </div>
+      <Posts
+        posts={topicPosts}
+        postIds={topicPosts.map(post => post.id)}
+        as="div"
+        className="mt-3 font-mono text-sm"
+      />
     </section>
   );
 }

@@ -97,7 +97,12 @@ test("serves a topic page", async () => {
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
   const body = await response.text();
   assert.match(body, /Frontend/);
+  assert.match(body, /data-post-list-header="true"/);
   assert.match(body, /data-post-list="chronological"/);
+  assert.match(body, /data-post-list-views="true"/);
+  assert.match(body, /aria-label="Sort by date"/);
+  assert.match(body, /aria-label="Sort by views"/);
+  assert.match(body, /aria-label="Showing \{start\}-\{end\} of \{total\}"/);
 });
 
 test("serves the Atom feed", async () => {
