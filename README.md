@@ -56,7 +56,7 @@ cp .env.example .env.production
 UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-For normal deployments:
+After the first deployment, use this for code or content changes:
 
 ```bash
 pnpm deploy:vps
