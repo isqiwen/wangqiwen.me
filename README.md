@@ -49,12 +49,20 @@ pnpm build
 
 ## Deploy
 
-Before the first deployment, update `deploy.env` for your server and fill the production values in `.env.production`:
+Before the first deployment:
 
-```bash
-cp .env.example .env.production
-UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
-```
+1. Set your server configuration in `deploy.env`.
+2. Create the production env file:
+
+   ```bash
+   cp .env.example .env.production
+   ```
+
+3. Fill `.env.production` with the production values, then deploy:
+
+   ```bash
+   UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
+   ```
 
 After the first deployment, use this for code or content changes:
 

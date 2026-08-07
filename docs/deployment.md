@@ -76,10 +76,15 @@ For normal code-only releases, the deploy command keeps the existing VPS env fil
 pnpm deploy:vps
 ```
 
-For first setup or env changes, create `.env.production` locally and upload it explicitly:
+For first setup, create the local production env file:
 
 ```bash
 cp .env.example .env.production
+```
+
+Fill or update `.env.production`, then upload it explicitly:
+
+```bash
 UPLOAD_ENV=1 pnpm deploy:vps
 ```
 
