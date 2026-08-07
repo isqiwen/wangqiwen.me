@@ -12,7 +12,6 @@ module.exports = withMDX({
   experimental: {
     mdxRs: true,
   },
-  transpilePackages: ["three"],
   images: {
     minimumCacheTTL: 2678400,
     remotePatterns: [

@@ -20,7 +20,7 @@ interface TweetArgs {
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
   // we first prioritize getting a fresh tweet; swallow fetch errors to avoid SSR crashes
   const tweet = await getTweet(id).catch(error => {
-    logger.error("tweet fetch error", error);
+    logger.warn(`Tweet ${id} is unavailable; rendering a fallback.`, error);
     return undefined;
   });
 

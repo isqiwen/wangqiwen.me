@@ -1,11 +1,21 @@
+import { ArticleSearch } from "./article-search";
+import { getPosts } from "./get-posts";
 import { ThemeToggle } from "./themes/theme-toggle";
 import { Logo } from "./logo";
 import Link from "next/link";
 import { getFollowLabel, getNavigationLinks, siteConfig } from "@/utils/site-config";
 
-export function Header() {
+export async function Header() {
   const navigationLinks = getNavigationLinks();
   const followLabel = getFollowLabel();
+  const articles = (await getPosts({ includeViews: false })).map(post => ({
+    id: post.id,
+    title: post.title,
+    description: post.description,
+    summary: post.summary,
+    tags: post.tags,
+    publishedAt: post.publishedAt,
+  }));
 
   return (
     <header className="mb-5 flex items-center md:mb-10">
@@ -13,6 +23,7 @@ export function Header() {
 
       <nav className="flex grow items-center justify-end gap-1 font-mono text-xs md:gap-3">
         <ThemeToggle />
+        <ArticleSearch articles={articles} />
 
         {navigationLinks.map(item => (
           <Link

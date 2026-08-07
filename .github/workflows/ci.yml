@@ -49,3 +49,6 @@ jobs:
 
       - name: Build application
         run: pnpm build
+
+      - name: Smoke test production artifact
+        run: pnpm test:smoke
