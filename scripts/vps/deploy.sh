@@ -144,8 +144,23 @@ EOF
 
 remote_quote() {
   local value="$1"
-  value="${value//\'/\'\\\'\'}"
-  printf "'%s'" "${value}"
+
+  printf "'"
+  while [[ "${value}" == *"'"* ]]; do
+    printf "%s" "${value%%\'*}"
+    printf "%s" "'\\''"
+    value="${value#*\'}"
+  done
+  printf "%s'" "${value}"
+}
+
+append_remote_env() {
+  local name="$1"
+  local value="$2"
+  local quoted_value
+
+  quoted_value="$(remote_quote "${value}")"
+  REMOTE_CMD="${REMOTE_CMD} ${name}=${quoted_value}"
 }
 
 need_cmd() {
@@ -428,21 +443,21 @@ if [[ "${UPLOAD_ENV}" == "1" ]]; then
 fi
 
 REMOTE_CMD="sudo env"
-REMOTE_CMD+=" APP_NAME=$(remote_quote "${APP_NAME}")"
-REMOTE_CMD+=" SERVICE_USER=$(remote_quote "${SERVICE_USER}")"
-REMOTE_CMD+=" SERVICE_HOME=$(remote_quote "${SERVICE_HOME}")"
-REMOTE_CMD+=" DOMAIN=$(remote_quote "${DOMAIN}")"
-REMOTE_CMD+=" SERVER_ALIASES=$(remote_quote "${SERVER_ALIASES}")"
-REMOTE_CMD+=" APP_HOST=$(remote_quote "${APP_HOST}")"
-REMOTE_CMD+=" APP_PORT=$(remote_quote "${APP_PORT}")"
-REMOTE_CMD+=" RUN_INSTALL=$(remote_quote "${RUN_INSTALL}")"
-REMOTE_CMD+=" RUN_DEPLOY=1"
-REMOTE_CMD+=" RUN_SITE_CONFIG=$(remote_quote "${RUN_SITE_CONFIG}")"
-REMOTE_CMD+=" ARTIFACT_TARBALL=$(remote_quote "${REMOTE_ARTIFACT}")"
+append_remote_env APP_NAME "${APP_NAME}"
+append_remote_env SERVICE_USER "${SERVICE_USER}"
+append_remote_env SERVICE_HOME "${SERVICE_HOME}"
+append_remote_env DOMAIN "${DOMAIN}"
+append_remote_env SERVER_ALIASES "${SERVER_ALIASES}"
+append_remote_env APP_HOST "${APP_HOST}"
+append_remote_env APP_PORT "${APP_PORT}"
+append_remote_env RUN_INSTALL "${RUN_INSTALL}"
+REMOTE_CMD="${REMOTE_CMD} RUN_DEPLOY=1"
+append_remote_env RUN_SITE_CONFIG "${RUN_SITE_CONFIG}"
+append_remote_env ARTIFACT_TARBALL "${REMOTE_ARTIFACT}"
 if [[ "${UPLOAD_ENV}" == "1" ]]; then
-  REMOTE_CMD+=" ENV_FILE_PATH=$(remote_quote "${REMOTE_ENV}")"
+  append_remote_env ENV_FILE_PATH "${REMOTE_ENV}"
 fi
-REMOTE_CMD+=" bash $(remote_quote "${REMOTE_WORK_DIR}/scripts/vps/provision.sh")"
+REMOTE_CMD="${REMOTE_CMD} bash $(remote_quote "${REMOTE_WORK_DIR}/scripts/vps/provision.sh")"
 
 echo "==> Running remote deployment"
 # shellcheck disable=SC2029
