@@ -82,12 +82,15 @@ async function exists(path) {
   }
 }
 
-async function createPostFile(year, slug, metadata, description) {
+async function createPostFile(year, slug, metadata) {
   const dir = join(POSTS_ROOT, year, slug);
   await ensureDir(dir);
-  const body = description ? `\n${description}\n` : "\nStart writing here.\n";
-  const contents = `export const metadata = ${JSON.stringify(metadata, null, 2)};\n${body}`;
-  await writeFile(join(dir, "page.mdx"), contents, "utf8");
+  const contents = `export const metadata = ${JSON.stringify(
+    metadata,
+    null,
+    2
+  )};\n\nStart writing here.\n`;
+  await writeFile(join(dir, "article.mdx"), contents, "utf8");
 }
 
 async function main() {
@@ -97,8 +100,8 @@ async function main() {
     console.log(`Usage: pnpm new:post --slug my-post [options]
 
 Options:
-  --title "My title"
-  --description "Short summary"
+  --title "My title"              Required
+  --description "Short summary"   Required
   --summary "Homepage summary"
   --date 2024-12-01
   --updated-at 2024-12-05
@@ -115,8 +118,13 @@ By default, new posts are created as drafts.`);
   const slug = args.slug.trim();
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 100) {
     throw new Error(
-      "Invalid slug. Use 1-100 lowercase letters, numbers, and single hyphens.",
+      "Invalid slug. Use 1-100 lowercase letters, numbers, and single hyphens."
     );
+  }
+  const title = args.title?.trim();
+  const description = args.description?.trim();
+  if (!title || !description) {
+    throw new Error("New posts require both --title and --description.");
   }
   if (args.date && !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
     throw new Error("Invalid date. Use YYYY-MM-DD.");
@@ -132,8 +140,8 @@ By default, new posts are created as drafts.`);
   const publishedAt = dateValue.toISOString().slice(0, 10);
   const year = publishedAt.slice(0, 4);
   const metadata = {
-    title: args.title || slug,
-    description: args.description || "",
+    title,
+    description,
     summary: args.summary || "",
     publishedAt,
     status: args.published ? "published" : "draft",
@@ -157,11 +165,11 @@ By default, new posts are created as drafts.`);
     metadata.featured = true;
   }
 
-  const targetPath = join(POSTS_ROOT, year, slug, "page.mdx");
+  const targetPath = join(POSTS_ROOT, year, slug, "article.mdx");
   if (await exists(targetPath)) {
     throw new Error(`${year}/${slug} already exists.`);
   }
-  await createPostFile(year, slug, metadata, "");
+  await createPostFile(year, slug, metadata);
   console.log(`Created post: ${year}/${slug}`);
 
   const sync = spawnSync(
@@ -169,13 +177,17 @@ By default, new posts are created as drafts.`);
     ["scripts/content/sync-posts.cjs", "--silent"],
     {
       stdio: "inherit",
-    },
+    }
   );
   if (sync.error) {
-    throw new Error(`Post metadata sync could not start: ${sync.error.message}`);
+    throw new Error(
+      `Post metadata sync could not start: ${sync.error.message}`
+    );
   }
   if (sync.status !== 0) {
-    throw new Error(`Post was created, but metadata sync failed with exit code ${sync.status}.`);
+    throw new Error(
+      `Post was created, but metadata sync failed with exit code ${sync.status}.`
+    );
   }
   console.log("Post metadata synchronized and manifest updated.");
 }

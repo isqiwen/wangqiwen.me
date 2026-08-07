@@ -35,7 +35,7 @@ cp .env.example .env.local
 ## Write a Post
 
 ```bash
-pnpm new:post --id my-first-post
+pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post."
 ```
 
 Then write and publish it locally at `/editor`. See the [Editor guide](docs/editor.md) for the complete workflow.

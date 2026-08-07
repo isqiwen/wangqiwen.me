@@ -39,10 +39,17 @@ export async function GET(req: Request) {
 
   try {
     const entries = await collectFiles();
-    logEditorInfo("list-files", "Loaded editor file list.", { count: entries.length });
+    logEditorInfo("list-files", "Loaded editor file list.", {
+      count: entries.length,
+    });
     return NextResponse.json({ files: entries }, { headers: NO_STORE });
   } catch (error) {
-    return createEditorJsonError("list-files", "failed to list files", 500, error);
+    return createEditorJsonError(
+      "list-files",
+      "failed to list files",
+      500,
+      error
+    );
   }
 }
 
@@ -69,7 +76,7 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
       const abs = path.join(dir, entry.name);
       const stats = await fs.stat(abs);
       return { entry, abs, mtime: stats.mtimeMs };
-    }),
+    })
   );
 
   enriched.sort((a, b) => {
@@ -77,8 +84,10 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
     const bIsDir = b.entry.isDirectory();
 
     // 1) locale/level: year folders named as digits, sort by year desc
-    const aYear = aIsDir && /^\d{4}$/.test(a.entry.name) ? Number(a.entry.name) : null;
-    const bYear = bIsDir && /^\d{4}$/.test(b.entry.name) ? Number(b.entry.name) : null;
+    const aYear =
+      aIsDir && /^\d{4}$/.test(a.entry.name) ? Number(a.entry.name) : null;
+    const bYear =
+      bIsDir && /^\d{4}$/.test(b.entry.name) ? Number(b.entry.name) : null;
     if (aYear !== null || bYear !== null) {
       if (aYear === null) return 1;
       if (bYear === null) return -1;
@@ -115,18 +124,22 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
         continue;
       }
       await walk(abs, bucket);
-    } else if (depth === 2 && entry.isFile() && entry.name === "page.mdx") {
+    } else if (depth === 2 && entry.isFile() && entry.name === "article.mdx") {
       const rel = path.relative(ROOT, abs);
       const normalizedRel = rel.replace(/\\/g, "/");
       const label = normalizedRel.replace(/^app\/\(post\)\//, "");
-      const cleanLabel = label.replace(/\/page\.mdx$/, "");
+      const cleanLabel = label.replace(/\/article\.mdx$/, "");
       const content = await fs.readFile(abs, "utf8");
       const metadata = extractMetadata(content);
 
       bucket.push({
         path: normalizedRel,
         label: cleanLabel,
-        status: normalizeStatus(metadata?.status, metadata?.draft, metadata?.archived),
+        status: normalizeStatus(
+          metadata?.status,
+          metadata?.draft,
+          metadata?.archived
+        ),
         updatedAt: mtime,
       });
     }
@@ -146,11 +159,15 @@ function extractMetadata(content: string) {
 function normalizeStatus(
   value: unknown,
   legacyDraft?: unknown,
-  legacyArchived?: unknown,
+  legacyArchived?: unknown
 ): "draft" | "published" | "archived" {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+    if (
+      normalized === "draft" ||
+      normalized === "published" ||
+      normalized === "archived"
+    ) {
       return normalized;
     }
   }

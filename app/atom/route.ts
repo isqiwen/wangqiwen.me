@@ -1,7 +1,7 @@
 import { getPosts } from "@/app/get-posts";
 import { getSiteUrl, siteConfig } from "@/utils/site-config";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function GET() {
   const posts = (await getPosts({ includeViews: false })).slice(0, 100);
@@ -15,9 +15,7 @@ export async function GET() {
     : "";
   const entries = posts
     .map(post => {
-      const postUrl = getSiteUrl(
-        `/${post.publishedAt.slice(0, 4)}/${post.id}`,
-      );
+      const postUrl = getSiteUrl(`/${post.publishedAt.slice(0, 4)}/${post.id}`);
       return `
         <entry>
           <id>${escapeXml(postUrl)}</id>
@@ -46,15 +44,13 @@ export async function GET() {
       headers: {
         "Content-Type": "application/atom+xml; charset=utf-8",
       },
-    },
+    }
   );
 }
 
 function toRfc3339(value: string): string {
   const date = new Date(
-    /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? `${value}T00:00:00.000Z`
-      : value,
+    /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00.000Z` : value
   );
   return Number.isNaN(date.getTime())
     ? new Date(0).toISOString()

@@ -16,7 +16,7 @@ async function main() {
 
   if (!args.has("--force")) {
     console.error(
-      "This command removes all post content and article images. Re-run with --force if that is intentional.",
+      "This command removes all post content and article images. Re-run with --force if that is intentional."
     );
     process.exitCode = 1;
     return;
@@ -30,7 +30,7 @@ async function main() {
   }
   if (backup.status !== 0) {
     throw new Error(
-      `Content backup failed with exit code ${backup.status}. Reset was cancelled.`,
+      `Content backup failed with exit code ${backup.status}. Reset was cancelled.`
     );
   }
 
@@ -60,14 +60,16 @@ async function main() {
         posts: [],
       },
       null,
-      2,
+      2
     ),
-    "utf8",
+    "utf8"
   );
 
   await writeFile(join(process.cwd(), "links.json"), "{}\n", "utf8");
 
-  console.log("Site content reset complete. Create new posts with pnpm new:post --id my-first-post.");
+  console.log(
+    'Site content reset complete. Create new posts with pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post.".'
+  );
 }
 
 async function safeReadDir(target) {

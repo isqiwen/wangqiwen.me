@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import {
   POSTS_MANIFEST_PATH,
+  POSTS_REGISTRY_PATH,
   POSTS_ROOT,
   resolvePostFile,
   validatePostContent,
@@ -11,6 +12,8 @@ import {
   parseExportedMetadata,
   stripExportedMetadata,
 } from "@/utils/shared/post-metadata";
+import { validateContentQuality } from "@/utils/shared/content-quality";
+import { createPostRegistrySource } from "@/utils/shared/post-registry";
 
 type PostStatus = "draft" | "published" | "archived";
 
@@ -45,21 +48,44 @@ type ManifestPost = {
   path: string;
 };
 
-export async function syncPostsMetadata() {
+type SyncPostsMetadataOptions = {
+  postsRoot?: string;
+  manifestPath?: string;
+  registryPath?: string;
+  publishedOnly?: boolean;
+};
+
+type SourcePost = {
+  relativePath: string;
+  routePath: string;
+  source: string;
+  status: PostStatus;
+  year: string;
+  slug: string;
+};
+
+export async function syncPostsMetadata(
+  options: SyncPostsMetadataOptions = {}
+) {
+  const postsRoot = options.postsRoot ?? POSTS_ROOT;
+  const manifestPath = options.manifestPath ?? POSTS_MANIFEST_PATH;
+  const registryPath =
+    options.registryPath ?? (options.postsRoot ? null : POSTS_REGISTRY_PATH);
   const posts: ManifestPost[] = [];
-  const years = (await safeReadDirectories(POSTS_ROOT)).filter(entry =>
-    /^\d{4}$/.test(entry),
+  const sourcePosts: SourcePost[] = [];
+  const years = (await safeReadDirectories(postsRoot)).filter(entry =>
+    /^\d{4}$/.test(entry)
   );
 
   for (const year of years) {
-    const yearDirectory = path.join(POSTS_ROOT, year);
+    const yearDirectory = path.join(postsRoot, year);
     for (const slug of await safeReadDirectories(yearDirectory)) {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
         continue;
       }
 
-      const relativePath = `app/(post)/${year}/${slug}/page.mdx`;
-      const postFile = resolvePostFile(relativePath);
+      const relativePath = `app/(post)/${year}/${slug}/article.mdx`;
+      const postFile = resolvePostFile(relativePath, postsRoot);
       const source = await readFileIfPresent(postFile.absolutePath);
       if (source === null) {
         continue;
@@ -71,6 +97,16 @@ export async function syncPostsMetadata() {
         throw new Error(`Unable to parse metadata in ${relativePath}`);
       }
 
+      const status = metadata.status as PostStatus;
+      sourcePosts.push({
+        relativePath,
+        routePath: postFile.routePath,
+        source,
+        status,
+        year,
+        slug,
+      });
+
       posts.push({
         id: slug,
         title: normalizeString(metadata.title) || toTitle(slug),
@@ -79,7 +115,7 @@ export async function syncPostsMetadata() {
         series: normalizeString(metadata.series) || null,
         publishedAt: metadata.publishedAt as string,
         updatedAt: normalizeDate(metadata.updatedAt),
-        status: metadata.status as PostStatus,
+        status,
         featured: metadata.featured === true,
         tags: normalizeTags(metadata.tags),
         cover: normalizeString(metadata.cover) || null,
@@ -91,17 +127,54 @@ export async function syncPostsMetadata() {
     }
   }
 
-  posts.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
-  await fs.mkdir(path.dirname(POSTS_MANIFEST_PATH), { recursive: true });
+  validateContentQualityForPosts(sourcePosts);
+
+  const outputPosts = options.publishedOnly
+    ? posts.filter(post => post.status === "published")
+    : posts;
+
+  outputPosts.sort((left, right) =>
+    right.publishedAt.localeCompare(left.publishedAt)
+  );
+  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
   await writeFileAtomically(
-    POSTS_MANIFEST_PATH,
-    JSON.stringify({ posts }, null, 2),
+    manifestPath,
+    JSON.stringify({ posts: outputPosts }, null, 2)
   );
 
+  if (registryPath) {
+    await writeFileAtomically(
+      registryPath,
+      createPostRegistrySource(sourcePosts, {
+        publishedOnly: options.publishedOnly,
+      })
+    );
+  }
+
   return {
-    stdout: `Synchronized ${posts.length} posts.`,
+    stdout: `Synchronized ${outputPosts.length} posts.`,
     stderr: "",
   };
+}
+
+function validateContentQualityForPosts(posts: SourcePost[]) {
+  const articlePaths = new Set(
+    posts
+      .filter(post => post.status === "published")
+      .map(post => post.routePath)
+  );
+  const errors = posts.flatMap(post =>
+    validateContentQuality(post.source, { articlePaths }).map(
+      issue => `${post.relativePath} ${issue}`
+    )
+  );
+
+  if (errors.length > 0) {
+    throw new Error(
+      "Post content quality validation failed.\n" +
+        errors.map(error => ` - ${error}`).join("\n")
+    );
+  }
 }
 
 async function safeReadDirectories(directory: string): Promise<string[]> {
@@ -142,15 +215,15 @@ function normalizeTags(value: unknown): string[] {
   const tags = Array.isArray(value)
     ? value
     : typeof value === "string"
-      ? value.split(",")
-      : [];
+    ? value.split(",")
+    : [];
 
   return Array.from(
     new Set(
       tags
         .map(tag => (typeof tag === "string" ? tag.trim() : ""))
-        .filter(Boolean),
-    ),
+        .filter(Boolean)
+    )
   );
 }
 
@@ -173,7 +246,10 @@ function estimateReadingTimeMinutes(source: string): number {
     .trim();
   const latinWords = text.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) ?? [];
   const cjkCharacters = text.match(/[\u3400-\u9fff]/g) ?? [];
-  return Math.max(1, Math.ceil((latinWords.length + cjkCharacters.length) / 220));
+  return Math.max(
+    1,
+    Math.ceil((latinWords.length + cjkCharacters.length) / 220)
+  );
 }
 
 function toTitle(slug: string): string {

@@ -5,7 +5,7 @@ import { EquationNumbering } from "./components/equation-numbering";
 import { TableOfContents } from "./components/table-of-contents";
 import { RelatedPosts } from "./related-posts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Layout({ children }) {
   const posts = await getPosts({

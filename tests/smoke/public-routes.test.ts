@@ -75,6 +75,12 @@ test("serves a published article", async () => {
   assert.match(body, /Related writing/);
 });
 
+test("does not serve an unpublished article URL", async () => {
+  const response = await fetch(`${baseUrl}/2099/unpublished-draft`);
+
+  assert.equal(response.status, 404);
+});
+
 test("serves the topics index", async () => {
   const response = await fetch(`${baseUrl}/topics`);
 
@@ -95,13 +101,22 @@ test("serves the Atom feed", async () => {
   const response = await fetch(`${baseUrl}/atom`);
 
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /application\/atom\+xml/);
-  assert.match(await response.text(), /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/);
+  assert.match(
+    response.headers.get("content-type") ?? "",
+    /application\/atom\+xml/
+  );
+  assert.match(
+    await response.text(),
+    /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/
+  );
 });
 
 test("reports missing required production configuration", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
-  const body = (await response.json()) as { status?: unknown; timestamp?: unknown };
+  const body = (await response.json()) as {
+    status?: unknown;
+    timestamp?: unknown;
+  };
 
   assert.equal(response.status, 503);
   assert.equal(body.status, "degraded");
@@ -128,14 +143,19 @@ async function getAvailablePort(): Promise<number> {
 }
 
 async function getPublishedPostPath(): Promise<string> {
-  const source = await readFile(join(ROOT_DIR, "posts", "manifest.json"), "utf8");
+  const source = await readFile(
+    join(ROOT_DIR, "posts", "manifest.json"),
+    "utf8"
+  );
   const manifest = JSON.parse(source) as {
     posts?: Array<{ path?: string; status?: string }>;
   };
   const path = manifest.posts?.find(post => post.status === "published")?.path;
 
   if (!path) {
-    throw new Error("The smoke test requires one published post in posts/manifest.json.");
+    throw new Error(
+      "The smoke test requires one published post in posts/manifest.json."
+    );
   }
 
   return path;
@@ -162,7 +182,9 @@ async function waitForServer(): Promise<void> {
   }
 
   throw new Error(
-    `Standalone server did not become ready within ${STARTUP_TIMEOUT_MS}ms. ${String(lastError)}\n${logs}`,
+    `Standalone server did not become ready within ${STARTUP_TIMEOUT_MS}ms. ${String(
+      lastError
+    )}\n${logs}`
   );
 }
 

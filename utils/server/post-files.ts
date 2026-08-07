@@ -5,10 +5,20 @@ import { resolvePathInside } from "@/utils/server/path-safety";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 
 export const POSTS_ROOT = path.join(process.cwd(), "app", "(post)");
-export const POSTS_MANIFEST_PATH = path.join(process.cwd(), "posts", "manifest.json");
+export const POSTS_MANIFEST_PATH = path.join(
+  process.cwd(),
+  "posts",
+  "manifest.json"
+);
+export const POSTS_REGISTRY_PATH = path.join(
+  process.cwd(),
+  "app",
+  "(post)",
+  "post-registry.ts"
+);
 
 const POST_FILE_PATTERN =
-  /^app\/\(post\)\/(\d{4})\/([a-z0-9]+(?:-[a-z0-9]+)*)\/page\.mdx$/;
+  /^app\/\(post\)\/(\d{4})\/([a-z0-9]+(?:-[a-z0-9]+)*)\/article\.mdx$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_POST_BYTES = 2 * 1024 * 1024;
 
@@ -33,7 +43,10 @@ const globalForPostMutations = globalThis as typeof globalThis & {
   __postMutationQueue?: Promise<void>;
 };
 
-export function resolvePostFile(inputPath: unknown): ResolvedPostFile {
+export function resolvePostFile(
+  inputPath: unknown,
+  postsRoot = POSTS_ROOT
+): ResolvedPostFile {
   if (typeof inputPath !== "string") {
     throw new PostFileValidationError("path is required");
   }
@@ -42,7 +55,7 @@ export function resolvePostFile(inputPath: unknown): ResolvedPostFile {
   const match = relativePath.match(POST_FILE_PATTERN);
   if (!match) {
     throw new PostFileValidationError(
-      "path must match app/(post)/YYYY/slug/page.mdx",
+      "path must match app/(post)/YYYY/slug/article.mdx"
     );
   }
 
@@ -52,7 +65,7 @@ export function resolvePostFile(inputPath: unknown): ResolvedPostFile {
   }
 
   return {
-    absolutePath: resolvePathInside(POSTS_ROOT, `${year}/${slug}/page.mdx`),
+    absolutePath: resolvePathInside(postsRoot, `${year}/${slug}/article.mdx`),
     relativePath,
     routePath: `/${year}/${slug}`,
     year,
@@ -60,7 +73,10 @@ export function resolvePostFile(inputPath: unknown): ResolvedPostFile {
   };
 }
 
-export function validatePostContent(content: unknown, target: ResolvedPostFile): string {
+export function validatePostContent(
+  content: unknown,
+  target: ResolvedPostFile
+): string {
   if (typeof content !== "string") {
     throw new PostFileValidationError("content is required");
   }
@@ -72,7 +88,7 @@ export function validatePostContent(content: unknown, target: ResolvedPostFile):
   const metadata = parseExportedMetadata<PostMetadata>(content);
   if (!metadata) {
     throw new PostFileValidationError(
-      "content must contain JSON-compatible exported metadata",
+      "content must contain JSON-compatible exported metadata"
     );
   }
 
@@ -93,7 +109,7 @@ export function validatePostContent(content: unknown, target: ResolvedPostFile):
 
   if (metadata.publishedAt.slice(0, 4) !== target.year) {
     throw new PostFileValidationError(
-      "publishedAt year must match the target directory",
+      "publishedAt year must match the target directory"
     );
   }
 
@@ -103,15 +119,15 @@ export function validatePostContent(content: unknown, target: ResolvedPostFile):
     metadata.status !== "archived"
   ) {
     throw new PostFileValidationError(
-      "status must be draft, published, or archived",
+      "status must be draft, published, or archived"
     );
   }
 
   if (
-    metadata.status === "published" &&
-    (typeof metadata.description !== "string" || !metadata.description.trim())
+    typeof metadata.description !== "string" ||
+    !metadata.description.trim()
   ) {
-    throw new PostFileValidationError("published posts require a description");
+    throw new PostFileValidationError("posts require a description");
   }
 
   if (
@@ -129,7 +145,7 @@ export function validatePostContent(content: unknown, target: ResolvedPostFile):
 export async function writeFileAtomically(targetPath: string, content: string) {
   const temporaryPath = path.join(
     path.dirname(targetPath),
-    `.${path.basename(targetPath)}.${randomUUID()}.tmp`,
+    `.${path.basename(targetPath)}.${randomUUID()}.tmp`
   );
 
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
@@ -145,8 +161,11 @@ export async function writeFileAtomically(targetPath: string, content: string) {
   }
 }
 
-export async function withPostMutationLock<T>(operation: () => Promise<T>): Promise<T> {
-  const previous = globalForPostMutations.__postMutationQueue ?? Promise.resolve();
+export async function withPostMutationLock<T>(
+  operation: () => Promise<T>
+): Promise<T> {
+  const previous =
+    globalForPostMutations.__postMutationQueue ?? Promise.resolve();
   let release: (() => void) | undefined;
   globalForPostMutations.__postMutationQueue = new Promise<void>(resolve => {
     release = resolve;
@@ -168,5 +187,8 @@ function isIsoDate(value: string): boolean {
   }
 
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }

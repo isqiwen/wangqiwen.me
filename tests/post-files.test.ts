@@ -22,40 +22,44 @@ const validPost = (overrides: Record<string, unknown> = {}) =>
       ...overrides,
     },
     null,
-    2,
+    2
   )};\n\nPost body.`;
 
 test("only resolves post files under the expected year and slug path", () => {
-  const post = resolvePostFile("app/(post)/2024/safe-post/page.mdx");
+  const post = resolvePostFile("app/(post)/2024/safe-post/article.mdx");
 
   assert.equal(post.routePath, "/2024/safe-post");
   assert.equal(post.year, "2024");
   assert.equal(post.slug, "safe-post");
   assert.throws(
-    () => resolvePostFile("app/(post)/2024/../../secret/page.mdx"),
-    PostFileValidationError,
+    () => resolvePostFile("app/(post)/2024/../../secret/article.mdx"),
+    PostFileValidationError
   );
   assert.throws(
-    () => resolvePostFile("app/(post)/2024/Unsafe_Post/page.mdx"),
-    PostFileValidationError,
+    () => resolvePostFile("app/(post)/2024/Unsafe_Post/article.mdx"),
+    PostFileValidationError
   );
 });
 
 test("validates post metadata against its target file", () => {
-  const target = resolvePostFile("app/(post)/2024/safe-post/page.mdx");
+  const target = resolvePostFile("app/(post)/2024/safe-post/article.mdx");
 
   assert.equal(validatePostContent(validPost(), target), validPost());
   assert.throws(
     () => validatePostContent(validPost({ id: "other-post" }), target),
-    /metadata id must match/,
+    /metadata id must match/
   );
   assert.throws(
     () => validatePostContent(validPost({ publishedAt: "2025-01-02" }), target),
-    /publishedAt year must match/,
+    /publishedAt year must match/
   );
   assert.throws(
     () => validatePostContent(validPost({ status: "private" }), target),
-    /status must be draft, published, or archived/,
+    /status must be draft, published, or archived/
+  );
+  assert.throws(
+    () => validatePostContent(validPost({ description: "" }), target),
+    /require a description/
   );
 });
 

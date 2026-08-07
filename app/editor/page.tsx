@@ -88,7 +88,7 @@ function today() {
 
 function buildTargetPath(publishedAt: string, id: string) {
   const year = publishedAt ? publishedAt.slice(0, 4) : "2025";
-  return `app/(post)/${year}/${id}/page.mdx`;
+  return `app/(post)/${year}/${id}/article.mdx`;
 }
 
 function validateEditorTarget(publishedAt: string, id: string) {
@@ -108,6 +108,35 @@ function validateEditorTarget(publishedAt: string, id: string) {
   return null;
 }
 
+function validateEditorContent(title: string, description: string) {
+  if (!title.trim()) {
+    return "Title is required.";
+  }
+
+  if (!description.trim()) {
+    return "Description is required.";
+  }
+
+  return null;
+}
+
+function createEmptyEditorDocument(): EditorDocumentState {
+  return {
+    title: "",
+    description: "",
+    summary: "",
+    series: "",
+    publishedAt: today(),
+    updatedAt: "",
+    id: "my-post",
+    status: "draft",
+    featured: false,
+    tagsInput: "",
+    cover: "",
+    body: "Start writing here.\n",
+  };
+}
+
 function normalizeAssetId(value: string) {
   const cleaned = value
     .toLowerCase()
@@ -117,7 +146,7 @@ function normalizeAssetId(value: string) {
 }
 
 function buildWorkspaceSnapshot(
-  state: EditorDocumentState & { activePath: string | null },
+  state: EditorDocumentState & { activePath: string | null }
 ): EditorWorkspaceSnapshot {
   return {
     ...state,
@@ -152,11 +181,15 @@ function parseMetadataObject(content: string) {
 function normalizeStatus(
   value: unknown,
   legacyDraft?: unknown,
-  legacyArchived?: unknown,
+  legacyArchived?: unknown
 ): EditorStatus {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+    if (
+      normalized === "draft" ||
+      normalized === "published" ||
+      normalized === "archived"
+    ) {
       return normalized;
     }
   }
@@ -185,33 +218,42 @@ function normalizeBoolean(value: unknown): boolean {
   return false;
 }
 
-function parseEditorDocument(content: string, filePath: string): EditorDocumentState {
+function parseEditorDocument(
+  content: string,
+  filePath: string
+): EditorDocumentState {
   const metadata = parseMetadataObject(content);
   const metadataTags = metadata?.tags;
   const body = stripExportedMetadata(content).trimStart();
   const slugFallback = filePath.split("/").at(-2) ?? "my-post";
 
   return {
-    title: metadata?.title || "Untitled Post",
+    title: metadata?.title || "",
     description: metadata?.description || "",
     summary: metadata?.summary || "",
     series: metadata?.series || "",
     publishedAt: metadata?.publishedAt || today(),
     updatedAt: metadata?.updatedAt || "",
     id: metadata?.id || slugFallback,
-    status: normalizeStatus(metadata?.status, metadata?.draft, metadata?.archived),
+    status: normalizeStatus(
+      metadata?.status,
+      metadata?.draft,
+      metadata?.archived
+    ),
     featured: normalizeBoolean(metadata?.featured),
     tagsInput: Array.isArray(metadataTags)
       ? metadataTags.join(", ")
       : typeof metadataTags === "string"
-        ? metadataTags
-        : "",
+      ? metadataTags
+      : "",
     cover: typeof metadata?.cover === "string" ? metadata.cover : "",
     body,
   };
 }
 
-function parseLocalAutosave(rawValue: string | null): EditorLocalAutosave | null {
+function parseLocalAutosave(
+  rawValue: string | null
+): EditorLocalAutosave | null {
   if (!rawValue) {
     return null;
   }
@@ -241,7 +283,8 @@ function parseLocalAutosave(rawValue: string | null): EditorLocalAutosave | null
 
     return {
       version: LOCAL_AUTOSAVE_VERSION,
-      activePath: typeof parsed.activePath === "string" ? parsed.activePath : null,
+      activePath:
+        typeof parsed.activePath === "string" ? parsed.activePath : null,
       targetPath: parsed.targetPath,
       title: parsed.title,
       description: parsed.description,
@@ -267,8 +310,8 @@ export default function EditorPage() {
 }
 
 function EditorWorkspace() {
-  const [title, setTitle] = useState("Untitled Post");
-  const [description, setDescription] = useState("Add a short summary for this post.");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [summary, setSummary] = useState("");
   const [series, setSeries] = useState("");
   const [publishedAt, setPublishedAt] = useState(today());
@@ -278,25 +321,33 @@ function EditorWorkspace() {
   const [featured, setFeatured] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [cover, setCover] = useState("");
-  const [body, setBody] = useState(`# ${title}\n\nStart writing here.\n`);
+  const [body, setBody] = useState("Start writing here.\n");
   const [fileOptions, setFileOptions] = useState<EditorFileOption[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [feedback, setFeedback] = useState<EditorFeedback | null>(null);
-  const [pickerFeedback, setPickerFeedback] = useState<EditorFeedback | null>(null);
-  const [confirmation, setConfirmation] = useState<EditorConfirmation | null>(null);
+  const [pickerFeedback, setPickerFeedback] = useState<EditorFeedback | null>(
+    null
+  );
+  const [confirmation, setConfirmation] = useState<EditorConfirmation | null>(
+    null
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [assets, setAssets] = useState<EditorAsset[]>([]);
   const [isAssetsLoading, setIsAssetsLoading] = useState(false);
-  const [deletingAssetPath, setDeletingAssetPath] = useState<string | null>(null);
+  const [deletingAssetPath, setDeletingAssetPath] = useState<string | null>(
+    null
+  );
   const [localAutosaveAt, setLocalAutosaveAt] = useState<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
   const restoredDraftRef = useRef(false);
   const pendingAutosaveRef = useRef<EditorLocalAutosave | null>(null);
   const handledPendingSnippetRef = useRef<number | null>(null);
-  const confirmationResolveRef = useRef<((value: boolean) => void) | null>(null);
+  const confirmationResolveRef = useRef<((value: boolean) => void) | null>(
+    null
+  );
   const [cursorPos, setCursorPos] = useState<number>(body.length);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -331,22 +382,26 @@ function EditorWorkspace() {
       tagsInput,
       cover,
       body,
-    ],
+    ]
   );
   const workspaceFingerprint = useMemo(
     () => serializeWorkspaceSnapshot(workspaceSnapshot),
-    [workspaceSnapshot],
+    [workspaceSnapshot]
   );
-  const [persistedFingerprint, setPersistedFingerprint] = useState(workspaceFingerprint);
+  const [persistedFingerprint, setPersistedFingerprint] =
+    useState(workspaceFingerprint);
   const currentStatus = status;
-  const readingTimeEstimate = useMemo(() => estimateReadingTimeMinutes(body), [body]);
+  const readingTimeEstimate = useMemo(
+    () => estimateReadingTimeMinutes(body),
+    [body]
+  );
   const recentDrafts = useMemo(
     () =>
       [...fileOptions]
         .filter(file => file.status === "draft")
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 5),
-    [fileOptions],
+    [fileOptions]
   );
   const archivedPosts = useMemo(
     () =>
@@ -354,7 +409,7 @@ function EditorWorkspace() {
         .filter(file => file.status === "archived")
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 5),
-    [fileOptions],
+    [fileOptions]
   );
   const previewHref = useMemo(() => {
     const year = publishedAt ? publishedAt.slice(0, 4) : "2025";
@@ -362,28 +417,38 @@ function EditorWorkspace() {
   }, [publishedAt, id]);
   const assetFolderId = useMemo(() => normalizeAssetId(id), [id]);
   const isReadOnly = currentStatus === "archived";
-  const canOpenPreview = currentStatus !== "archived" && activePath === workspaceSnapshot.targetPath;
+  const canOpenPreview =
+    currentStatus !== "archived" && activePath === workspaceSnapshot.targetPath;
   const isDirty = workspaceFingerprint !== persistedFingerprint;
   const targetPath = workspaceSnapshot.targetPath;
 
-  const showFeedback = useCallback((message: string, tone: FeedbackTone = "info") => {
-    setFeedback({ message, tone });
-  }, []);
+  const showFeedback = useCallback(
+    (message: string, tone: FeedbackTone = "info") => {
+      setFeedback({ message, tone });
+    },
+    []
+  );
 
-  const showPickerFeedback = useCallback((message: string, tone: FeedbackTone = "info") => {
-    setPickerFeedback({ message, tone });
-  }, []);
+  const showPickerFeedback = useCallback(
+    (message: string, tone: FeedbackTone = "info") => {
+      setPickerFeedback({ message, tone });
+    },
+    []
+  );
 
   const clearPickerFeedback = useCallback(() => {
     setPickerFeedback(null);
   }, []);
 
-  const requestConfirmation = useCallback((nextConfirmation: EditorConfirmation) => {
-    return new Promise<boolean>(resolve => {
-      confirmationResolveRef.current = resolve;
-      setConfirmation(nextConfirmation);
-    });
-  }, []);
+  const requestConfirmation = useCallback(
+    (nextConfirmation: EditorConfirmation) => {
+      return new Promise<boolean>(resolve => {
+        confirmationResolveRef.current = resolve;
+        setConfirmation(nextConfirmation);
+      });
+    },
+    []
+  );
 
   const resolveConfirmation = useCallback((confirmed: boolean) => {
     confirmationResolveRef.current?.(confirmed);
@@ -406,7 +471,20 @@ function EditorWorkspace() {
       cover,
       body,
     });
-  }, [title, description, summary, series, publishedAt, updatedAt, id, status, featured, tagsInput, cover, body]);
+  }, [
+    title,
+    description,
+    summary,
+    series,
+    publishedAt,
+    updatedAt,
+    id,
+    status,
+    featured,
+    tagsInput,
+    cover,
+    body,
+  ]);
 
   const applyWorkspaceState = useCallback(
     (
@@ -414,7 +492,7 @@ function EditorWorkspace() {
       options: {
         activePath?: string | null;
         markPersisted?: boolean;
-      } = {},
+      } = {}
     ) => {
       const nextActivePath = options.activePath ?? null;
 
@@ -443,23 +521,26 @@ function EditorWorkspace() {
             buildWorkspaceSnapshot({
               ...nextState,
               activePath: nextActivePath,
-            }),
-          ),
+            })
+          )
         );
       }
     },
-    [],
+    []
   );
 
   const restoreLocalAutosave = useCallback(
-    (options: { matchingPath?: string | null; allowUnmatched?: boolean } = {}) => {
+    (
+      options: { matchingPath?: string | null; allowUnmatched?: boolean } = {}
+    ) => {
       const autosave = pendingAutosaveRef.current;
       if (!autosave) {
         return false;
       }
 
       const matchesPath = options.matchingPath
-        ? autosave.activePath === options.matchingPath || autosave.targetPath === options.matchingPath
+        ? autosave.activePath === options.matchingPath ||
+          autosave.targetPath === options.matchingPath
         : Boolean(options.allowUnmatched);
 
       if (!matchesPath) {
@@ -484,21 +565,27 @@ function EditorWorkspace() {
         },
         {
           activePath: autosave.activePath,
-        },
+        }
       );
       setLocalAutosaveAt(autosave.savedAt);
-      showFeedback(`Restored local autosave from ${formatUpdatedAt(autosave.savedAt)}`, "success");
+      showFeedback(
+        `Restored local autosave from ${formatUpdatedAt(autosave.savedAt)}`,
+        "success"
+      );
       return true;
     },
-    [applyWorkspaceState, showFeedback],
+    [applyWorkspaceState, showFeedback]
   );
 
   const loadFromPath = useCallback(
     async (path: string, options: { successHint?: string } = {}) => {
       try {
-        const res = await fetch(`/api/editor?path=${encodeURIComponent(path)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/editor?path=${encodeURIComponent(path)}`,
+          {
+            cache: "no-store",
+          }
+        );
 
         if (res.status === 404) {
           showPickerFeedback("The selected file was not found.", "error");
@@ -506,7 +593,9 @@ function EditorWorkspace() {
         }
 
         if (!res.ok) {
-          throw new Error(await readResponseError(res, "Failed to read the selected file."));
+          throw new Error(
+            await readResponseError(res, "Failed to read the selected file.")
+          );
         }
 
         const data = await res.json();
@@ -531,13 +620,22 @@ function EditorWorkspace() {
 
         return true;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to read the selected file.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to read the selected file.";
         showPickerFeedback(message, "error");
         showFeedback(message, "error");
         return false;
       }
     },
-    [applyWorkspaceState, clearPickerFeedback, restoreLocalAutosave, showFeedback, showPickerFeedback],
+    [
+      applyWorkspaceState,
+      clearPickerFeedback,
+      restoreLocalAutosave,
+      showFeedback,
+      showPickerFeedback,
+    ]
   );
 
   const refreshFileList = useCallback(
@@ -548,7 +646,9 @@ function EditorWorkspace() {
         });
 
         if (!res.ok) {
-          throw new Error(await readResponseError(res, "Failed to load the file list."));
+          throw new Error(
+            await readResponseError(res, "Failed to load the file list.")
+          );
         }
 
         const data = (await res.json()) as {
@@ -558,27 +658,34 @@ function EditorWorkspace() {
 
         setFileOptions(files);
         setSelectedPath(current =>
-          current && files.some(file => file.path === current) ? current : files[0]?.path ?? "",
+          current && files.some(file => file.path === current)
+            ? current
+            : files[0]?.path ?? ""
         );
         setPickerFeedback(
-          files.length === 0 ? { message: "No files found.", tone: "info" } : null,
+          files.length === 0
+            ? { message: "No files found.", tone: "info" }
+            : null
         );
 
         if (!options.autoRestoreLatestDraft) {
           return;
         }
 
-        const latestDraft = files.reduce<EditorFileOption | null>((latest, file) => {
-          if (file.status !== "draft") {
+        const latestDraft = files.reduce<EditorFileOption | null>(
+          (latest, file) => {
+            if (file.status !== "draft") {
+              return latest;
+            }
+
+            if (!latest || file.updatedAt > latest.updatedAt) {
+              return file;
+            }
+
             return latest;
-          }
-
-          if (!latest || file.updatedAt > latest.updatedAt) {
-            return file;
-          }
-
-          return latest;
-        }, null);
+          },
+          null
+        );
 
         if (latestDraft) {
           await loadFromPath(latestDraft.path, {
@@ -589,11 +696,14 @@ function EditorWorkspace() {
 
         restoreLocalAutosave({ allowUnmatched: true });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to load the file list.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load the file list.";
         showPickerFeedback(message, "error");
       }
     },
-    [loadFromPath, restoreLocalAutosave, showPickerFeedback],
+    [loadFromPath, restoreLocalAutosave, showPickerFeedback]
   );
 
   const refreshAssets = useCallback(
@@ -601,12 +711,17 @@ function EditorWorkspace() {
       setIsAssetsLoading(true);
 
       try {
-        const res = await fetch(`/api/editor/assets?id=${encodeURIComponent(assetFolderId)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/editor/assets?id=${encodeURIComponent(assetFolderId)}`,
+          {
+            cache: "no-store",
+          }
+        );
 
         if (!res.ok) {
-          throw new Error(await readResponseError(res, "Failed to load assets."));
+          throw new Error(
+            await readResponseError(res, "Failed to load assets.")
+          );
         }
 
         const data = (await res.json()) as {
@@ -617,25 +732,33 @@ function EditorWorkspace() {
         if (!options.silent) {
           showFeedback(
             error instanceof Error ? error.message : "Failed to load assets.",
-            "error",
+            "error"
           );
         }
       } finally {
         setIsAssetsLoading(false);
       }
     },
-    [assetFolderId, showFeedback],
+    [assetFolderId, showFeedback]
   );
 
-  async function saveFile(options: {
-    statusOverride?: EditorStatus;
-    showHint?: boolean;
-    successHint?: string;
-  } = {}) {
+  async function saveFile(
+    options: {
+      statusOverride?: EditorStatus;
+      showHint?: boolean;
+      successHint?: string;
+    } = {}
+  ) {
     try {
       const targetError = validateEditorTarget(publishedAt, id);
       if (targetError) {
         showFeedback(targetError, "error");
+        return false;
+      }
+
+      const contentError = validateEditorContent(title, description);
+      if (contentError) {
+        showFeedback(contentError, "error");
         return false;
       }
 
@@ -666,7 +789,12 @@ function EditorWorkspace() {
       });
 
       if (!res.ok) {
-        throw new Error(await readResponseError(res, "Save failed. Check the file path and permissions."));
+        throw new Error(
+          await readResponseError(
+            res,
+            "Save failed. Check the file path and permissions."
+          )
+        );
       }
 
       applyWorkspaceState(
@@ -687,20 +815,25 @@ function EditorWorkspace() {
         {
           activePath: targetPath,
           markPersisted: true,
-        },
+        }
       );
       void refreshFileList();
 
       if (options.showHint !== false) {
-        showFeedback(options.successHint ?? `Saved to ${targetPath}`, "success");
+        showFeedback(
+          options.successHint ?? `Saved to ${targetPath}`,
+          "success"
+        );
       }
 
       return true;
     } catch (error) {
       if (options.showHint !== false) {
         showFeedback(
-          error instanceof Error ? error.message : "Save failed. Check the file path and permissions.",
-          "error",
+          error instanceof Error
+            ? error.message
+            : "Save failed. Check the file path and permissions.",
+          "error"
         );
       }
       return false;
@@ -731,14 +864,18 @@ function EditorWorkspace() {
       const res = await fetch("/api/editor/publish", { method: "POST" });
 
       if (!res.ok) {
-        throw new Error(await readResponseError(res, "Publish failed. Check the server logs."));
+        throw new Error(
+          await readResponseError(res, "Publish failed. Check the server logs.")
+        );
       }
 
       showFeedback(`Published and synchronized ${targetPath}`, "success");
     } catch (error) {
       showFeedback(
-        error instanceof Error ? error.message : "Publish failed. Check the server logs.",
-        "error",
+        error instanceof Error
+          ? error.message
+          : "Publish failed. Check the server logs.",
+        "error"
       );
     }
   }
@@ -774,7 +911,8 @@ function EditorWorkspace() {
     }
 
     const confirmed = await requestConfirmation({
-      title: currentStatus === "archived" ? "Delete Archived Post" : "Delete Draft",
+      title:
+        currentStatus === "archived" ? "Delete Archived Post" : "Delete Draft",
       description:
         currentStatus === "archived"
           ? `Delete archived post "${title}" permanently? This cannot be undone.`
@@ -795,12 +933,20 @@ function EditorWorkspace() {
       });
 
       if (res.status === 409) {
-        showFeedback("Published posts must be archived before they can be deleted.", "error");
+        showFeedback(
+          "Published posts must be archived before they can be deleted.",
+          "error"
+        );
         return;
       }
 
       if (!res.ok) {
-        throw new Error(await readResponseError(res, "Delete failed. Check the file path and permissions."));
+        throw new Error(
+          await readResponseError(
+            res,
+            "Delete failed. Check the file path and permissions."
+          )
+        );
       }
 
       if (typeof window !== "undefined") {
@@ -809,34 +955,19 @@ function EditorWorkspace() {
       pendingAutosaveRef.current = null;
       setLocalAutosaveAt(null);
 
-      const emptyTitle = "Untitled Post";
-      applyWorkspaceState(
-        {
-          title: emptyTitle,
-          description: "Add a short summary for this post.",
-          summary: "",
-          series: "",
-          publishedAt: today(),
-          updatedAt: "",
-          id: "my-post",
-          status: "draft",
-          featured: false,
-          tagsInput: "",
-          cover: "",
-          body: `# ${emptyTitle}\n\nStart writing here.\n`,
-        },
-        {
-          activePath: null,
-          markPersisted: true,
-        },
-      );
+      applyWorkspaceState(createEmptyEditorDocument(), {
+        activePath: null,
+        markPersisted: true,
+      });
       setSelectedPath("");
       showFeedback(`Deleted: ${activePath}`, "success");
       await refreshFileList({ autoRestoreLatestDraft: true });
     } catch (error) {
       showFeedback(
-        error instanceof Error ? error.message : "Delete failed. Check the file path and permissions.",
-        "error",
+        error instanceof Error
+          ? error.message
+          : "Delete failed. Check the file path and permissions.",
+        "error"
       );
     }
   }
@@ -846,7 +977,9 @@ function EditorWorkspace() {
       return;
     }
 
-    pendingAutosaveRef.current = parseLocalAutosave(window.localStorage.getItem(LOCAL_AUTOSAVE_KEY));
+    pendingAutosaveRef.current = parseLocalAutosave(
+      window.localStorage.getItem(LOCAL_AUTOSAVE_KEY)
+    );
     setLocalAutosaveAt(pendingAutosaveRef.current?.savedAt ?? null);
   }, []);
 
@@ -954,7 +1087,7 @@ function EditorWorkspace() {
         }
       });
     },
-    [body, cursorPos, isReadOnly],
+    [body, cursorPos, isReadOnly]
   );
 
   const consumePendingEditorSnippet = useCallback(
@@ -970,12 +1103,15 @@ function EditorWorkspace() {
 
       if (isReadOnly) {
         handledPendingSnippetRef.current = pendingSnippet.createdAt;
-        if (options.removeAfterRead !== false && typeof window !== "undefined") {
+        if (
+          options.removeAfterRead !== false &&
+          typeof window !== "undefined"
+        ) {
           window.localStorage.removeItem(PENDING_EDITOR_SNIPPET_KEY);
         }
         showFeedback(
           "The current post is read-only, so the queued component snippet was not inserted.",
-          "error",
+          "error"
         );
         return false;
       }
@@ -990,7 +1126,7 @@ function EditorWorkspace() {
       showFeedback("Inserted component snippet from the guide.", "success");
       return true;
     },
-    [insertSnippet, isReadOnly, showFeedback],
+    [insertSnippet, isReadOnly, showFeedback]
   );
 
   useEffect(() => {
@@ -998,7 +1134,9 @@ function EditorWorkspace() {
       return;
     }
 
-    consumePendingEditorSnippet(window.localStorage.getItem(PENDING_EDITOR_SNIPPET_KEY));
+    consumePendingEditorSnippet(
+      window.localStorage.getItem(PENDING_EDITOR_SNIPPET_KEY)
+    );
   }, [consumePendingEditorSnippet, initialLoadComplete]);
 
   useEffect(() => {
@@ -1020,7 +1158,10 @@ function EditorWorkspace() {
 
   async function handleImageFile(file: File) {
     if (isReadOnly) {
-      showFeedback("Archived posts are read-only. Restore to draft before editing.", "error");
+      showFeedback(
+        "Archived posts are read-only. Restore to draft before editing.",
+        "error"
+      );
       return;
     }
 
@@ -1041,7 +1182,9 @@ function EditorWorkspace() {
 
       const data = await res.json();
       if (!res.ok || !data?.path) {
-        throw new Error(resolveApiError(data, "Upload failed. Please try again."));
+        throw new Error(
+          resolveApiError(data, "Upload failed. Please try again.")
+        );
       }
 
       const snippet = buildImageSnippet({
@@ -1055,8 +1198,10 @@ function EditorWorkspace() {
       showFeedback(`Inserted image: ${data.path}`, "success");
     } catch (error) {
       showFeedback(
-        error instanceof Error ? error.message : "Upload failed. Please try again.",
-        "error",
+        error instanceof Error
+          ? error.message
+          : "Upload failed. Please try again.",
+        "error"
       );
     } finally {
       setIsUploading(false);
@@ -1100,7 +1245,10 @@ function EditorWorkspace() {
 
   function insertAssetSnippet(asset: EditorAsset) {
     if (isReadOnly) {
-      showFeedback("Archived posts are read-only. Restore to draft before editing.", "error");
+      showFeedback(
+        "Archived posts are read-only. Restore to draft before editing.",
+        "error"
+      );
       return;
     }
 
@@ -1110,14 +1258,17 @@ function EditorWorkspace() {
         width: asset.width,
         height: asset.height,
         alt: stripExtension(asset.name),
-      }),
+      })
     );
     showFeedback(`Inserted asset: ${asset.path}`, "success");
   }
 
   function applyAssetAsCover(asset: EditorAsset) {
     if (isReadOnly) {
-      showFeedback("Archived posts are read-only. Restore to draft before editing.", "error");
+      showFeedback(
+        "Archived posts are read-only. Restore to draft before editing.",
+        "error"
+      );
       return;
     }
 
@@ -1127,7 +1278,10 @@ function EditorWorkspace() {
 
   async function deleteAsset(asset: EditorAsset) {
     if (isReadOnly) {
-      showFeedback("Archived posts are read-only. Restore to draft before editing.", "error");
+      showFeedback(
+        "Archived posts are read-only. Restore to draft before editing.",
+        "error"
+      );
       return;
     }
 
@@ -1158,10 +1312,14 @@ function EditorWorkspace() {
       });
 
       if (!res.ok) {
-        throw new Error(await readResponseError(res, "Failed to delete asset."));
+        throw new Error(
+          await readResponseError(res, "Failed to delete asset.")
+        );
       }
 
-      setAssets(current => current.filter(currentAsset => currentAsset.path !== asset.path));
+      setAssets(current =>
+        current.filter(currentAsset => currentAsset.path !== asset.path)
+      );
       if (references.removed > 0) {
         setBody(references.body);
         setCursorPos(current => Math.min(current, references.body.length));
@@ -1173,12 +1331,12 @@ function EditorWorkspace() {
         references.removed > 0 || coverWillBeCleared
           ? `Deleted asset and removed current editor references. Save the post to persist the content change.`
           : `Deleted asset: ${asset.path}`,
-        "success",
+        "success"
       );
     } catch (error) {
       showFeedback(
         error instanceof Error ? error.message : "Failed to delete asset.",
-        "error",
+        "error"
       );
     } finally {
       setDeletingAssetPath(null);
@@ -1215,7 +1373,9 @@ function EditorWorkspace() {
               onClick={() => void saveFile()}
               className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
             >
-              {currentStatus === "draft" ? "Save Draft" : "Save Published Changes"}
+              {currentStatus === "draft"
+                ? "Save Draft"
+                : "Save Published Changes"}
             </button>
           ) : null}
           {currentStatus === "draft" ? (
@@ -1250,12 +1410,15 @@ function EditorWorkspace() {
               Restore To Draft
             </button>
           ) : null}
-          {(currentStatus === "draft" || currentStatus === "archived") && activePath ? (
+          {(currentStatus === "draft" || currentStatus === "archived") &&
+          activePath ? (
             <button
               onClick={deleteCurrentPost}
               className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-900 hover:bg-rose-100"
             >
-              {currentStatus === "archived" ? "Delete Permanently" : "Delete Draft"}
+              {currentStatus === "archived"
+                ? "Delete Permanently"
+                : "Delete Draft"}
             </button>
           ) : null}
           <button
@@ -1270,7 +1433,8 @@ function EditorWorkspace() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         {isReadOnly ? (
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Archived posts are read-only. Restore this post to draft before editing content or metadata.
+            Archived posts are read-only. Restore this post to draft before
+            editing content or metadata.
           </div>
         ) : null}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -1278,6 +1442,7 @@ function EditorWorkspace() {
             <input
               value={title}
               onChange={event => setTitle(event.target.value)}
+              placeholder="A clear article title"
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
               disabled={isReadOnly}
             />
@@ -1297,8 +1462,8 @@ function EditorWorkspace() {
                   currentStatus === "draft"
                     ? "bg-amber-100 text-amber-900"
                     : currentStatus === "archived"
-                      ? "bg-slate-200 text-slate-800"
-                      : "bg-emerald-100 text-emerald-900"
+                    ? "bg-slate-200 text-slate-800"
+                    : "bg-emerald-100 text-emerald-900"
                 }`}
               >
                 {currentStatus}
@@ -1307,8 +1472,8 @@ function EditorWorkspace() {
                 {currentStatus === "draft"
                   ? "Use Publish to make this article public."
                   : currentStatus === "archived"
-                    ? "Archived posts are read-only until you restore them."
-                    : "Use Move To Draft for private editing or Archive to freeze and hide this article."}
+                  ? "Archived posts are read-only until you restore them."
+                  : "Use Move To Draft for private editing or Archive to freeze and hide this article."}
               </span>
             </div>
           </Field>
@@ -1372,6 +1537,7 @@ function EditorWorkspace() {
             <input
               value={description}
               onChange={event => setDescription(event.target.value)}
+              placeholder="One-sentence summary for readers and search engines"
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
               disabled={isReadOnly}
             />
@@ -1392,8 +1558,12 @@ function EditorWorkspace() {
           <span>Estimated reading time: {readingTimeEstimate} min</span>
           <span>Current status: {currentStatus}</span>
           <span>{featured ? "Featured post" : "Standard post"}</span>
-          <span>{isDirty ? "Unsaved changes" : "All changes saved to disk"}</span>
-          {localAutosaveAt ? <span>Local autosave: {formatUpdatedAt(localAutosaveAt)}</span> : null}
+          <span>
+            {isDirty ? "Unsaved changes" : "All changes saved to disk"}
+          </span>
+          {localAutosaveAt ? (
+            <span>Local autosave: {formatUpdatedAt(localAutosaveAt)}</span>
+          ) : null}
           {currentStatus !== "archived" && !canOpenPreview ? (
             <span>Save the current path once to enable preview.</span>
           ) : null}
@@ -1403,7 +1573,9 @@ function EditorWorkspace() {
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-600">Body (MDX)</label>
+            <label className="text-xs font-semibold text-slate-600">
+              Body (MDX)
+            </label>
             {isUploading ? (
               <span className="text-xs text-slate-400">Uploading image...</span>
             ) : null}
@@ -1414,7 +1586,9 @@ function EditorWorkspace() {
             value={body}
             onChange={event => {
               setBody(event.target.value);
-              setCursorPos(event.target.selectionStart ?? event.target.value.length);
+              setCursorPos(
+                event.target.selectionStart ?? event.target.value.length
+              );
             }}
             onSelect={event => {
               const target = event.target as HTMLTextAreaElement;
@@ -1433,10 +1607,13 @@ function EditorWorkspace() {
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-700">Image Assets</h2>
+                <h2 className="text-sm font-semibold text-slate-700">
+                  Image Assets
+                </h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Assets are grouped by post ID in <code>/public/images/{assetFolderId}</code>.
-                  Existing files stay in their current folder if you later rename the post ID.
+                  Assets are grouped by post ID in{" "}
+                  <code>/public/images/{assetFolderId}</code>. Existing files
+                  stay in their current folder if you later rename the post ID.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1475,14 +1652,18 @@ function EditorWorkspace() {
 
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
               <span>Folder: /images/{assetFolderId}</span>
-              <span>{assets.length} asset{assets.length === 1 ? "" : "s"}</span>
-              <span>{cover ? `Current cover: ${cover}` : "No cover selected"}</span>
+              <span>
+                {assets.length} asset{assets.length === 1 ? "" : "s"}
+              </span>
+              <span>
+                {cover ? `Current cover: ${cover}` : "No cover selected"}
+              </span>
             </div>
 
             {assets.length === 0 ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                No uploaded images yet. Upload here, drag an image into the editor, or paste one
-                from the clipboard.
+                No uploaded images yet. Upload here, drag an image into the
+                editor, or paste one from the clipboard.
               </div>
             ) : (
               <div className="mt-4 space-y-3">
@@ -1517,7 +1698,9 @@ function EditorWorkspace() {
                         </p>
                         <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500">
                           <span>{formatFileSize(asset.size)}</span>
-                          <span>Updated {formatUpdatedAt(asset.updatedAt)}</span>
+                          <span>
+                            Updated {formatUpdatedAt(asset.updatedAt)}
+                          </span>
                           {asset.width && asset.height ? (
                             <span>
                               {asset.width} x {asset.height}
@@ -1562,10 +1745,14 @@ function EditorWorkspace() {
                       <button
                         type="button"
                         onClick={() => void deleteAsset(asset)}
-                        disabled={isReadOnly || deletingAssetPath === asset.path}
+                        disabled={
+                          isReadOnly || deletingAssetPath === asset.path
+                        }
                         className="rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-rose-100 disabled:bg-white/60 disabled:text-rose-300"
                       >
-                        {deletingAssetPath === asset.path ? "Deleting..." : "Delete"}
+                        {deletingAssetPath === asset.path
+                          ? "Deleting..."
+                          : "Delete"}
                       </button>
                     </div>
                   </div>
@@ -1575,7 +1762,9 @@ function EditorWorkspace() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700">Component Library</h2>
+            <h2 className="text-sm font-semibold text-slate-700">
+              Component Library
+            </h2>
             <ComponentPalette onInsert={insertSnippet} disabled={isReadOnly} />
           </div>
         </div>
@@ -1588,8 +1777,8 @@ function EditorWorkspace() {
               feedback.tone === "error"
                 ? "border-rose-200 bg-rose-50 text-rose-800"
                 : feedback.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-slate-200 bg-white text-slate-700"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-slate-200 bg-white text-slate-700"
             }`}
           >
             {feedback.message}
@@ -1602,7 +1791,9 @@ function EditorWorkspace() {
           <div className="w-[480px] max-w-[90vw] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">Select File</h3>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Select File
+                </h3>
               </div>
               <button
                 onClick={() => setShowPicker(false)}
@@ -1618,12 +1809,15 @@ function EditorWorkspace() {
                     Recent Drafts
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    {recentDrafts.length === 0 ? "No saved drafts" : `${recentDrafts.length} shown`}
+                    {recentDrafts.length === 0
+                      ? "No saved drafts"
+                      : `${recentDrafts.length} shown`}
                   </div>
                 </div>
                 {recentDrafts.length === 0 ? (
                   <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-400">
-                    Save a draft once and it will appear here for one-click restore.
+                    Save a draft once and it will appear here for one-click
+                    restore.
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1651,14 +1845,19 @@ function EditorWorkspace() {
                             Updated {formatUpdatedAt(file.updatedAt)}
                           </div>
                         </div>
-                        <span className="shrink-0 text-[11px] text-slate-400">Open</span>
+                        <span className="shrink-0 text-[11px] text-slate-400">
+                          Open
+                        </span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
               {fileOptions.length === 0 ? (
-                <div className="text-slate-400">No files found. Confirm that app/(post)/YEAR/slug/page.mdx exists.</div>
+                <div className="text-slate-400">
+                  No files found. Confirm that app/(post)/YEAR/slug/article.mdx
+                  exists.
+                </div>
               ) : (
                 <FolderTree
                   tree={buildTree(fileOptions)}
@@ -1672,12 +1871,15 @@ function EditorWorkspace() {
                     Archived Posts
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    {archivedPosts.length === 0 ? "No archived posts" : `${archivedPosts.length} shown`}
+                    {archivedPosts.length === 0
+                      ? "No archived posts"
+                      : `${archivedPosts.length} shown`}
                   </div>
                 </div>
                 {archivedPosts.length === 0 ? (
                   <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-400">
-                    Archived posts stay here for read-only review or restore later.
+                    Archived posts stay here for read-only review or restore
+                    later.
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1705,7 +1907,9 @@ function EditorWorkspace() {
                             Updated {formatUpdatedAt(file.updatedAt)}
                           </div>
                         </div>
-                        <span className="shrink-0 text-[11px] text-slate-400">Open</span>
+                        <span className="shrink-0 text-[11px] text-slate-400">
+                          Open
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -1715,14 +1919,17 @@ function EditorWorkspace() {
             {pickerFeedback ? (
               <div
                 className={`mt-2 text-[11px] ${
-                  pickerFeedback.tone === "error" ? "text-rose-500" : "text-slate-500"
+                  pickerFeedback.tone === "error"
+                    ? "text-rose-500"
+                    : "text-slate-500"
                 }`}
               >
                 {pickerFeedback.message}
               </div>
             ) : null}
             <div className="mt-2 text-[11px] text-slate-500">
-              Draft and archived posts are marked with badges. Only drafts are eligible for automatic restore.
+              Draft and archived posts are marked with badges. Only drafts are
+              eligible for automatic restore.
             </div>
           </div>
         </div>
@@ -1737,8 +1944,12 @@ function EditorWorkspace() {
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 shadow-sm">
-        <div className="font-semibold text-slate-700">Current Metadata Preview</div>
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">{mdxContent.split("\n\n")[0]}</pre>
+        <div className="font-semibold text-slate-700">
+          Current Metadata Preview
+        </div>
+        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">
+          {mdxContent.split("\n\n")[0]}
+        </pre>
       </section>
     </main>
   );
@@ -1785,7 +1996,11 @@ function buildMdxContent({
     cover,
   });
 
-  return `export const metadata = ${JSON.stringify(metadata, null, 2)};\n\n${body.trim()}\n`;
+  return `export const metadata = ${JSON.stringify(
+    metadata,
+    null,
+    2
+  )};\n\n${body.trim()}\n`;
 }
 
 function buildMetadataObject({
@@ -1890,16 +2105,16 @@ function removeAssetReferencesFromBody(source: string, assetPath: string) {
   const patterns = [
     new RegExp(
       String.raw`(?:\n{0,2})<Image\b[\s\S]*?src=(["'])${escapedPath}\1[\s\S]*?\/>(?:\n{0,2})`,
-      "g",
+      "g"
     ),
     new RegExp(
-      String.raw`!\[[^\]]*]\(${escapedPath.replace(/\//g, "\\/")}(?:\s+["'][^"']*["'])?\)`,
-      "g",
+      String.raw`!\[[^\]]*]\(${escapedPath.replace(
+        /\//g,
+        "\\/"
+      )}(?:\s+["'][^"']*["'])?\)`,
+      "g"
     ),
-    new RegExp(
-      String.raw`<img\b[^>]*src=(["'])${escapedPath}\1[^>]*\/?>`,
-      "g",
-    ),
+    new RegExp(String.raw`<img\b[^>]*src=(["'])${escapedPath}\1[^>]*\/?>`, "g"),
   ];
 
   let nextBody = source;
@@ -1940,7 +2155,9 @@ function formatFileSize(bytes: number) {
     unitIndex += 1;
   }
 
-  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+  return `${
+    value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)
+  } ${units[unitIndex]}`;
 }
 
 function estimateReadingTimeMinutes(source: string) {
@@ -1997,8 +2214,12 @@ function ConfirmationDialog({
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-slate-500">
             Confirm Action
           </p>
-          <h3 className="text-xl font-semibold text-slate-900">{confirmation.title}</h3>
-          <p className="text-sm leading-6 text-slate-600">{confirmation.description}</p>
+          <h3 className="text-xl font-semibold text-slate-900">
+            {confirmation.title}
+          </h3>
+          <p className="text-sm leading-6 text-slate-600">
+            {confirmation.description}
+          </p>
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -2075,7 +2296,11 @@ function Field({
   spanFull?: boolean;
 }) {
   return (
-    <div className={`flex flex-col gap-1 ${spanFull ? "md:col-span-2 lg:col-span-4" : ""}`}>
+    <div
+      className={`flex flex-col gap-1 ${
+        spanFull ? "md:col-span-2 lg:col-span-4" : ""
+      }`}
+    >
       <label className="text-xs font-semibold text-slate-600">{label}</label>
       {children}
     </div>
@@ -2092,7 +2317,9 @@ function ComponentPalette({
   const categories = useMemo(() => ["All", ...getComponentCategories()], []);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
+    null
+  );
   const [formValues, setFormValues] = useState<ComponentSnippetFormValues>({});
 
   const filteredEntries = useMemo(() => {
@@ -2107,16 +2334,25 @@ function ComponentPalette({
         return true;
       }
 
-      const haystack = [entry.label, entry.hint, entry.category, ...(entry.searchTerms ?? [])]
+      const haystack = [
+        entry.label,
+        entry.hint,
+        entry.category,
+        ...(entry.searchTerms ?? []),
+      ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(normalizedQuery);
     });
   }, [activeCategory, query]);
-  const grouped = useMemo(() => groupComponentSnippets(filteredEntries), [filteredEntries]);
+  const grouped = useMemo(
+    () => groupComponentSnippets(filteredEntries),
+    [filteredEntries]
+  );
   const selectedEntry = useMemo(
-    () => componentsPalette.find(entry => entry.id === selectedComponentId) ?? null,
-    [selectedComponentId],
+    () =>
+      componentsPalette.find(entry => entry.id === selectedComponentId) ?? null,
+    [selectedComponentId]
   );
   const configuredSnippet = useMemo(() => {
     if (!selectedEntry) {
@@ -2146,9 +2382,12 @@ function ComponentPalette({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
-          <div className="text-xs font-semibold text-slate-600">Insert component</div>
+          <div className="text-xs font-semibold text-slate-600">
+            Insert component
+          </div>
           <div className="text-[11px] text-slate-500">
-            Search by name, filter by category, or configure supported props before inserting.
+            Search by name, filter by category, or configure supported props
+            before inserting.
           </div>
         </div>
         <a
@@ -2189,7 +2428,8 @@ function ComponentPalette({
           })}
         </div>
         <div className="text-[11px] text-slate-500">
-          {filteredEntries.length} component{filteredEntries.length === 1 ? "" : "s"} match the current filters.
+          {filteredEntries.length} component
+          {filteredEntries.length === 1 ? "" : "s"} match the current filters.
         </div>
       </div>
 
@@ -2197,8 +2437,12 @@ function ComponentPalette({
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-slate-900">{selectedEntry.label}</div>
-              <div className="mt-1 text-sm text-slate-600">{selectedEntry.hint}</div>
+              <div className="font-semibold text-slate-900">
+                {selectedEntry.label}
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                {selectedEntry.hint}
+              </div>
             </div>
             <button
               type="button"
@@ -2254,7 +2498,9 @@ function ComponentPalette({
             </button>
             <button
               type="button"
-              onClick={() => setFormValues(getComponentDefaultValues(selectedEntry))}
+              onClick={() =>
+                setFormValues(getComponentDefaultValues(selectedEntry))
+              }
               disabled={disabled}
               className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:text-slate-400"
             >
@@ -2267,7 +2513,8 @@ function ComponentPalette({
       <div className="space-y-4">
         {filteredEntries.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            No components match the current search. Try another keyword or switch categories.
+            No components match the current search. Try another keyword or
+            switch categories.
           </div>
         ) : null}
 
@@ -2282,58 +2529,62 @@ function ComponentPalette({
                 const hasConfigurator = Boolean(item.fields?.length);
 
                 return (
-                <div
-                  key={item.id}
-                  className={`rounded-2xl border px-3 py-3 text-left text-sm shadow-sm transition ${
-                    isSelected
-                      ? "border-indigo-300 bg-indigo-50/80"
-                      : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-slate-900">{item.label}</div>
-                      <div className="mt-1 text-[11px] text-slate-500">{item.hint}</div>
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border px-3 py-3 text-left text-sm shadow-sm transition ${
+                      isSelected
+                        ? "border-indigo-300 bg-indigo-50/80"
+                        : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-slate-900">
+                          {item.label}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {item.hint}
+                        </div>
+                      </div>
+                      {hasConfigurator ? (
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
+                          Form
+                        </span>
+                      ) : null}
                     </div>
-                    {hasConfigurator ? (
-                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
-                        Form
-                      </span>
-                    ) : null}
-                  </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {hasConfigurator ? (
-                      <>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {hasConfigurator ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleConfigure(item)}
+                            disabled={disabled}
+                            className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          >
+                            Configure
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickInsert(item)}
+                            disabled={disabled}
+                            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                          >
+                            Quick insert
+                          </button>
+                        </>
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => handleConfigure(item)}
+                          onClick={() => onInsert(renderComponentInsert(item))}
                           disabled={disabled}
                           className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                         >
-                          Configure
+                          Insert
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickInsert(item)}
-                          disabled={disabled}
-                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
-                        >
-                          Quick insert
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onInsert(renderComponentInsert(item))}
-                        disabled={disabled}
-                        className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                      >
-                        Insert
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -2360,7 +2611,9 @@ function ComponentConfiguratorField({
 
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-slate-600">{field.label}</label>
+      <label className="text-xs font-semibold text-slate-600">
+        {field.label}
+      </label>
 
       {field.type === "textarea" ? (
         <textarea
@@ -2406,7 +2659,9 @@ function ComponentConfiguratorField({
         />
       )}
 
-      {field.help ? <p className="text-[11px] text-slate-500">{field.help}</p> : null}
+      {field.help ? (
+        <p className="text-[11px] text-slate-500">{field.help}</p>
+      ) : null}
     </div>
   );
 }
@@ -2477,7 +2732,10 @@ function FolderTree({
         const isYearOpen = Boolean(expanded[yearKey]);
 
         return (
-          <div key={yearKey} className="rounded-md border border-slate-200 bg-white p-2">
+          <div
+            key={yearKey}
+            className="rounded-md border border-slate-200 bg-white p-2"
+          >
             <button
               type="button"
               onClick={() => toggleYear(yearKey)}
@@ -2526,4 +2784,3 @@ function FolderTree({
     </div>
   );
 }
-

@@ -81,7 +81,7 @@ pwsh ./scripts/dev/setup.ps1
 Create a starter article:
 
 ```bash
-pnpm new:post --id my-first-post
+pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post."
 ```
 
 Then use `/editor` to continue writing, upload images, and publish.

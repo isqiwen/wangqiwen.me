@@ -109,7 +109,7 @@ fi
 
 echo "==> Building standalone output"
 if [[ "${BUILD_WITH_REMOTE_REDIS}" == "1" ]]; then
-  pnpm build
+  BUILD_WITH_REMOTE_REDIS=1 pnpm build
 else
   echo "==> Disabling remote Redis for build-time rendering"
   UPSTASH_REDIS_REST_URL='' UPSTASH_REDIS_REST_TOKEN='' pnpm build
@@ -127,12 +127,20 @@ fi
 
 TMP_DIR="$(mktemp -d)"
 BUNDLE_DIR="${TMP_DIR}/bundle"
+PUBLISH_METADATA_SNAPSHOT=0
 mkdir -p "${BUNDLE_DIR}"
 
 cleanup() {
+  if [[ "${PUBLISH_METADATA_SNAPSHOT}" == "1" ]]; then
+    pnpm sync:posts -- --silent >/dev/null 2>&1 || true
+  fi
   rm -rf "${TMP_DIR}"
 }
 trap cleanup EXIT
+
+echo "==> Preparing published content for the deployment bundle"
+pnpm sync:posts -- --published-only --silent
+PUBLISH_METADATA_SNAPSHOT=1
 
 echo "==> Collecting source files needed at runtime"
 tar \
@@ -154,6 +162,14 @@ tar -C "${ROOT_DIR}/.next/standalone" -cf - . | tar -C "${BUNDLE_DIR}" -xf -
 mkdir -p "${BUNDLE_DIR}/.next"
 cp -R "${ROOT_DIR}/.next/static" "${BUNDLE_DIR}/.next/static"
 cp "${ROOT_DIR}/package.json" "${BUNDLE_DIR}/package.json"
+
+# Article source is compiled into the standalone output above. Removing the
+# source directories keeps draft and archived MDX out of the VPS bundle.
+for article_year_dir in "${BUNDLE_DIR}/app/(post)"/[0-9][0-9][0-9][0-9]; do
+  if [[ -d "${article_year_dir}" ]]; then
+    rm -rf "${article_year_dir}"
+  fi
+done
 
 cat > "${BUNDLE_DIR}/DEPLOY_ARTIFACT_META.txt" <<EOF
 revision=${REVISION}

@@ -64,7 +64,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack -H 0.0.0.0",
-    "build": "next build",
+    "build": "node scripts/content/build-site.cjs",
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test tests/*.test.ts",

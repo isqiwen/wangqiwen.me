@@ -119,7 +119,7 @@ export const getPosts = async (options: GetPostsOptions = {}) => {
 
 export const getPostById = async (
   id: string,
-  options: GetPostsOptions = {},
+  options: GetPostsOptions = {}
 ): Promise<Post | null> => {
   const manifest = await getManifest();
   const match = manifest?.posts?.find(post => post.id === id);
@@ -127,7 +127,10 @@ export const getPostById = async (
 
   if (match) {
     const status = normalizeStatus(match.status, match.draft, match.archived);
-    if (status !== "archived" && (options.includeDrafts || status !== "draft")) {
+    if (
+      status !== "archived" &&
+      (options.includeDrafts || status !== "draft")
+    ) {
       return buildPost(
         {
           id: match.id,
@@ -144,9 +147,10 @@ export const getPostById = async (
           featured: Boolean(match.featured),
           tags: normalizeTags(match.tags),
           cover: normalizeOptionalString(match.cover) || null,
-          readingTimeMinutes: normalizePositiveInteger(match.readingTimeMinutes) || 1,
+          readingTimeMinutes:
+            normalizePositiveInteger(match.readingTimeMinutes) || 1,
         },
-        views,
+        views
       );
     }
   }
@@ -160,16 +164,38 @@ export const getPostById = async (
   return null;
 };
 
+export const getPostByRoute = async (
+  year: string,
+  id: string,
+  options: GetPostsOptions = {}
+): Promise<Post | null> => {
+  if (!/^\d{4}$/.test(year)) {
+    return null;
+  }
+
+  const post = await getPostById(id, options);
+  if (!post || post.publishedAt.slice(0, 4) !== year) {
+    return null;
+  }
+
+  return post;
+};
+
 async function loadViews(): Promise<Views> {
   try {
     return (await redis.hgetall("views")) ?? {};
   } catch (error) {
-    logger.warn("Failed to load view counts from Redis, defaulting to zeros.", error);
+    logger.warn(
+      "Failed to load view counts from Redis, defaulting to zeros.",
+      error
+    );
     return {};
   }
 }
 
-async function loadManifestMetadata(options: GetPostsOptions): Promise<PostMetadata[]> {
+async function loadManifestMetadata(
+  options: GetPostsOptions
+): Promise<PostMetadata[]> {
   const manifest = await getManifest();
   if (manifest?.posts) {
     return manifest.posts
@@ -194,20 +220,28 @@ async function loadManifestMetadata(options: GetPostsOptions): Promise<PostMetad
         featured: Boolean(post.featured),
         tags: normalizeTags(post.tags),
         cover: normalizeOptionalString(post.cover) || null,
-        readingTimeMinutes: normalizePositiveInteger(post.readingTimeMinutes) || 1,
+        readingTimeMinutes:
+          normalizePositiveInteger(post.readingTimeMinutes) || 1,
       }));
   }
 
   return loadPostsMetadata(options);
 }
 
-async function loadPostsMetadata(options: GetPostsOptions): Promise<PostMetadata[]> {
-  if (metadataCache && Date.now() - metadataCache.timestamp < METADATA_CACHE_TTL_MS) {
+async function loadPostsMetadata(
+  options: GetPostsOptions
+): Promise<PostMetadata[]> {
+  if (
+    metadataCache &&
+    Date.now() - metadataCache.timestamp < METADATA_CACHE_TTL_MS
+  ) {
     return filterDrafts(metadataCache.data, options);
   }
 
   const posts: PostMetadata[] = [];
-  const years = (await safeReadDir(POSTS_ROOT_DIR)).filter(year => /^\d{4}$/.test(year));
+  const years = (await safeReadDir(POSTS_ROOT_DIR)).filter(year =>
+    /^\d{4}$/.test(year)
+  );
 
   // The generated manifest is the fast path. This scan stays as a resilient
   // fallback so local drafts still render even if metadata has not been synced.
@@ -220,8 +254,8 @@ async function loadPostsMetadata(options: GetPostsOptions): Promise<PostMetadata
       const postDir = join(yearPath, postId);
       if (!(await isDirectory(postDir))) continue;
 
-      const pagePath = join(postDir, "page.mdx");
-      const file = await readFileSafe(pagePath);
+      const articlePath = join(postDir, "article.mdx");
+      const file = await readFileSafe(articlePath);
       if (!file) continue;
 
       const metadata = parseFileMetadata(file);
@@ -245,10 +279,16 @@ async function loadPostsMetadata(options: GetPostsOptions): Promise<PostMetadata
         updatedAt: normalizeDateString(metadata.updatedAt) || null,
         publishedAtTimestamp: publishedAt.getTime(),
         postId: finalId,
-        status: normalizeStatus(metadata.status, metadata.draft, metadata.archived),
+        status: normalizeStatus(
+          metadata.status,
+          metadata.draft,
+          metadata.archived
+        ),
         featured: normalizeBoolean(metadata.featured),
         tags: normalizeTags(metadata.tags),
-        cover: normalizeOptionalString(metadata.cover ?? metadata.coverImage) || null,
+        cover:
+          normalizeOptionalString(metadata.cover ?? metadata.coverImage) ||
+          null,
         readingTimeMinutes:
           normalizePositiveInteger(metadata.readingTimeMinutes) ||
           estimateReadingTimeMinutes(stripMetadataAndFrontmatter(file)),
@@ -293,7 +333,10 @@ function buildPost(metadata: PostMetadata, views: Views): Post {
   };
 }
 
-function filterDrafts(posts: PostMetadata[], options: GetPostsOptions): PostMetadata[] {
+function filterDrafts(
+  posts: PostMetadata[],
+  options: GetPostsOptions
+): PostMetadata[] {
   return posts.filter(post => {
     if (post.status === "archived") {
       return false;
@@ -328,14 +371,19 @@ function parseFileMetadata(fileContents: string): Frontmatter {
     status:
       metadata.status ??
       frontmatter.status ??
-      normalizeStatus(undefined, metadata.draft ?? frontmatter.draft, metadata.archived ?? frontmatter.archived),
+      normalizeStatus(
+        undefined,
+        metadata.draft ?? frontmatter.draft,
+        metadata.archived ?? frontmatter.archived
+      ),
     draft: metadata.draft ?? frontmatter.draft,
     archived: metadata.archived ?? frontmatter.archived,
     featured: metadata.featured ?? frontmatter.featured,
     tags: metadata.tags ?? frontmatter.tags,
     cover: metadata.cover ?? frontmatter.cover,
     coverImage: metadata.coverImage ?? frontmatter.coverImage,
-    readingTimeMinutes: metadata.readingTimeMinutes ?? frontmatter.readingTimeMinutes,
+    readingTimeMinutes:
+      metadata.readingTimeMinutes ?? frontmatter.readingTimeMinutes,
   };
 }
 
@@ -362,7 +410,10 @@ function parseExportedMetadata(fileContents: string): Frontmatter {
   }
 }
 
-function extractObjectLiteral(source: string, exportIndex: number): string | null {
+function extractObjectLiteral(
+  source: string,
+  exportIndex: number
+): string | null {
   const braceStart = source.indexOf("{", exportIndex);
   if (braceStart === -1) {
     return null;
@@ -472,11 +523,15 @@ function normalizeBoolean(value: unknown): boolean {
 function normalizeStatus(
   value: unknown,
   legacyDraft?: unknown,
-  legacyArchived?: unknown,
+  legacyArchived?: unknown
 ): PostStatus {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+    if (
+      normalized === "draft" ||
+      normalized === "published" ||
+      normalized === "archived"
+    ) {
       return normalized;
     }
   }
@@ -496,15 +551,15 @@ function normalizeTags(value: unknown): string[] {
   const source = Array.isArray(value)
     ? value
     : typeof value === "string"
-      ? value.split(",")
-      : [];
+    ? value.split(",")
+    : [];
 
   return Array.from(
     new Set(
       source
         .map(item => (typeof item === "string" ? item.trim() : ""))
-        .filter(Boolean),
-    ),
+        .filter(Boolean)
+    )
   );
 }
 

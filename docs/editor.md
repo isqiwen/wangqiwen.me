@@ -36,13 +36,13 @@ Published posts cannot be deleted directly. Archive the post first, then delete 
 Create a draft from the repository:
 
 ```bash
-pnpm new:post --id my-first-post --title "My First Post"
+pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post."
 ```
 
 This creates:
 
 ```text
-app/(post)/<year>/my-first-post/page.mdx
+app/(post)/<year>/my-first-post/article.mdx
 ```
 
 It also updates `posts/manifest.json`. Open `/editor`, select **Load**, and choose the new draft.
@@ -57,7 +57,7 @@ IDs must use lowercase letters, numbers, and single hyphens. The published date 
 4. Select **Save Draft** or **Save Published Changes**.
 5. Select **Open Preview** or **Open Post** to inspect the saved version.
 
-Editor saves update the MDX file and synchronize `posts/manifest.json` automatically. Browser autosave helps recover unsaved input, but it does not replace saving the post to disk.
+Editor saves update the MDX file and synchronize `posts/manifest.json` automatically. A title, description, valid heading hierarchy, image alt text, and internal article links are checked before the file is written. Browser autosave helps recover unsaved input, but it does not replace saving the post to disk.
 
 For MDX components and examples, open `/editor/components`.
 
@@ -93,7 +93,7 @@ pnpm backup:content
 
 ## Manual File Edits
 
-When editing `page.mdx` files outside `/editor`, synchronize and validate the content:
+When editing `article.mdx` files outside `/editor`, synchronize and validate the content:
 
 ```bash
 pnpm sync:posts
@@ -122,3 +122,5 @@ pnpm deploy:vps
 ```
 
 Production `/editor` and `/api/editor/*` return `404`. The VPS only runs content included in a deployed artifact.
+
+The deployment build imports and prerenders only `published` articles. Draft and archived MDX are omitted from the VPS bundle, and their URLs return `404` in production.

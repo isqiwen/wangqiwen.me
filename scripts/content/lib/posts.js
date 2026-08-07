@@ -18,8 +18,8 @@ async function collectPosts() {
       const postDir = join(yearDir, id);
       if (!(await isDirectory(postDir))) continue;
 
-      const pagePath = join(postDir, "page.mdx");
-      const source = await readFileSafe(pagePath);
+      const articlePath = join(postDir, "article.mdx");
+      const source = await readFileSafe(articlePath);
       if (!source) continue;
 
       const key = `${year}/${id}`;
@@ -27,7 +27,7 @@ async function collectPosts() {
       entries.set(key, {
         year,
         id,
-        path: pagePath,
+        path: articlePath,
         source,
         metadata: parseMetadata(source),
         frontmatter: parseFrontmatter(source),
