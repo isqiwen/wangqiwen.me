@@ -3,6 +3,7 @@ import { getPosts } from "../get-posts";
 import { canPreviewDrafts } from "@/utils/server/local-editor";
 import { EquationNumbering } from "./components/equation-numbering";
 import { TableOfContents } from "./components/table-of-contents";
+import { RelatedPosts } from "./related-posts";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function Layout({ children }) {
         <Header posts={posts} />
 
         {children}
+        <RelatedPosts posts={posts} />
       </article>
     </div>
   );

@@ -10,7 +10,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Web Performance",
+        "Frontend"
+      ],
       "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2021/making-the-web-faster"
@@ -25,7 +28,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Frontend",
+        "Product"
+      ],
       "cover": null,
       "readingTimeMinutes": 7,
       "path": "/2020/next-for-vercel"
@@ -40,7 +46,9 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Developer Experience"
+      ],
       "cover": null,
       "readingTimeMinutes": 5,
       "path": "/2020/develop-preview-test"
@@ -55,7 +63,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Web Performance",
+        "Frontend"
+      ],
       "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2020/static-hoisting"
@@ -70,7 +81,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "JavaScript",
+        "Developer Experience"
+      ],
       "cover": null,
       "readingTimeMinutes": 9,
       "path": "/2020/an-ode-to-code-golf"
@@ -85,7 +99,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Frontend",
+        "Product"
+      ],
       "cover": null,
       "readingTimeMinutes": 6,
       "path": "/2020/vercel"
@@ -100,7 +117,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Retrospective",
+        "Product"
+      ],
       "cover": null,
       "readingTimeMinutes": 16,
       "path": "/2020/2019-in-review"
@@ -115,7 +135,9 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Developer Experience"
+      ],
       "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2017/its-hard-to-forego-efficiency"
@@ -130,7 +152,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Retrospective",
+        "Product"
+      ],
       "cover": null,
       "readingTimeMinutes": 14,
       "path": "/2017/2016-in-review"
@@ -145,7 +170,9 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Developer Experience"
+      ],
       "cover": null,
       "readingTimeMinutes": 2,
       "path": "/2016/addressable-errors"
@@ -160,7 +187,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Frontend",
+        "JavaScript"
+      ],
       "cover": null,
       "readingTimeMinutes": 10,
       "path": "/2015/pure-ui"
@@ -175,7 +205,9 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "JavaScript"
+      ],
       "cover": null,
       "readingTimeMinutes": 6,
       "path": "/2015/ecmascript-6"
@@ -190,7 +222,10 @@
       "updatedAt": null,
       "status": "published",
       "featured": false,
-      "tags": [],
+      "tags": [
+        "Frontend",
+        "Web Performance"
+      ],
       "cover": null,
       "readingTimeMinutes": 22,
       "path": "/2014/7-principles-of-rich-web-applications"

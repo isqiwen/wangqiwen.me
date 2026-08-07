@@ -21,6 +21,8 @@ test("sitemap includes public pages and published posts only", async () => {
 
   assert.ok(urls.includes(getSiteUrl("/")));
   assert.ok(urls.includes(getSiteUrl("/about")));
+  assert.ok(urls.includes(getSiteUrl("/topics")));
+  assert.ok(urls.includes(getSiteUrl("/topics/frontend")));
   assert.ok(urls.includes(getSiteUrl("/2021/making-the-web-faster")));
   assert.ok(urls.every(url => !url.includes("/editor") && !url.includes("/api/")));
 });

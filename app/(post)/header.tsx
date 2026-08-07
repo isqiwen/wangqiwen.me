@@ -8,6 +8,8 @@ import type { Post } from "@/app/get-posts";
 import { logger } from "@/utils/logger";
 import { uiCopy } from "@/utils/ui-copy";
 import { getPrimarySocialHandle, siteConfig } from "@/utils/site-config";
+import { getTopicSlug } from "@/utils/topics";
+import Link from "next/link";
 
 const fetcher = async (url: string): Promise<Post> => {
   const response = await fetch(url);
@@ -67,6 +69,23 @@ export function Header({ posts }: { posts: Post[] }) {
           />
         </span>
       </p>
+
+      {hydratedPost.tags.length > 0 ? (
+        <nav className="mt-3" aria-label="Topics">
+          <ul className="flex flex-wrap gap-2">
+            {hydratedPost.tags.map(tag => (
+              <li key={tag}>
+                <Link
+                  href={`/topics/${getTopicSlug(tag)}`}
+                  className="rounded-full border border-gray-200 px-2.5 py-1 font-mono text-xs text-gray-600 transition-colors hover:bg-gray-100 dark:border-[#3d3d3d] dark:text-gray-400 dark:hover:bg-[#303030]"
+                >
+                  {tag}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
     </>
   );
 }

@@ -70,6 +70,25 @@ test("serves a published article", async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+  const body = await response.text();
+  assert.match(body, /href="\/topics\//);
+  assert.match(body, /Related writing/);
+});
+
+test("serves the topics index", async () => {
+  const response = await fetch(`${baseUrl}/topics`);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+  assert.match(await response.text(), /Topics/);
+});
+
+test("serves a topic page", async () => {
+  const response = await fetch(`${baseUrl}/topics/frontend`);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+  assert.match(await response.text(), /Frontend/);
 });
 
 test("serves the Atom feed", async () => {

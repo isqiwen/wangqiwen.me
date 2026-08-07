@@ -18,11 +18,9 @@ interface TweetArgs {
 }
 
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
-  // we first prioritize getting a fresh tweet; swallow fetch errors to avoid SSR crashes
-  const tweet = await getTweet(id).catch(error => {
-    logger.warn(`Tweet ${id} is unavailable; rendering a fallback.`, error);
-    return undefined;
-  });
+  // Tweet embeds are optional. Private or deleted tweets should quietly fall
+  // back to the unavailable state instead of producing a development overlay.
+  const tweet = await getTweet(id).catch(() => undefined);
 
   // @ts-ignore
   if (tweet && !tweet.tombstone) {

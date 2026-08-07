@@ -41,6 +41,10 @@ const siteConfig = {
   navigation: {
     headerLinks: [
       {
+        href: "/topics",
+        label: "Topics",
+      },
+      {
         href: "/about",
         label: "About",
       },
