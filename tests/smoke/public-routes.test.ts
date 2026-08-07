@@ -74,6 +74,31 @@ test("serves a published article", async () => {
   assert.match(body, /href="\/topics\//);
   assert.match(body, /Related writing/);
   assert.doesNotMatch(body, /data-view-count/);
+  assert.match(
+    body,
+    new RegExp(
+      `property="og:image" content="https://wangqiwen\\.me${publishedPostPath}/opengraph-image"`
+    )
+  );
+  assert.match(
+    body,
+    new RegExp(
+      `name="twitter:image" content="https://wangqiwen\\.me${publishedPostPath}/opengraph-image"`
+    )
+  );
+});
+
+test("serves a dynamic sharing image for a published article", async () => {
+  const response = await fetch(
+    `${baseUrl}${publishedPostPath}/opengraph-image`
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /image\/png/);
+  assert.deepEqual(
+    Array.from(new Uint8Array(await response.arrayBuffer()).slice(0, 8)),
+    [137, 80, 78, 71, 13, 10, 26, 10]
+  );
 });
 
 test("does not serve an unpublished article URL", async () => {

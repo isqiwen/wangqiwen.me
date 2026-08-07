@@ -190,7 +190,6 @@ The backup includes:
 - `posts/manifest.json`
 - `public/images`
 - `site.config.js`
-- `links.json`
 
 Restore flow:
 

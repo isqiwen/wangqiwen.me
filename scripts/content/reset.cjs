@@ -65,8 +65,6 @@ async function main() {
     "utf8"
   );
 
-  await writeFile(join(process.cwd(), "links.json"), "{}\n", "utf8");
-
   console.log(
     'Site content reset complete. Create new posts with pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post.".'
   );

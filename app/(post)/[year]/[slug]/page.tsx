@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPostByRoute, getPosts } from "@/app/get-posts";
-import { getSiteUrl } from "@/utils/site-config";
+import { getSiteUrl, siteConfig } from "@/utils/site-config";
 import { canPreviewDrafts } from "@/utils/server/local-editor";
 import { getArticleComponent } from "../../post-registry";
 
@@ -35,6 +35,7 @@ export async function generateMetadata({
   }
 
   const url = getSiteUrl(`/${year}/${slug}`);
+  const imageUrl = getSiteUrl(`/${year}/${slug}/opengraph-image`);
   return {
     title: post.title,
     description: post.description,
@@ -46,6 +47,20 @@ export async function generateMetadata({
       url,
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt ?? undefined,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${post.title} · ${siteConfig.site.name}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+      images: [imageUrl],
     },
   };
 }

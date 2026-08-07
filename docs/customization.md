@@ -4,7 +4,7 @@ Use this guide when you want to turn the repository into a fresh personal site i
 
 ## 1. Back Up Or Start Fresh
 
-To create a snapshot of the current posts, manifest, images, site config, and links:
+To create a snapshot of the current posts, manifest, images, and site config:
 
 ```bash
 pnpm backup:content
@@ -23,7 +23,6 @@ That command will:
 - clear article image folders under `public/images`
 - preserve the neutral avatar placeholder files
 - reset `posts/manifest.json`
-- clear `links.json`
 
 ## 2. Rebrand The Site
 

@@ -10,7 +10,7 @@ test("robots blocks non-public routes and advertises the sitemap", () => {
   assert.deepEqual(metadata.rules, {
     userAgent: "*",
     allow: "/",
-    disallow: ["/api/", "/editor", "/links/"],
+    disallow: ["/api/", "/editor"],
   });
   assert.equal(metadata.sitemap, getSiteUrl("/sitemap.xml"));
 });
@@ -24,5 +24,7 @@ test("sitemap includes public pages and published posts only", async () => {
   assert.ok(urls.includes(getSiteUrl("/topics")));
   assert.ok(urls.includes(getSiteUrl("/topics/frontend")));
   assert.ok(urls.includes(getSiteUrl("/2021/making-the-web-faster")));
-  assert.ok(urls.every(url => !url.includes("/editor") && !url.includes("/api/")));
+  assert.ok(
+    urls.every(url => !url.includes("/editor") && !url.includes("/api/"))
+  );
 });
