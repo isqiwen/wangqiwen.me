@@ -81,7 +81,8 @@ SERVER_ALIASES="${SERVER_ALIASES:-}"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3000}"
 
-ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env.production}"
+DEFAULT_ENV_FILE="${ROOT_DIR}/.env.production"
+ENV_FILE="${ENV_FILE:-${DEFAULT_ENV_FILE}}"
 UPLOAD_ENV="${UPLOAD_ENV:-0}"
 SETUP_SERVER="${SETUP_SERVER:-0}"
 RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
@@ -309,7 +310,12 @@ fi
 
 if [[ "${UPLOAD_ENV}" == "1" && ! -f "${ENV_FILE}" ]]; then
   echo "Production env file not found: ${ENV_FILE}" >&2
-  echo "Create it from .env.example, or leave UPLOAD_ENV=0 to keep the server env file." >&2
+  if [[ "${ENV_FILE}" == "${DEFAULT_ENV_FILE}" ]]; then
+    echo "Create it with: cp .env.example .env.production" >&2
+  else
+    printf 'Create it with: cp %q %q\n' "${ROOT_DIR}/.env.example" "${ENV_FILE}" >&2
+  fi
+  echo "Or leave UPLOAD_ENV=0 to keep the server env file." >&2
   exit 1
 fi
 

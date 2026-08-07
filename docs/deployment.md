@@ -79,10 +79,17 @@ pnpm deploy:vps
 For first setup or env changes, create `.env.production` locally and upload it explicitly:
 
 ```bash
+cp .env.example .env.production
 UPLOAD_ENV=1 pnpm deploy:vps
 ```
 
-Do not commit `.env.production`; it is ignored by Git and should stay local.
+By default, `UPLOAD_ENV=1` uploads `.env.production` and installs it on the VPS as `/srv/nextjs/wangqiwen-me/.env.local`. If the local file does not exist, deployment stops before uploading and prints the creation command. To use a different local env file, set `ENV_FILE` explicitly:
+
+```bash
+UPLOAD_ENV=1 ENV_FILE=.env.staging pnpm deploy:vps
+```
+
+Do not commit `.env.production` or other production env files; they should stay local.
 
 The release installer preserves `.env`, `.env.production`, and `.env.local` when swapping app directories, so `/srv/nextjs/wangqiwen-me/.env.local` does not need to be recreated on every deploy.
 
