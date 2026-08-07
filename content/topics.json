@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Developer Experience",
+    "slug": "developer-experience"
+  },
+  {
+    "name": "Frontend",
+    "slug": "frontend"
+  },
+  {
+    "name": "JavaScript",
+    "slug": "javascript"
+  },
+  {
+    "name": "Product",
+    "slug": "product"
+  },
+  {
+    "name": "Retrospective",
+    "slug": "retrospective"
+  },
+  {
+    "name": "Web Performance",
+    "slug": "web-performance"
+  }
+]

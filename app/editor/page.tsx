@@ -21,6 +21,7 @@ import {
   parseExportedMetadata,
   stripExportedMetadata,
 } from "@/utils/shared/post-metadata";
+import { TOPIC_DEFINITIONS } from "@/utils/topics";
 
 type EditorFileOption = {
   path: string;
@@ -135,6 +136,23 @@ function createEmptyEditorDocument(): EditorDocumentState {
     cover: "",
     body: "Start writing here.\n",
   };
+}
+
+function parseTagsInput(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function serializeTopicSelection(selectedTopics: Set<string>): string {
+  return TOPIC_DEFINITIONS.filter(topic => selectedTopics.has(topic.name))
+    .map(topic => topic.name)
+    .join(", ");
 }
 
 function normalizeAssetId(value: string) {
@@ -421,6 +439,10 @@ function EditorWorkspace() {
     currentStatus !== "archived" && activePath === workspaceSnapshot.targetPath;
   const isDirty = workspaceFingerprint !== persistedFingerprint;
   const targetPath = workspaceSnapshot.targetPath;
+  const selectedTopics = useMemo(
+    () => new Set(parseTagsInput(tagsInput)),
+    [tagsInput]
+  );
 
   const showFeedback = useCallback(
     (message: string, tone: FeedbackTone = "info") => {
@@ -428,6 +450,19 @@ function EditorWorkspace() {
     },
     []
   );
+
+  const toggleTopic = useCallback((topicName: string) => {
+    setTagsInput(current => {
+      const nextTopics = new Set(parseTagsInput(current));
+      if (nextTopics.has(topicName)) {
+        nextTopics.delete(topicName);
+      } else {
+        nextTopics.add(topicName);
+      }
+
+      return serializeTopicSelection(nextTopics);
+    });
+  }, []);
 
   const showPickerFeedback = useCallback(
     (message: string, tone: FeedbackTone = "info") => {
@@ -1515,14 +1550,39 @@ function EditorWorkspace() {
               Feature this post on landing surfaces.
             </label>
           </Field>
-          <Field label="Tags (comma separated)">
-            <input
-              value={tagsInput}
-              onChange={event => setTagsInput(event.target.value)}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-              placeholder="nextjs, mdx, writing"
-              disabled={isReadOnly}
-            />
+          <Field label="Topics">
+            <div
+              className="grid gap-2 sm:grid-cols-2"
+              role="group"
+              aria-label="Topics"
+            >
+              {TOPIC_DEFINITIONS.map(topic => {
+                const checked = selectedTopics.has(topic.name);
+
+                return (
+                  <label
+                    key={topic.slug}
+                    className={`flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                      checked
+                        ? "border-slate-400 bg-slate-100 text-slate-900"
+                        : "border-slate-200 text-slate-700"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleTopic(topic.name)}
+                      disabled={isReadOnly}
+                    />
+                    {topic.name}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Choose the topics for this article. Add a new topic in
+              <code className="ml-1">content/topics.json</code> before using it.
+            </p>
           </Field>
           <Field label="Cover">
             <input
@@ -2028,10 +2088,7 @@ function buildMetadataObject({
   tagsInput: string;
   cover: string;
 }) {
-  const tags = tagsInput
-    .split(",")
-    .map(item => item.trim())
-    .filter(Boolean);
+  const tags = parseTagsInput(tagsInput);
 
   const metadata: Record<string, unknown> = {
     title,

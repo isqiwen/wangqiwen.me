@@ -4,6 +4,7 @@ const { join } = require("path");
 const { mkdir, writeFile, stat } = require("fs/promises");
 const { spawnSync } = require("child_process");
 const { normalizeTags } = require("./lib/posts");
+const { TOPICS, getUnknownTopics } = require("./lib/topics");
 
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 
@@ -105,13 +106,16 @@ Options:
   --summary "Homepage summary"
   --date 2024-12-01
   --updated-at 2024-12-05
-  --tags "react,nextjs"
+  --tags "Frontend,Web Performance"
   --series "Editor Workflow"
   --cover "/images/my-post/cover.jpg"
   --featured
   --published
 
 By default, new posts are created as drafts.`);
+    console.log(
+      `\nAllowed topics: ${TOPICS.map(topic => topic.name).join(", ")}`
+    );
     return;
   }
 
@@ -139,6 +143,14 @@ By default, new posts are created as drafts.`);
 
   const publishedAt = dateValue.toISOString().slice(0, 10);
   const year = publishedAt.slice(0, 4);
+  const tags = normalizeTags(args.tags);
+  const unknownTopics = getUnknownTopics(tags);
+  if (unknownTopics.length > 0) {
+    throw new Error(
+      `Unknown topics: ${unknownTopics.join(", ")}. ` +
+        `Choose from: ${TOPICS.map(topic => topic.name).join(", ")}`
+    );
+  }
   const metadata = {
     title,
     description,
@@ -146,7 +158,7 @@ By default, new posts are created as drafts.`);
     publishedAt,
     status: args.published ? "published" : "draft",
     id: slug,
-    tags: normalizeTags(args.tags),
+    tags,
   };
 
   if (args.updatedAt) {

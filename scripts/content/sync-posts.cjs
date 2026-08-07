@@ -11,6 +11,7 @@ const {
 const {
   createPostRegistrySource,
 } = require("../../utils/shared/post-registry");
+const { TOPICS, getUnknownTopics } = require("./lib/topics");
 const { readFile: readFileFromDisk } = require("fs/promises");
 const { join } = require("path");
 
@@ -43,6 +44,13 @@ async function main() {
         `${entry.year}-01-01`,
       id: entry.id,
     });
+    const unknownTopics = getUnknownTopics(normalized.tags ?? []);
+    if (unknownTopics.length > 0) {
+      throw new Error(
+        `${entry.path} has undefined topics: ${unknownTopics.join(", ")}. ` +
+          `Choose from: ${TOPICS.map(topic => topic.name).join(", ")}`
+      );
+    }
 
     const newSource = replaceMetadataBlock(entry.source, normalized);
     if (newSource && newSource !== entry.source) {

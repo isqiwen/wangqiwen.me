@@ -6,6 +6,7 @@ const {
   normalizeStatus,
   normalizeTags,
 } = require("./lib/posts");
+const { TOPICS, getUnknownTopics } = require("./lib/topics");
 const { validateContentQuality } = require("./lib/content-quality");
 
 async function main() {
@@ -121,6 +122,14 @@ async function main() {
 
     if (hasNonEmptyRawTags && tags.length === 0) {
       errors.push(`${key} has tags but none could be parsed`);
+    }
+
+    const unknownTopics = getUnknownTopics(tags);
+    if (unknownTopics.length > 0) {
+      errors.push(
+        `${key} has undefined topics: ${unknownTopics.join(", ")}. ` +
+          `Choose from: ${TOPICS.map(topic => topic.name).join(", ")}`
+      );
     }
 
     if (

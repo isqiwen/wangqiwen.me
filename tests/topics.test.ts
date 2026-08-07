@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  getUnknownTopics,
   getPostsForTopic,
   getRelatedPosts,
   getTopicSlug,
   getTopics,
+  isKnownTopic,
+  TOPIC_DEFINITIONS,
   type TopicPost,
 } from "@/utils/topics";
 
@@ -37,18 +40,41 @@ const posts: TopicPost[] = [
 
 test("creates stable topic slugs and counts unique article tags", () => {
   assert.equal(getTopicSlug(" Web Performance "), "web-performance");
-  assert.deepEqual(getTopics([...posts, { ...posts[0], id: "duplicate", tags: ["Frontend", "Frontend"] }]), [
-    { name: "Frontend", slug: "frontend", count: 3 },
-    { name: "Web Performance", slug: "web-performance", count: 2 },
-    { name: "JavaScript", slug: "javascript", count: 1 },
-    { name: "Product", slug: "product", count: 1 },
-  ]);
+  assert.deepEqual(
+    getTopics([
+      ...posts,
+      { ...posts[0], id: "duplicate", tags: ["Frontend", "Frontend"] },
+    ]),
+    [
+      { name: "Frontend", slug: "frontend", count: 3 },
+      { name: "Web Performance", slug: "web-performance", count: 2 },
+      { name: "JavaScript", slug: "javascript", count: 1 },
+      { name: "Product", slug: "product", count: 1 },
+    ]
+  );
+});
+
+test("uses the predefined topic catalog", () => {
+  assert.deepEqual(
+    TOPIC_DEFINITIONS.map(topic => topic.name),
+    [
+      "Developer Experience",
+      "Frontend",
+      "JavaScript",
+      "Product",
+      "Retrospective",
+      "Web Performance",
+    ]
+  );
+  assert.equal(isKnownTopic("Frontend"), true);
+  assert.equal(isKnownTopic("frontend"), false);
+  assert.deepEqual(getUnknownTopics(["Frontend", "Web", "Web"]), ["Web"]);
 });
 
 test("filters posts by topic and ranks shared tags before recency", () => {
   assert.deepEqual(
     getPostsForTopic(posts, "web-performance").map(post => post.id),
-    ["first", "third"],
+    ["first", "third"]
   );
   assert.deepEqual(
     getRelatedPosts(posts[0], posts).map(item => ({
@@ -58,6 +84,6 @@ test("filters posts by topic and ranks shared tags before recency", () => {
     [
       { id: "second", sharedTags: ["Frontend"] },
       { id: "third", sharedTags: ["Web Performance"] },
-    ],
+    ]
   );
 });

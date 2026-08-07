@@ -61,6 +61,14 @@ test("validates post metadata against its target file", () => {
     () => validatePostContent(validPost({ description: "" }), target),
     /require a description/
   );
+  assert.equal(
+    validatePostContent(validPost({ tags: ["Frontend"] }), target),
+    validPost({ tags: ["Frontend"] })
+  );
+  assert.throws(
+    () => validatePostContent(validPost({ tags: ["Uncategorized"] }), target),
+    /unknown topics: Uncategorized/
+  );
 });
 
 test("writes files atomically and serializes concurrent mutations", async () => {

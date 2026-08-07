@@ -57,7 +57,9 @@ IDs must use lowercase letters, numbers, and single hyphens. The published date 
 4. Select **Save Draft** or **Save Published Changes**.
 5. Select **Open Preview** or **Open Post** to inspect the saved version.
 
-Editor saves update the MDX file and synchronize `posts/manifest.json` automatically. A title, description, valid heading hierarchy, image alt text, and internal article links are checked before the file is written. Browser autosave helps recover unsaved input, but it does not replace saving the post to disk.
+Editor saves update the MDX file and synchronize `posts/manifest.json` automatically. A title, description, predefined topics, valid heading hierarchy, image alt text, and internal article links are checked before the file is written. Browser autosave helps recover unsaved input, but it does not replace saving the post to disk.
+
+Topics are a controlled catalog. Select them from the editor; to introduce a new one, add its canonical name and slug to `content/topics.json` before using it in an article. `pnpm check`, `pnpm new:post`, and editor saves reject undefined topics.
 
 For MDX components and examples, open `/editor/components`.
 

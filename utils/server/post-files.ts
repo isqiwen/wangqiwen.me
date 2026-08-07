@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { resolvePathInside } from "@/utils/server/path-safety";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
+import { getUnknownTopics, TOPIC_DEFINITIONS } from "@/utils/topics";
 
 export const POSTS_ROOT = path.join(process.cwd(), "app", "(post)");
 export const POSTS_MANIFEST_PATH = path.join(
@@ -37,6 +38,7 @@ type PostMetadata = {
   publishedAt?: unknown;
   updatedAt?: unknown;
   status?: unknown;
+  tags?: unknown;
 };
 
 const globalForPostMutations = globalThis as typeof globalThis & {
@@ -139,6 +141,15 @@ export function validatePostContent(
     throw new PostFileValidationError("updatedAt must be a valid date");
   }
 
+  const unknownTopics = getUnknownTopics(normalizeTags(metadata.tags));
+  if (unknownTopics.length > 0) {
+    throw new PostFileValidationError(
+      `unknown topics: ${unknownTopics.join(
+        ", "
+      )}. Choose from: ${TOPIC_DEFINITIONS.map(topic => topic.name).join(", ")}`
+    );
+  }
+
   return content;
 }
 
@@ -190,5 +201,21 @@ function isIsoDate(value: string): boolean {
   return (
     !Number.isNaN(parsed.getTime()) &&
     parsed.toISOString().slice(0, 10) === value
+  );
+}
+
+function normalizeTags(value: unknown): string[] {
+  const rawTags = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+    ? value.split(",")
+    : [];
+
+  return Array.from(
+    new Set(
+      rawTags
+        .map(tag => (typeof tag === "string" ? tag.trim() : ""))
+        .filter(Boolean)
+    )
   );
 }
