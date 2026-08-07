@@ -51,14 +51,21 @@ pnpm build
 
 Before the first deployment:
 
-1. Set your server configuration in `deploy.env`.
-2. Create the production env file:
+1. Customize your site identity in `site.config.js`.
+2. Replace the bundled posts and images with your own content; see [Write a Post](#write-a-post). To start with an empty site (a backup is created first):
+
+   ```bash
+   pnpm reset:content -- --force
+   ```
+
+3. Set your server configuration in `deploy.env`.
+4. Create the production env file:
 
    ```bash
    cp .env.example .env.production
    ```
 
-3. Fill `.env.production` with the production values, then deploy:
+5. Fill `.env.production` with the production values, then deploy:
 
    ```bash
    UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
