@@ -50,7 +50,8 @@ load_deploy_config() {
   fi
 
   for name in "${configurable_vars[@]}"; do
-    if [[ -v "${name}" ]]; then
+    # Bash 3.2 (the macOS system Bash) has no `[[ -v var ]]` test.
+    if [[ -n "${!name+x}" ]]; then
       override_names+=("${name}")
       override_values+=("${!name}")
     fi
