@@ -43,7 +43,6 @@ import { Table, TBody, TD, TH, THead, TR } from "@/app/(post)/components/table";
 import { Tab, Tabs } from "@/app/(post)/components/tabs";
 import { TerminalBlock } from "@/app/(post)/components/terminal-block";
 import { TheoremBlock } from "@/app/(post)/components/theorem-block";
-import { ThreeScene } from "@/app/(post)/components/three-sense";
 import { Timeline, TimelineItem } from "@/app/(post)/components/timeline";
 import { VideoPlayer } from "@/app/(post)/components/video-player";
 import { YouTube } from "@/app/(post)/components/youtube";
@@ -171,8 +170,6 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
     "Use this for self-hosted or controlled video experiences where chapters, poster art, or extra commentary matter.",
   "audio-player":
     "Use this for podcast clips, interviews, voice notes, or any audio-first section that benefits from context and cover art.",
-  "three-scene":
-    "Use this sparingly for flagship posts, demos, or product explainers where interactive 3D genuinely adds understanding.",
   playground:
     "Use this when readers should experiment live instead of just reading static code or screenshots.",
   footnotes:
@@ -1131,15 +1128,6 @@ function renderPreview(id: string) {
           src="https://file-examples.com/storage/fe1afdf45b8e85b2e1fae03/2017/11/file_example_MP3_700KB.mp3"
           title="Audio sample"
           subtitle="Short supporting context"
-        />
-      );
-    case "three-scene":
-      return (
-        <ThreeScene
-          modelUrl="/models/wang.gltf"
-          title="3D model"
-          caption="Drag to orbit around the model."
-          height="320px"
         />
       );
     case "playground":

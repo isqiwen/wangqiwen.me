@@ -17,7 +17,6 @@ import { Callout } from "app/(post)/components/callout";
 import { YouTube } from "app/(post)/components/youtube";
 import { Ref, FootNotes, FootNote } from "app/(post)/components/footnotes";
 import { Blockquote as blockquote } from "app/(post)/components/blockquote";
-import { ThreeScene } from "@/app/(post)/components/three-sense";
 import { Steps, Step } from "app/(post)/components/steps";
 import { Tabs, Tab } from "app/(post)/components/tabs";
 import { PullQuote } from "app/(post)/components/pull-quote";
@@ -103,7 +102,6 @@ export function useMDXComponents(components: {
     Ref,
     FootNotes,
     FootNote,
-    ThreeScene,
     Steps,
     Step,
     Tabs,

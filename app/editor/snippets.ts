@@ -47,7 +47,6 @@ const DEFAULT_VIDEO_SRC =
 const DEFAULT_AUDIO_SRC =
   "https://file-examples.com/storage/fe1afdf45b8e85b2e1fae03/2017/11/file_example_MP3_700KB.mp3";
 const DEFAULT_YOUTUBE_ID = "dQw4w9WgXcQ";
-const DEFAULT_MODEL_URL = "/models/wang.gltf";
 const DEFAULT_CALLOUT_BODY = "Add a short note, warning, or success state here.";
 const DEFAULT_PULL_QUOTE =
   "Writing gets easier when the structure helps instead of fights you.";
@@ -57,8 +56,6 @@ const DEFAULT_DIFF_BEFORE = 'console.log("before");';
 const DEFAULT_VIDEO_TITLE = "Release walkthrough";
 const DEFAULT_AUDIO_TITLE = "Audio sample";
 const DEFAULT_AUDIO_SUBTITLE = "Short supporting context";
-const DEFAULT_MODEL_TITLE = "3D model";
-const DEFAULT_MODEL_CAPTION = "Drag to orbit around the model.";
 const DEFAULT_IMAGE_ALT = "Describe the image";
 const DEFAULT_INLINE_MATH = "\\mathcal{L}(x, y) = \\lVert Ax - y \\rVert_2^2";
 const DEFAULT_MATH_BLOCK =
@@ -373,20 +370,6 @@ function buildAudioInsert(values: ComponentSnippetFormValues) {
   }
 
   return lines.join("\n");
-}
-
-function buildThreeSceneInsert(values: ComponentSnippetFormValues) {
-  const modelUrl = asString(values, "modelUrl", DEFAULT_MODEL_URL);
-  const title = asString(values, "title", DEFAULT_MODEL_TITLE);
-  const caption = asString(values, "caption", DEFAULT_MODEL_CAPTION);
-  const height = asString(values, "height", "420px");
-
-  return `<ThreeScene
-  modelUrl="${escapeAttribute(withDefaultSelection(modelUrl, DEFAULT_MODEL_URL))}"
-  title="${escapeAttribute(title)}"
-  caption="${escapeAttribute(caption)}"
-  height="${escapeAttribute(height)}"
-/>`;
 }
 
 function buildInlineMathInsert(values: ComponentSnippetFormValues) {
@@ -3533,48 +3516,6 @@ export function formatViews(value) {
       },
     ],
     buildInsert: buildAudioInsert,
-  },
-  {
-    id: "three-scene",
-    category: "Media",
-    label: "ThreeScene",
-    hint: "Interactive 3D model embed",
-    searchTerms: ["3d", "three", "model", "scene", "gltf"],
-    snippet: `<ThreeScene
-  modelUrl="${DEFAULT_MODEL_URL}"
-  title="${DEFAULT_MODEL_TITLE}"
-  caption="${DEFAULT_MODEL_CAPTION}"
-/>`,
-    fields: [
-      {
-        id: "modelUrl",
-        label: "Model URL",
-        type: "text",
-        required: true,
-        defaultValue: DEFAULT_MODEL_URL,
-        example: "/models/product-demo.glb",
-      },
-      {
-        id: "title",
-        label: "Title",
-        type: "text",
-        defaultValue: DEFAULT_MODEL_TITLE,
-      },
-      {
-        id: "caption",
-        label: "Caption",
-        type: "textarea",
-        defaultValue: DEFAULT_MODEL_CAPTION,
-        rows: 3,
-      },
-      {
-        id: "height",
-        label: "Viewport height",
-        type: "text",
-        defaultValue: "420px",
-      },
-    ],
-    buildInsert: buildThreeSceneInsert,
   },
   {
     id: "playground",
