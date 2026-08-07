@@ -8,6 +8,12 @@ local/CI Linux build -> tarball upload -> systemd restart -> Caddy proxy
 
 Do not run `next build` on the small VPS. Build the standalone artifact before it reaches the server.
 
+On macOS and other non-Linux hosts, `pnpm deploy:vps` builds that Linux artifact
+in Docker for the VPS CPU architecture automatically. Docker must be installed
+and running; local `node_modules`, `.next`, and the pnpm store are kept out of
+the container so the Linux build does not replace your development dependencies
+or create a large local cache.
+
 ## Normal Release
 
 From the repo root:
@@ -161,9 +167,13 @@ The deploy command:
 - keeps the previous release for automatic rollback
 - cleans temporary upload files after the command exits
 
-The VPS does not run `pnpm install` during a normal release. It only runs the finished standalone artifact, so dependency changes must succeed during the local Linux build.
+The VPS does not run `pnpm install` during a normal release. It only runs the finished standalone artifact, so dependency changes must succeed during the Linux build.
 
-For native dependencies, the build machine should match the VPS operating system and CPU architecture. The script requires Linux by default and checks the VPS architecture before building.
+For native dependencies, the build environment must match the VPS operating
+system and CPU architecture. The script checks the VPS architecture before
+building; from macOS it uses Docker with the matching Linux platform
+automatically. To build somewhere without Docker, use a Linux machine with the
+same CPU architecture as the VPS.
 
 ## Verification
 

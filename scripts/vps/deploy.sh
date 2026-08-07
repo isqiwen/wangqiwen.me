@@ -15,6 +15,7 @@ set -euo pipefail
 #   UPLOAD_ENV=0
 #   SETUP_SERVER=0
 #   ALLOW_NON_LINUX_BUILD=0
+#   DOCKER_IMAGE=node:20-bookworm-slim
 #   SKIP_REMOTE_PLATFORM_CHECK=0
 #   SKIP_REMOTE_SUDO_CHECK=0
 #   SSH_CONTROL=1
@@ -90,6 +91,7 @@ RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
 RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-node:20-bookworm-slim}"
 SKIP_REMOTE_PLATFORM_CHECK="${SKIP_REMOTE_PLATFORM_CHECK:-0}"
 SKIP_REMOTE_SUDO_CHECK="${SKIP_REMOTE_SUDO_CHECK:-0}"
 SSH_CONTROL="${SSH_CONTROL:-1}"
@@ -97,6 +99,9 @@ CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
 
 REMOTE_TMP="${REMOTE_TMP:-/tmp}"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
+if [[ "${ARTIFACT_DIR}" != /* ]]; then
+  ARTIFACT_DIR="${ROOT_DIR}/${ARTIFACT_DIR}"
+fi
 REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
 ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}-${STAMP}.tar.gz}"
@@ -128,7 +133,8 @@ Useful env vars:
   ENV_FILE=.env.production          Production env file to upload when UPLOAD_ENV=1
   UPLOAD_ENV=1                      Upload ENV_FILE as the server's .env.local
   ALLOW_DIRTY=1                     Build from an uncommitted working tree
-  ALLOW_NON_LINUX_BUILD=1           Permit building the VPS artifact off Linux
+  DOCKER_IMAGE=node:20-bookworm-slim Linux image for automatic non-Linux builds
+  ALLOW_NON_LINUX_BUILD=1           Allow an unsafe local non-Linux build
   SKIP_REMOTE_PLATFORM_CHECK=1      Skip local/VPS architecture comparison
   SKIP_REMOTE_SUDO_CHECK=1          Skip passwordless sudo preflight
   SSH_CONTROL=0                     Disable SSH connection reuse
@@ -147,6 +153,48 @@ need_cmd() {
     echo "Missing command: $1" >&2
     exit 1
   fi
+}
+
+normalize_architecture() {
+  case "$1" in
+    x86_64 | amd64)
+      printf "amd64"
+      ;;
+    aarch64 | arm64)
+      printf "arm64"
+      ;;
+    *)
+      printf "%s" "$1"
+      ;;
+  esac
+}
+
+build_artifact_with_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Docker is required to build a Linux VPS artifact from $(uname -s)." >&2
+    echo "Install and start Docker, or build on matching Linux hardware." >&2
+    exit 1
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker is installed but its daemon is unavailable. Start Docker and retry." >&2
+    exit 1
+  fi
+
+  echo "==> Building Linux artifact with Docker (${DOCKER_PLATFORM})"
+  mkdir -p "${ARTIFACT_DIR}"
+  docker run --rm \
+    --platform "${DOCKER_PLATFORM}" \
+    --volume "${ROOT_DIR}:/workspace" \
+    --volume "/workspace/node_modules" \
+    --volume "/workspace/.next" \
+    --volume "/workspace/.pnpm-store" \
+    --volume "${ARTIFACT_DIR}:/artifacts" \
+    --workdir /workspace \
+    --env ARTIFACT_DIR=/artifacts \
+    --env ARTIFACT_NAME="${ARTIFACT_NAME}" \
+    "${DOCKER_IMAGE}" \
+    bash scripts/vps/build-artifact.sh
 }
 
 ssh_options() {
@@ -287,22 +335,41 @@ fi
 
 LOCAL_UNAME_S="$(uname -s)"
 LOCAL_UNAME_M="$(uname -m)"
+LOCAL_ARCH="$(normalize_architecture "${LOCAL_UNAME_M}")"
+REMOTE_UNAME_M=""
+REMOTE_ARCH=""
+BUILD_WITH_DOCKER="0"
 
-if [[ "${LOCAL_UNAME_S}" != "Linux" && "${ALLOW_NON_LINUX_BUILD}" != "1" ]]; then
-  echo "Build VPS artifacts on Linux so native dependencies match the Ubuntu runtime." >&2
-  echo "Use ALLOW_NON_LINUX_BUILD=1 only if you know the artifact is runtime-compatible." >&2
-  exit 1
-fi
-
-if [[ "${SKIP_REMOTE_PLATFORM_CHECK}" != "1" ]]; then
+if [[ "${SKIP_REMOTE_PLATFORM_CHECK}" != "1" || ( "${LOCAL_UNAME_S}" != "Linux" && "${ALLOW_NON_LINUX_BUILD}" != "1" ) ]]; then
   echo "==> Checking target platform"
   # shellcheck disable=SC2029
   REMOTE_UNAME_M="$(ssh_cmd "${DEPLOY_HOST}" "uname -m" | tr -d '\r')"
-  if [[ -n "${REMOTE_UNAME_M}" && "${REMOTE_UNAME_M}" != "${LOCAL_UNAME_M}" ]]; then
+  REMOTE_ARCH="$(normalize_architecture "${REMOTE_UNAME_M}")"
+  if [[ "${SKIP_REMOTE_PLATFORM_CHECK}" != "1" && "${LOCAL_UNAME_S}" == "Linux" && -n "${REMOTE_UNAME_M}" && "${REMOTE_ARCH}" != "${LOCAL_ARCH}" ]]; then
     echo "Build host architecture (${LOCAL_UNAME_M}) does not match VPS (${REMOTE_UNAME_M})." >&2
     echo "Build the artifact on matching Linux hardware or set SKIP_REMOTE_PLATFORM_CHECK=1." >&2
     exit 1
   fi
+fi
+
+if [[ "${LOCAL_UNAME_S}" != "Linux" && "${ALLOW_NON_LINUX_BUILD}" != "1" ]]; then
+  if [[ -z "${REMOTE_ARCH}" ]]; then
+    echo "The VPS architecture is needed for a Docker build." >&2
+    echo "Leave SKIP_REMOTE_PLATFORM_CHECK unset, or build on matching Linux hardware." >&2
+    exit 1
+  fi
+
+  case "${REMOTE_ARCH}" in
+    amd64 | arm64)
+      DOCKER_PLATFORM="linux/${REMOTE_ARCH}"
+      BUILD_WITH_DOCKER="1"
+      ;;
+    *)
+      echo "Unsupported VPS architecture for Docker build: ${REMOTE_UNAME_M}" >&2
+      echo "Build the artifact on matching Linux hardware." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 if [[ "${SKIP_REMOTE_SUDO_CHECK}" != "1" ]]; then
@@ -326,9 +393,13 @@ echo "    revision: ${REVISION}"
 echo "    setup server: ${SETUP_SERVER}"
 echo "    configure site: ${RUN_SITE_CONFIG}"
 
-ARTIFACT_DIR="${ARTIFACT_DIR}" \
-ARTIFACT_NAME="${ARTIFACT_NAME}" \
-  bash "${ROOT_DIR}/scripts/vps/build-artifact.sh"
+if [[ "${BUILD_WITH_DOCKER}" == "1" ]]; then
+  build_artifact_with_docker
+else
+  ARTIFACT_DIR="${ARTIFACT_DIR}" \
+  ARTIFACT_NAME="${ARTIFACT_NAME}" \
+    bash "${ROOT_DIR}/scripts/vps/build-artifact.sh"
+fi
 
 if [[ ! -f "${ARTIFACT_PATH}" ]]; then
   echo "Artifact was not created: ${ARTIFACT_PATH}" >&2
