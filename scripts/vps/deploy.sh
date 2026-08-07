@@ -96,7 +96,6 @@ SSH_CONTROL="${SSH_CONTROL:-1}"
 CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
 
 REMOTE_TMP="${REMOTE_TMP:-/tmp}"
-LOCAL_TMP_DIR="${TMPDIR:-/tmp}"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
@@ -106,7 +105,8 @@ REMOTE_ARTIFACT="${REMOTE_TMP}/${ARTIFACT_NAME}"
 REMOTE_ENV="${REMOTE_TMP}/prod.env"
 REMOTE_WORK_DIR="${REMOTE_TMP}/${APP_NAME}-deploy-${REVISION}-${STAMP}"
 REMOTE_INCOMING_ARTIFACT="${SERVICE_HOME}/shared/incoming/${ARTIFACT_NAME}"
-SSH_CONTROL_PATH="${SSH_CONTROL_PATH:-${LOCAL_TMP_DIR}/${APP_NAME}-ssh-${REVISION}-${STAMP}.sock}"
+# macOS's per-user TMPDIR is long enough to exceed SSH's Unix-socket limit.
+SSH_CONTROL_PATH="${SSH_CONTROL_PATH:-/tmp/${APP_NAME}-ssh-${REVISION}-${STAMP}.sock}"
 CLEANUP_ARMED="0"
 
 usage() {
