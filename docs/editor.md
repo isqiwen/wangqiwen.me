@@ -41,10 +41,12 @@ app/(post)/<year>/my-first-post/article.mdx
 ```
 
 If the current document has unsaved changes, confirm before starting the new
-draft. IDs must use lowercase letters, numbers, and single hyphens. The
-published date determines the year directory. Changing an existing post's ID
-or published year moves its file and changes its URL; no redirect is created
-automatically.
+draft. The **ID** is the stable technical identifier used for the file path and
+URL; it must use lowercase letters, numbers, and single hyphens. The **Title**
+is the reader-facing heading used in article pages, search, and sharing, so it
+can be edited without changing the URL. The published date determines the year
+directory. Changing an existing post's ID or published year moves its file and
+changes its URL; no redirect is created automatically.
 
 For scripted creation, use:
 
