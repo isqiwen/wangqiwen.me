@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { mdxMutedTextClass, mdxSubtleTextClass } from "./surface";
+import { mdxMutedTextClass } from "./surface";
 
 type CitationProps = {
   refId?: string;
@@ -29,7 +29,6 @@ type BibliographyItemProps = {
   year?: string | number;
   note?: ReactNode;
   links?: BibliographyLink[];
-  children?: ReactNode;
 };
 
 function asList(value?: string | string[]) {
@@ -75,8 +74,7 @@ export function Bibliography({
       aria-label={title}
     >
       <div>
-        <p className={mdxSubtleTextClass}>Sources</p>
-        <h3 className="mt-1 text-xl font-semibold text-slate-950 dark:text-white">
+        <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
           {title}
         </h3>
         {note ? (
@@ -98,18 +96,15 @@ export function BibliographyItem({
   year,
   note,
   links = [],
-  children,
 }: BibliographyItemProps) {
   const authorList = asList(authors);
   const metadata = [authorList.join(", "), venue, year]
     .filter(Boolean)
     .join(" · ");
-  const detail = children ?? note;
-
   return (
     <li id={`ref-${id}`} className="scroll-mt-8">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
-        <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3">
+        <span className="font-mono text-sm leading-6 text-slate-500 dark:text-slate-400">
           {label || id}
         </span>
         <div className="min-w-0">
@@ -119,9 +114,9 @@ export function BibliographyItem({
           {metadata ? (
             <p className={`mt-1 ${mdxMutedTextClass}`}>{metadata}</p>
           ) : null}
-          {detail ? (
+          {note ? (
             <div className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-200">
-              {detail}
+              {note}
             </div>
           ) : null}
           {links.length ? (

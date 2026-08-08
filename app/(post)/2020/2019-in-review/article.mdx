@@ -60,11 +60,31 @@ But here's what happened in 2019:
 
 In short, Next.js is now a comprehensive, hybrid framework, supporting the full spectrum of JAMstack with a _per-page granularity_.
 
-| Role | Provided by                                                                                                                                    |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| J    | Client-side JS injected via React Hooks (state, event listeners, effects)                                                                      |
-| A    | API pages inside the `pages/api` directory.                                                                                                    |
-| M    | Pages with no data dependencies (like the simple example above) or pages with static data deps that trigger build-time static site generation. |
+<Table
+  title="JAMstack responsibilities"
+  caption="The acronym distinguishes client-side JavaScript, API routes, and pre-rendered markup."
+>
+  <THead>
+    <TR>
+      <TH>Role</TH>
+      <TH>Provided by</TH>
+    </TR>
+  </THead>
+  <TBody>
+    <TR>
+      <TD>J</TD>
+      <TD>Client-side JavaScript injected through React Hooks, including state, event listeners, and effects.</TD>
+    </TR>
+    <TR>
+      <TD>A</TD>
+      <TD>API pages inside the <code>pages/api</code> directory.</TD>
+    </TR>
+    <TR>
+      <TD>M</TD>
+      <TD>Pages with no data dependencies, or static data dependencies that trigger build-time static site generation.</TD>
+    </TR>
+  </TBody>
+</Table>
 
 Furthermore, Next.js has been _uncompromising_ in its commitment to backwards-compatibility. Servers (SSR) are still fully supported and no apps have been harmed as part of this evolution.
 
@@ -387,61 +407,43 @@ AWS architect Colm MacCárthaigh shares 10 patterns for controlling the cloud an
     id="zero-downtime-rollouts"
     label="[1]"
     title="Zero-downtime rollout tradeoffs"
-  >
-    Servers can be hard to roll out without downtime: a KubeCon keynote starts
-    with the admission,{" "}
-    <b>
-      &quot;Noticing your customers receive 503&apos;s every now-and-then?&quot;
-    </b>{" "}
-    By not needing to rotate pods, shut down containers, handle signals, wait
-    for grace periods, or configure and execute liveliness probes, static is
-    also <b>faster and safer to roll</b>.
-  </BibliographyItem>
+    note="Author&apos;s synthesis of operational tradeoffs; no primary keynote recording is linked."
+  />
   <BibliographyItem
     id="critical-pages"
     label="[2]"
     title="Precomputing critical pages"
-  >
-    When the set of pages to pre-compute is too large and would make build times
-    prohibitive, it&apos;s still probably a good idea to pre-compute your most
-    critical public pages and do the rest <em>asynchronously</em>.
-  </BibliographyItem>
+    note="Author guidance on staged static generation; not an external source."
+  />
   <BibliographyItem
     id="static-security"
     label="[3]"
     title="Static delivery and security"
-  >
-    Websites and apps that serve the same static markup and code to all users
-    have a drastically simpler security model, which means static is also{" "}
-    <b>more secure</b>.
-  </BibliographyItem>
-  <BibliographyItem id="cosmos-db" label="[4]" title="Cosmos DB">
-    Our infrastructure makes use of CosmosDB, a serverless database by Microsoft
-    Azure with remarkably consistent low latency and effectively infinite
-    horizontal scalability.
-  </BibliographyItem>
-  <BibliographyItem id="ios-viewport" label="[5]" title="iOS viewport behavior">
-    A mobile web app on iOS Safari cannot be native like an app because the
-    viewport size is dynamic and shifts as you scroll to reveal different
-    toolbars.
-  </BibliographyItem>
+    note="Author&apos;s synthesis of static-delivery security implications; not an external source."
+  />
+  <BibliographyItem
+    id="cosmos-db"
+    label="[4]"
+    title="Cosmos DB"
+    note="Product description based on the author&apos;s infrastructure experience."
+  />
+  <BibliographyItem
+    id="ios-viewport"
+    label="[5]"
+    title="iOS viewport behavior"
+    note="Author observation of iOS Safari viewport behavior."
+  />
   <BibliographyItem
     id="platform-stdlib"
     label="[6]"
     title="Platform standard libraries"
-  >
-    Rather than native code generation, native mobile apps may owe their
-    generally better performance to a rich standard library of well-optimized UI
-    components. Go, when compared to Node.js+npm, has similarly demonstrated the
-    success of a great standard library for common, performance-critical needs.
-  </BibliographyItem>
+    note="Author comparison of standard-library tradeoffs; not a formal source."
+  />
   <BibliographyItem
     id="swr-ergonomics"
     label="[7]"
     title="SWR and Redux"
     links={[{ label: "SWR", href: "https://swr.now.sh/#basic-data-loading" }]}
-  >
-    What you do in one line of SWR, you tend to do in a few dozen lines of
-    Redux.
-  </BibliographyItem>
+    note="Author comparison of SWR and Redux ergonomics."
+  />
 </Bibliography>

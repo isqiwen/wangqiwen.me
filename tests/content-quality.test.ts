@@ -51,6 +51,21 @@ test("requires citations to match one labeled bibliography item", () => {
   ]);
 });
 
+test("requires structured bibliography items without free child content", () => {
+  const issues = validateContentQuality(
+    `<Bibliography>
+  <BibliographyItem id="missing-title" label="[1]" />
+  <BibliographyItem id="annotation" label="[2]" title="Annotated source">A free-form annotation.</BibliographyItem>
+</Bibliography>`,
+    { articlePaths }
+  );
+
+  assert.deepEqual(issues, [
+    "line 3: bibliography items must be self-closing; use the note prop for a necessary qualifier",
+    'line 2: bibliography item "missing-title" is missing a title',
+  ]);
+});
+
 test("accepts cross-references to stable article-local anchors", () => {
   const issues = validateContentQuality(
     `## Methods [#methods]

@@ -131,7 +131,10 @@ above the text columns. Do not use it as decoration for an ordinary quotation.
 Use **Citation + Bibliography** for every external source. Each inline
 `Citation` must use the same stable `refId` and label as exactly one
 `BibliographyItem` at the end of the article. The content checks reject missing
-or mismatched references. Do not use the retired footnote components.
+or mismatched references. Use `title`, `authors`, `venue`, `year`, and `links`
+whenever the source has those fields; every entry is self-closing. `note` is
+optional and reserved for a material version, access, or evidence limitation,
+not a general annotation. Do not use the retired footnote components.
 
 For images, `alt` describes the visual content for readers who cannot see it;
 it is not a visible caption. Use `Caption` for explanatory text, and wrap an

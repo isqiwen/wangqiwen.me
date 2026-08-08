@@ -626,11 +626,7 @@ function buildCitationInsert(values: ComponentSnippetFormValues) {
   );
   const venue = asString(values, "venue", "arXiv");
   const year = asString(values, "year", "2024");
-  const note = asString(
-    values,
-    "note",
-    "Use this note for one sentence on why the citation matters."
-  );
+  const note = asString(values, "note", "");
   const links = [
     {
       label: "Paper",
@@ -2659,7 +2655,6 @@ export function formatViews(value) {
     authors={["Hammernik et al."]}
     venue="arXiv"
     year="2024"
-    note="Use this note for one sentence on why the citation matters."
     links={[
       { label: "Paper", href: "https://arxiv.org/" },
     ]}
@@ -2711,8 +2706,8 @@ export function formatViews(value) {
         id: "note",
         label: "Reference note",
         type: "textarea",
-        defaultValue:
-          "Use this note for one sentence on why the citation matters.",
+        defaultValue: "",
+        help: "Optional. Use only for a material version, access, or evidence limitation.",
         rows: 3,
       },
       {

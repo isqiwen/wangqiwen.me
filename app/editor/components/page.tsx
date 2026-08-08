@@ -835,7 +835,7 @@ report(metrics, protocol="held-out multicoil validation")`}</code>
             <Citation refId="guide-paper-1" label="[1]" /> so readers can jump
             straight to the source.
           </p>
-          <Bibliography note="Keep the entry short and add only the links readers will actually need.">
+          <Bibliography>
             <BibliographyItem
               id="guide-paper-1"
               label="[1]"
@@ -843,7 +843,6 @@ report(metrics, protocol="held-out multicoil validation")`}</code>
               authors={["Hammernik et al."]}
               venue="arXiv"
               year="2024"
-              note="One-sentence reminder of the paper's core contribution."
               links={[{ label: "Paper", href: "https://arxiv.org/" }]}
             />
           </Bibliography>

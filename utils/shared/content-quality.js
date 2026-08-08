@@ -218,12 +218,25 @@ function validateArticleLinks(source, articlePaths, issues) {
 function validateCitations(source, issues) {
   const bibliographyItems = new Map();
   const bibliographyItem = /<BibliographyItem\b([\s\S]*?)(?:\/>|>)/g;
+  const bibliographyItemWithChildren =
+    /<BibliographyItem\b(?:(?!\/>)[\s\S])*?>[\s\S]*?<\/BibliographyItem>/g;
   let match;
+
+  while ((match = bibliographyItemWithChildren.exec(source))) {
+    issues.push(
+      issueAt(
+        source,
+        match.index,
+        "bibliography items must be self-closing; use the note prop for a necessary qualifier"
+      )
+    );
+  }
 
   while ((match = bibliographyItem.exec(source))) {
     const attributes = match[1];
     const id = getStringAttribute(attributes, "id");
     const label = getStringAttribute(attributes, "label");
+    const title = getStringAttribute(attributes, "title");
 
     if (!id) {
       issues.push(
@@ -238,6 +251,17 @@ function validateCitations(source, issues) {
           source,
           match.index,
           `bibliography item "${id}" is missing a label`
+        )
+      );
+      continue;
+    }
+
+    if (!title) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `bibliography item "${id}" is missing a title`
         )
       );
       continue;
