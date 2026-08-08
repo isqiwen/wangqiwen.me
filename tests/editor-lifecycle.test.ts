@@ -13,7 +13,8 @@ const relativePath = "app/(post)/2026/editor-lifecycle/article.mdx";
 
 function postSource(
   status: "draft" | "published" | "archived",
-  body = "## Introduction\n"
+  body = "## Introduction\n",
+  series?: { slug: string; order: number }
 ) {
   return `export const metadata = ${JSON.stringify(
     {
@@ -23,6 +24,7 @@ function postSource(
         "Verifies a post can move safely through the editor lifecycle.",
       publishedAt: "2026-08-08",
       status,
+      ...(series ? { series: series.slug, seriesOrder: series.order } : {}),
     },
     null,
     2
@@ -86,6 +88,44 @@ test("rejects editor content that violates publishing quality rules", async () =
     await assert.rejects(
       syncPostsMetadata({ postsRoot, manifestPath }),
       /do not use h1/
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("rejects duplicate positions in a series", async () => {
+  const root = await mkdtemp(join(tmpdir(), "wangqiwen-editor-series-"));
+  const postsRoot = join(root, "app", "(post)");
+  const manifestPath = join(root, "posts", "manifest.json");
+  const first = resolvePostFile(
+    "app/(post)/2026/first-series-post/article.mdx",
+    postsRoot
+  );
+  const second = resolvePostFile(
+    "app/(post)/2026/second-series-post/article.mdx",
+    postsRoot
+  );
+
+  try {
+    await writeFileAtomically(
+      first.absolutePath,
+      postSource("draft", "## Introduction\n", {
+        slug: "reliable-web-delivery",
+        order: 1,
+      }).replace("editor-lifecycle", "first-series-post")
+    );
+    await writeFileAtomically(
+      second.absolutePath,
+      postSource("draft", "## Introduction\n", {
+        slug: "reliable-web-delivery",
+        order: 1,
+      }).replace("editor-lifecycle", "second-series-post")
+    );
+
+    await assert.rejects(
+      syncPostsMetadata({ postsRoot, manifestPath }),
+      /duplicate position 1/
     );
   } finally {
     await rm(root, { force: true, recursive: true });

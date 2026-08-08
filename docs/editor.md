@@ -33,21 +33,27 @@ Published posts cannot be deleted directly. Archive the post first, then delete 
 
 ## Create a Post
 
-Create a draft from the repository:
-
-```bash
-pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post."
-```
-
-This creates:
+Select **New Draft** in `/editor`, fill in the title, ID, description, and body,
+then select **Save Draft**. This creates:
 
 ```text
 app/(post)/<year>/my-first-post/article.mdx
 ```
 
-It also updates `posts/manifest.json`. Open `/editor`, select **Load**, and choose the new draft.
+If the current document has unsaved changes, confirm before starting the new
+draft. IDs must use lowercase letters, numbers, and single hyphens. The
+published date determines the year directory. Changing an existing post's ID
+or published year moves its file and changes its URL; no redirect is created
+automatically.
 
-IDs must use lowercase letters, numbers, and single hyphens. The published date determines the year directory. Changing an existing post's ID or published year moves its file and changes its URL; no redirect is created automatically.
+For scripted creation, use:
+
+```bash
+pnpm new:post --id my-first-post --title "My First Post" --description "A short summary of the post."
+```
+
+Both paths synchronize `posts/manifest.json` when the draft is saved or
+created.
 
 ## Edit and Preview
 
@@ -61,11 +67,28 @@ Editor saves update the MDX file and synchronize `posts/manifest.json` automatic
 
 Topics are a controlled catalog. Select them from the editor; to introduce a new one, add its canonical name and slug to `content/topics.json` before using it in an article. `pnpm check`, `pnpm new:post`, and editor saves reject undefined topics.
 
+## Write a Series
+
+A series is a deliberately ordered, multi-part piece of writing. It has a public overview at `/series/<slug>` and each article gets previous/next navigation. Do not use a series as an extra topic or a loose collection of related posts.
+
+Define the series first in `content/series.json` with a stable slug, title, and description. Then choose it in the editor and set a positive **Series Position** for every article. Positions must be unique within a non-archived series; drafts are checked too, so they cannot accidentally claim a published position.
+
+For command-line creation, provide both fields together:
+
+```bash
+pnpm new:post --id first-reliability-note --title "First reliability note" --description "A concise description." --series reliable-web-delivery --series-order 1
+```
+
+`pnpm check`, the editor save API, and `pnpm sync:posts` reject unknown series, missing positions, positions without a series, and duplicate positions. Only series with published articles appear on the public site.
+
 For MDX components and examples, open `/editor/components`.
 
 ## Publish and Unpublish
 
-To publish a draft, select **Publish Post** and confirm. Publishing first saves the post with `published` status, then synchronizes the post index.
+To publish a draft, select **Publish Post** and confirm. This saves the post
+with `published` status and synchronizes the post index for the next build; it
+does not deploy to the VPS. Commit and deploy the resulting files to make the
+article public.
 
 For a published post:
 
@@ -104,6 +127,26 @@ pnpm build
 ```
 
 `pnpm check` verifies post metadata, the generated manifest, lint rules, and TypeScript.
+
+## Browser Lifecycle Test
+
+The editor lifecycle runs in Chromium against a separate local Next.js output
+directory, so it does not conflict with `pnpm dev`.
+
+On a new machine, install Chromium once:
+
+```bash
+pnpm exec playwright install chromium
+```
+
+Then run:
+
+```bash
+pnpm test:e2e
+```
+
+The test creates a uniquely named temporary article, takes it through draft,
+published, archived, restored, and deleted states, then removes it.
 
 ## Deploy Published Content
 

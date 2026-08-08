@@ -12,6 +12,7 @@ const {
   createPostRegistrySource,
 } = require("../../utils/shared/post-registry");
 const { TOPICS, getUnknownTopics } = require("./lib/topics");
+const { isKnownSeries, SERIES } = require("./lib/series");
 const { readFile: readFileFromDisk } = require("fs/promises");
 const { join } = require("path");
 
@@ -34,6 +35,7 @@ async function main() {
     posts: [],
   };
   const registryPosts = [];
+  const seriesPositions = new Map();
 
   for (const entry of entries.values()) {
     const normalized = buildNormalizedMetadata(entry, {
@@ -51,6 +53,8 @@ async function main() {
           `Choose from: ${TOPICS.map(topic => topic.name).join(", ")}`
       );
     }
+    validateSeriesMetadata(entry, normalized);
+    validateSeriesPosition(normalized, seriesPositions, entry.path);
 
     const newSource = replaceMetadataBlock(entry.source, normalized);
     if (newSource && newSource !== entry.source) {
@@ -67,12 +71,11 @@ async function main() {
       description: normalized.description ?? "",
       summary: normalized.summary ?? "",
       series: normalized.series ?? null,
+      seriesOrder: normalized.seriesOrder ?? null,
       publishedAt: normalized.publishedAt,
       updatedAt: normalized.updatedAt ?? null,
       status: normalized.status ?? "published",
-      featured: normalized.featured ?? false,
       tags: normalized.tags ?? [],
-      cover: normalized.cover ?? null,
       readingTimeMinutes: normalized.readingTimeMinutes ?? 1,
       path: `/${entry.year}/${entry.id}`,
     };
@@ -140,6 +143,53 @@ async function main() {
   if (!isSilent) {
     console.log("Post metadata normalized and manifest updated.");
   }
+}
+
+function validateSeriesMetadata(entry, metadata) {
+  const rawSeries = entry.metadata.series ?? entry.frontmatter.series;
+  const rawSeriesOrder =
+    entry.metadata.seriesOrder ?? entry.frontmatter.seriesOrder;
+
+  if (rawSeries != null && typeof rawSeries !== "string") {
+    throw new Error(`${entry.path} series must be a string.`);
+  }
+
+  if (!metadata.series) {
+    if (rawSeriesOrder != null && rawSeriesOrder !== "") {
+      throw new Error(`${entry.path} seriesOrder requires a series.`);
+    }
+    return;
+  }
+
+  if (!isKnownSeries(metadata.series)) {
+    throw new Error(
+      `${entry.path} has undefined series: ${metadata.series}. ` +
+        `Choose from: ${SERIES.map(series => series.slug).join(", ")}`
+    );
+  }
+
+  if (!Number.isInteger(metadata.seriesOrder) || metadata.seriesOrder < 1) {
+    throw new Error(
+      `${entry.path} seriesOrder must be a positive integer when series is set.`
+    );
+  }
+}
+
+function validateSeriesPosition(metadata, positions, path) {
+  if (metadata.status === "archived" || !metadata.series) {
+    return;
+  }
+
+  const key = `${metadata.series}:${metadata.seriesOrder}`;
+  const existingPath = positions.get(key);
+  if (existingPath) {
+    throw new Error(
+      `Series "${metadata.series}" has duplicate position ${metadata.seriesOrder} ` +
+        `in ${existingPath} and ${path}.`
+    );
+  }
+
+  positions.set(key, path);
 }
 
 main().catch(error => {

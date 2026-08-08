@@ -1,0 +1,60 @@
+export const metadata = {
+  "title": "Release With Evidence, Not Optimism",
+  "description": "Use validation, a reproducible artifact, and public verification to turn deployment into a controlled release process.",
+  "publishedAt": "2026-08-05",
+  "id": "release-with-evidence",
+  "status": "published",
+  "tags": [
+    "Developer Experience",
+    "Web Performance"
+  ],
+  "readingTimeMinutes": 3,
+  "summary": "A release is complete only when the public system provides evidence that the intended change is live and healthy.",
+  "series": "reliable-web-delivery",
+  "seriesOrder": 3
+};
+
+A deployment command is an action, not a result. Treating its exit code as the whole definition of success encourages a risky habit: assuming the public application now matches the working tree.
+
+A professional release process replaces that assumption with evidence at each boundary.
+
+## Validate before constructing the artifact
+
+The first boundary is local intent. Before any upload or server change, verify the repository state that will be released:
+
+1. Metadata and content quality rules pass.
+2. Type and lint checks pass.
+3. The production build succeeds using the same runtime assumptions as the server.
+4. The generated content manifest contains only the posts intended to be public.
+
+The order matters. A broken heading rule or unknown series should stop the process before an artifact exists. A failed build should stop it before credentials are used or a remote release directory is touched. This reduces both recovery time and the number of possible states an operator must understand.
+
+## Build for the environment that will execute it
+
+Native dependencies and generated output are part of the artifact, not incidental local details. If the VPS runs Linux, the release artifact should be built for Linux. If a lockfile specifies the dependency graph, deployment should install or package exactly that graph rather than resolving a fresh one on the server.
+
+Reproducibility is practical, not ceremonial. It prevents a release from becoming a hidden upgrade of the operating system, package manager, or transitive dependency. When something changes, the diff should explain it.
+
+## Promote one immutable artifact
+
+After validation, create one artifact and promote that same artifact through the remaining steps. Do not rebuild it on the server from a different dependency cache or a different environment file. Upload it, install it into a versioned release directory, point the runtime at it, and retain the previous release until verification succeeds.
+
+This structure makes rollback a small, explicit operation. It also creates a useful audit trail: a given release directory corresponds to a known commit, a known manifest, and a known build output.
+
+## Verify from the public side
+
+Once the runtime has switched, verify the user promises from the previous articles:
+
+- The health endpoint reports the expected state.
+- The homepage and a published article return successful HTML.
+- The feed remains valid and reachable.
+- A draft or archived article remains unavailable publicly.
+- Metadata-dependent endpoints, such as a sharing image, still respond as expected.
+
+This verification is intentionally small. It does not replace exploratory testing, but it catches the class of mistakes that is otherwise most embarrassing: a deployment that completed successfully while the public site no longer serves its core content.
+
+## Make failure recoverable by default
+
+The final quality of a release process is visible when it fails. Temporary files should be cleaned. A partially installed release should not become current. Logs should identify the stage that failed. The previous healthy release should remain available until the new one has passed verification.
+
+None of this requires a large platform. It requires treating content, configuration, build output, and the public request path as one system. That is the central lesson of reliable web delivery: confidence comes from a chain of evidence, not from a successful command alone.

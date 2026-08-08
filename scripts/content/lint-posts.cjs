@@ -7,12 +7,14 @@ const {
   normalizeTags,
 } = require("./lib/posts");
 const { TOPICS, getUnknownTopics } = require("./lib/topics");
+const { SERIES, isKnownSeries } = require("./lib/series");
 const { validateContentQuality } = require("./lib/content-quality");
 
 async function main() {
   const entries = await collectPosts();
   const errors = [];
   const seenIds = new Map();
+  const seriesPositions = new Map();
   const articlePaths = new Set(
     Array.from(entries.values())
       .filter(entry => {
@@ -44,11 +46,11 @@ async function main() {
       "";
     const summary = metadata.summary || frontmatter.summary || "";
     const series = metadata.series || frontmatter.series || "";
+    const seriesOrder = metadata.seriesOrder ?? frontmatter.seriesOrder;
     const updatedAt = metadata.updatedAt || frontmatter.updatedAt || "";
     const statusValue = metadata.status ?? frontmatter.status;
     const rawTags = metadata.tags ?? frontmatter.tags;
     const tags = normalizeTags(rawTags);
-    const featuredRaw = metadata.featured ?? frontmatter.featured;
     const readingTimeMinutes = metadata.readingTimeMinutes;
 
     if (typeof title !== "string" || !title.trim()) {
@@ -101,19 +103,46 @@ async function main() {
       errors.push(`${key} has an invalid series value`);
     }
 
+    if (series && typeof series === "string" && !isKnownSeries(series)) {
+      errors.push(
+        `${key} has undefined series: ${series}. ` +
+          `Choose from: ${SERIES.map(item => item.slug).join(", ")}`
+      );
+    }
+
+    const normalizedSeriesOrder = normalizePositiveInteger(seriesOrder);
+    if (series && normalizedSeriesOrder === 0) {
+      errors.push(
+        `${key} seriesOrder must be a positive integer when series is set`
+      );
+    }
+
+    if (!series && seriesOrder != null && seriesOrder !== "") {
+      errors.push(`${key} seriesOrder requires a series`);
+    }
+
+    if (
+      series &&
+      normalizedSeriesOrder > 0 &&
+      normalizeStatus(statusValue) !== "archived"
+    ) {
+      const seriesPosition = `${series}:${normalizedSeriesOrder}`;
+      const existing = seriesPositions.get(seriesPosition);
+      if (existing) {
+        errors.push(
+          `${key} duplicates series position ${normalizedSeriesOrder} in ${series}; already used by ${existing}`
+        );
+      } else {
+        seriesPositions.set(seriesPosition, key);
+      }
+    }
+
     if (
       updatedAt &&
       (typeof updatedAt !== "string" ||
         Number.isNaN(new Date(updatedAt).getTime()))
     ) {
       errors.push(`${key} has an invalid updatedAt value`);
-    }
-
-    if (
-      featuredRaw != null &&
-      !["boolean", "string"].includes(typeof featuredRaw)
-    ) {
-      errors.push(`${key} has an invalid featured value`);
     }
 
     const hasNonEmptyRawTags =

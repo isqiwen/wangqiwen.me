@@ -71,8 +71,11 @@ test("serves a published article", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
   const body = await response.text();
+  const renderedBody = stripReactTextMarkers(body);
   assert.match(body, /href="\/topics\//);
   assert.match(body, /Related writing/);
+  assert.match(renderedBody, /Reliable Web Delivery · Part 3 of 3/);
+  assert.match(body, /aria-label="Series navigation"/);
   assert.doesNotMatch(body, /data-view-count/);
   assert.match(
     body,
@@ -128,6 +131,32 @@ test("serves a topic page", async () => {
   assert.match(body, /aria-label="Sort by date"/);
   assert.match(body, /aria-label="Sort by views"/);
   assert.match(body, /aria-label="Showing \{start\}-\{end\} of \{total\}"/);
+});
+
+test("serves the series index", async () => {
+  const response = await fetch(`${baseUrl}/series`);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+  const body = await response.text();
+  const renderedBody = stripReactTextMarkers(body);
+  assert.match(renderedBody, /Reliable Web Delivery/);
+  assert.match(renderedBody, /3 articles/);
+  assert.match(body, /href="\/series\/reliable-web-delivery"/);
+});
+
+test("serves a series in explicit reading order", async () => {
+  const response = await fetch(`${baseUrl}/series/reliable-web-delivery`);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+  const body = await response.text();
+  const first = body.indexOf("Reliability Is a Product Requirement");
+  const second = body.indexOf("Measure the User Journey, Not Just the Server");
+  const third = body.indexOf("Release With Evidence, Not Optimism");
+
+  assert.ok(first >= 0 && first < second && second < third);
+  assert.match(body, /aria-label="Reliable Web Delivery articles"/);
 });
 
 test("serves the Atom feed", async () => {
@@ -223,4 +252,8 @@ async function waitForServer(): Promise<void> {
 
 function delay(duration: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, duration));
+}
+
+function stripReactTextMarkers(value: string): string {
+  return value.replace(/<!--[\s\S]*?-->/g, "");
 }

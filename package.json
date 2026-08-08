@@ -33,6 +33,7 @@
     "word-wrap": "^1.2.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/comma-number": "^2.1.0",
     "@types/node": "20.19.43",
     "@types/react": "19.1.17",
@@ -69,6 +70,7 @@
     "lint": "next lint",
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "tsx --test tests/smoke/*.test.ts",
+    "test:e2e": "NEXT_DIST_DIR=.next-e2e playwright test",
     "check:external-links": "tsx scripts/content/check-external-links.ts",
     "check": "pnpm sync:posts -- --check && pnpm lint:posts && pnpm lint && tsc --noEmit",
     "deploy:vps": "bash scripts/vps/deploy.sh",

@@ -4,6 +4,7 @@ import path from "path";
 import { resolvePathInside } from "@/utils/server/path-safety";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 import { getUnknownTopics, TOPIC_DEFINITIONS } from "@/utils/topics";
+import { isKnownSeries, SERIES_DEFINITIONS } from "@/utils/series";
 
 export const POSTS_ROOT = path.join(process.cwd(), "app", "(post)");
 export const POSTS_MANIFEST_PATH = path.join(
@@ -39,6 +40,8 @@ type PostMetadata = {
   updatedAt?: unknown;
   status?: unknown;
   tags?: unknown;
+  series?: unknown;
+  seriesOrder?: unknown;
 };
 
 const globalForPostMutations = globalThis as typeof globalThis & {
@@ -150,6 +153,30 @@ export function validatePostContent(
     );
   }
 
+  if (metadata.series != null && typeof metadata.series !== "string") {
+    throw new PostFileValidationError("series must be a string");
+  }
+
+  const series = normalizeOptionalString(metadata.series);
+  const seriesOrder = normalizePositiveInteger(metadata.seriesOrder);
+  if (series) {
+    if (!isKnownSeries(series)) {
+      throw new PostFileValidationError(
+        `unknown series: ${series}. Choose from: ${SERIES_DEFINITIONS.map(
+          definition => definition.slug
+        ).join(", ")}`
+      );
+    }
+
+    if (seriesOrder === 0) {
+      throw new PostFileValidationError(
+        "seriesOrder must be a positive integer when series is set"
+      );
+    }
+  } else if (metadata.seriesOrder != null && metadata.seriesOrder !== "") {
+    throw new PostFileValidationError("seriesOrder requires a series");
+  }
+
   return content;
 }
 
@@ -218,4 +245,15 @@ function normalizeTags(value: unknown): string[] {
         .filter(Boolean)
     )
   );
+}
+
+function normalizeOptionalString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePositiveInteger(value: unknown): number {
+  const number = typeof value === "string" ? Number(value) : value;
+  return typeof number === "number" && Number.isInteger(number) && number > 0
+    ? number
+    : 0;
 }

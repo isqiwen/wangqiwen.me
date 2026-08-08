@@ -41,6 +41,10 @@ const siteConfig = {
   navigation: {
     headerLinks: [
       {
+        href: "/series",
+        label: "Series",
+      },
+      {
         href: "/topics",
         label: "Topics",
       },
@@ -74,7 +78,8 @@ const siteConfig = {
   },
   about: {
     title: "About",
-    description: "Who I am, what I focus on, and what this site is designed to hold over time.",
+    description:
+      "Who I am, what I focus on, and what this site is designed to hold over time.",
     intro: [
       "I work across software engineering, product implementation, and writing, with a long-term interest in the craft of the web.",
       "This site is both a public blog and a durable working notebook. It is where I turn experiments, implementation details, and product lessons into something worth keeping.",
@@ -105,7 +110,8 @@ const siteConfig = {
         ],
       },
     ],
-    contact: "If you'd like to talk about projects, writing, or implementation details, the easiest way to reach me is through X or GitHub.",
+    contact:
+      "If you'd like to talk about projects, writing, or implementation details, the easiest way to reach me is through X or GitHub.",
   },
   opengraph: {
     profileHighlights: [

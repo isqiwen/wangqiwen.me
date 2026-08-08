@@ -89,20 +89,21 @@ export function getRelatedPosts<T extends TopicPost>(
   );
 
   return posts
-    .filter(post => post.id !== currentPost.id)
+    .filter(
+      post =>
+        post.id !== currentPost.id &&
+        (!currentPost.series || post.series !== currentPost.series)
+    )
     .map(post => {
       const sharedTags = getUniqueTopics(post.tags).flatMap(topic => {
         const currentTag = currentTags.get(topic.slug);
         return currentTag ? [currentTag] : [];
       });
-      const sharesSeries = Boolean(
-        currentPost.series && post.series && currentPost.series === post.series
-      );
 
       return {
         post,
         sharedTags,
-        score: sharedTags.length * 10 + (sharesSeries ? 6 : 0),
+        score: sharedTags.length * 10,
       };
     })
     .filter(item => item.score > 0)

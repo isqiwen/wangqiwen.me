@@ -1,0 +1,60 @@
+export const metadata = {
+  "title": "Measure the User Journey, Not Just the Server",
+  "description": "Build a small measurement system around the user journeys that define reliability, from the browser through the public route.",
+  "publishedAt": "2026-08-03",
+  "id": "measure-the-user-journey",
+  "status": "published",
+  "tags": [
+    "Frontend",
+    "Web Performance"
+  ],
+  "readingTimeMinutes": 3,
+  "summary": "A service can be healthy while a reader is still unable to complete the task that brought them to the site.",
+  "series": "reliable-web-delivery",
+  "seriesOrder": 2
+};
+
+The first article defined reliability as a set of user promises. The next question is how to know whether those promises are still true after a release, a cache miss, or an upstream outage.
+
+The tempting answer is to add more dashboards. The useful answer is to collect the smallest evidence set that can distinguish a healthy journey from a merely healthy server.
+
+## Measure at the boundary a user crosses
+
+Every important journey has a boundary where the product becomes real to a person. For a published article, that boundary is not the completion of a build job. It is a public request that returns the expected HTML, metadata, and readable content at the canonical URL.
+
+An effective measurement therefore starts outside the application process when possible. A scheduled request to a health endpoint answers whether the service is reachable. A browser-level smoke test answers whether a public route still renders. Search-console reports answer whether a crawler can discover the URLs that matter. Each signal covers a different failure mode.
+
+No one of them is sufficient. The health endpoint may be green while a bad manifest removes every article route. The article route may render while its sharing image endpoint is broken. A crawler may discover a page but reject it because it is blocked by an accidental directive.
+
+## Prefer one signal per decision
+
+The goal is not comprehensive telemetry. The goal is an operator who can decide what to do.
+
+For a small content site, a practical baseline looks like this:
+
+- A health check verifies required production configuration and reachability.
+- A release smoke test requests the home page, one article, the feed, and the health endpoint.
+- Content validation checks metadata, headings, images, and internal links before the artifact is built.
+- An external monitor requests the public health endpoint on a schedule and opens an incident only when the response is actually unhealthy.
+
+Each line has an owner and a response. If a link report finds a private tweet, the response is editorial: remove or replace the embed. If the health check is down, the response is operational: inspect the deployment and runtime configuration. Combining those signals into one red light would make both harder to act on.
+
+## Record latency where it changes a decision
+
+Latency is meaningful when it changes the experience or the deployment decision. Measure the slowest reasonable public request, not only an average. Track build duration if long builds make safe releases less likely. Track the time from deployment to a successful smoke test if that is your recovery loop.
+
+Avoid pretending that all milliseconds are equal. A slow optional image can be deferred; a slow navigation response may prevent the entire task. The measurement should preserve that distinction.
+
+## Test the failure path deliberately
+
+The most valuable measurements are often exercised by controlled failures. Disable a nonessential integration locally. Use an empty credentials configuration in a smoke environment. Publish a draft and verify that its public URL remains a `404`. These checks show whether the system fails in the way the product contract promised.
+
+They also make deployment failures less mysterious. When the test says that a route is absent, the problem is already narrowed to content generation, route registration, or publication state. That is far more useful than a vague report that “the site is up.”
+
+## Keep the evidence close to change
+
+Measurement should run where the relevant change happens. Content checks run before content enters a release. Smoke tests run against the artifact that will serve readers. External monitoring runs after deployment because it is the only signal that observes the actual public boundary.
+
+That separation creates a quiet but important property: a successful deployment is backed by evidence from multiple layers without forcing every external service to become a release blocker.
+
+In the final article, we use those signals to make releases reversible, inspectable, and calm under pressure.

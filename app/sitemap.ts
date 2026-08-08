@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPosts } from "@/app/get-posts";
 import { getSiteUrl } from "@/utils/site-config";
 import { getTopics } from "@/utils/topics";
+import { getSeries } from "@/utils/series";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getPosts({ includeViews: false });
@@ -22,8 +23,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    {
+      url: getSiteUrl("/series"),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
     ...getTopics(posts).map(topic => ({
       url: getSiteUrl(`/topics/${topic.slug}`),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+    ...getSeries(posts).map(series => ({
+      url: getSiteUrl(`/series/${series.slug}`),
       changeFrequency: "monthly" as const,
       priority: 0.6,
     })),

@@ -53,20 +53,19 @@ function buildNormalizedMetadata(data, defaults) {
     normalizeOptionalString(data.metadata.series) ||
     normalizeOptionalString(data.frontmatter.series) ||
     "";
-  const updatedAt = normalizeDateString(data.metadata.updatedAt || data.frontmatter.updatedAt);
+  const seriesOrder =
+    normalizePositiveInteger(data.metadata.seriesOrder) ||
+    normalizePositiveInteger(data.frontmatter.seriesOrder) ||
+    0;
+  const updatedAt = normalizeDateString(
+    data.metadata.updatedAt || data.frontmatter.updatedAt
+  );
   const tags = normalizeTags(data.metadata.tags ?? data.frontmatter.tags);
-  const cover =
-    normalizeOptionalString(data.metadata.cover) ||
-    normalizeOptionalString(data.metadata.coverImage) ||
-    normalizeOptionalString(data.frontmatter.cover) ||
-    normalizeOptionalString(data.frontmatter.coverImage) ||
-    null;
   const status = normalizeStatus(
     data.metadata.status ?? data.frontmatter.status,
     data.metadata.draft ?? data.frontmatter.draft,
-    data.metadata.archived ?? data.frontmatter.archived,
+    data.metadata.archived ?? data.frontmatter.archived
   );
-  const featured = normalizeBoolean(data.metadata.featured ?? data.frontmatter.featured);
   const readingTimeMinutes =
     normalizePositiveInteger(data.metadata.readingTimeMinutes) ||
     estimateReadingTimeMinutes(getBodySource(data.source));
@@ -87,18 +86,11 @@ function buildNormalizedMetadata(data, defaults) {
 
   if (series) {
     metadata.series = series;
+    metadata.seriesOrder = seriesOrder;
   }
 
   if (updatedAt) {
     metadata.updatedAt = updatedAt;
-  }
-
-  if (featured) {
-    metadata.featured = true;
-  }
-
-  if (cover) {
-    metadata.cover = cover;
   }
 
   return metadata;
@@ -124,7 +116,11 @@ function replaceMetadataBlock(source, metadataObject) {
     break;
   }
 
-  const newBlock = `export const metadata = ${JSON.stringify(metadataObject, null, 2)};\n\n`;
+  const newBlock = `export const metadata = ${JSON.stringify(
+    metadataObject,
+    null,
+    2
+  )};\n\n`;
   return source.slice(0, index) + newBlock + source.slice(end);
 }
 
@@ -276,7 +272,11 @@ function normalizeBoolean(value) {
 function normalizeStatus(value, legacyDraft, legacyArchived) {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+    if (
+      normalized === "draft" ||
+      normalized === "published" ||
+      normalized === "archived"
+    ) {
       return normalized;
     }
   }
@@ -296,8 +296,8 @@ function normalizeTags(value) {
   const source = Array.isArray(value)
     ? value
     : typeof value === "string"
-      ? value.split(",")
-      : [];
+    ? value.split(",")
+    : [];
 
   return Array.from(
     new Set(
@@ -327,7 +327,7 @@ function getBodySource(source) {
   let output = source.replace(/^---\n[\s\S]*?\n---\s*/u, "");
   output = output.replace(
     /export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u,
-    "",
+    ""
   );
   return output;
 }

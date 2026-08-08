@@ -71,7 +71,7 @@ test("uses the predefined topic catalog", () => {
   assert.deepEqual(getUnknownTopics(["Frontend", "Web", "Web"]), ["Web"]);
 });
 
-test("filters posts by topic and ranks shared tags before recency", () => {
+test("filters posts by topic and recommends only related writing outside a series", () => {
   assert.deepEqual(
     getPostsForTopic(posts, "web-performance").map(post => post.id),
     ["first", "third"]
@@ -81,9 +81,7 @@ test("filters posts by topic and ranks shared tags before recency", () => {
       id: item.post.id,
       sharedTags: item.sharedTags,
     })),
-    [
-      { id: "second", sharedTags: ["Frontend"] },
-      { id: "third", sharedTags: ["Web Performance"] },
-    ]
+    [{ id: "third", sharedTags: ["Web Performance"] }]
   );
+  assert.deepEqual(getRelatedPosts(posts[1], posts), []);
 });

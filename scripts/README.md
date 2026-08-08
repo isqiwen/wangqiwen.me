@@ -22,13 +22,13 @@ VPS deployment internals:
 
 Content maintenance:
 
-| Script                   | Run directly?                          | Purpose                                                    |
-| ------------------------ | -------------------------------------- | ---------------------------------------------------------- |
-| `content/new-post.cjs`   | Prefer `pnpm new:post`                 | Create a draft post and sync metadata.                     |
-| `content/sync-posts.cjs` | Prefer `pnpm sync:posts`               | Normalize post metadata and rebuild `posts/manifest.json`. |
-| `content/lint-posts.cjs` | Prefer `pnpm lint:posts`               | Validate post metadata.                                    |
-| `content/backup.cjs`     | Prefer `pnpm backup:content`           | Back up posts, images, manifest, site config, and links.   |
-| `content/reset.cjs`      | Prefer `pnpm reset:content -- --force` | Reset content after taking a backup.                       |
+| Script                   | Run directly?                          | Purpose                                                             |
+| ------------------------ | -------------------------------------- | ------------------------------------------------------------------- |
+| `content/new-post.cjs`   | Prefer `pnpm new:post`                 | Create a draft post and sync metadata.                              |
+| `content/sync-posts.cjs` | Prefer `pnpm sync:posts`               | Normalize post metadata and rebuild `posts/manifest.json`.          |
+| `content/lint-posts.cjs` | Prefer `pnpm lint:posts`               | Validate post metadata.                                             |
+| `content/backup.cjs`     | Prefer `pnpm backup:content`           | Back up posts, images, manifest, content catalogs, and site config. |
+| `content/reset.cjs`      | Prefer `pnpm reset:content -- --force` | Reset content after taking a backup.                                |
 
 Day-to-day deployment should use only:
 

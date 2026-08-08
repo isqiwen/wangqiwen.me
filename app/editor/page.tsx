@@ -22,6 +22,7 @@ import {
   stripExportedMetadata,
 } from "@/utils/shared/post-metadata";
 import { TOPIC_DEFINITIONS } from "@/utils/topics";
+import { SERIES_DEFINITIONS, isKnownSeries } from "@/utils/series";
 
 type EditorFileOption = {
   path: string;
@@ -60,13 +61,12 @@ type EditorDocumentState = {
   description: string;
   summary: string;
   series: string;
+  seriesOrder: string;
   publishedAt: string;
   updatedAt: string;
   id: string;
   status: EditorStatus;
-  featured: boolean;
   tagsInput: string;
-  cover: string;
   body: string;
 };
 
@@ -121,19 +121,38 @@ function validateEditorContent(title: string, description: string) {
   return null;
 }
 
+function validateEditorSeries(series: string, seriesOrder: string) {
+  const normalizedSeries = series.trim();
+  const normalizedOrder = seriesOrder.trim();
+
+  if (!normalizedSeries) {
+    return normalizedOrder ? "A series position requires a series." : null;
+  }
+
+  if (!isKnownSeries(normalizedSeries)) {
+    return "Choose a series from the catalog before saving.";
+  }
+
+  const position = Number(normalizedOrder);
+  if (!Number.isInteger(position) || position < 1) {
+    return "Series position must be a positive whole number.";
+  }
+
+  return null;
+}
+
 function createEmptyEditorDocument(): EditorDocumentState {
   return {
     title: "",
     description: "",
     summary: "",
     series: "",
+    seriesOrder: "",
     publishedAt: today(),
     updatedAt: "",
     id: "my-post",
     status: "draft",
-    featured: false,
     tagsInput: "",
-    cover: "",
     body: "Start writing here.\n",
   };
 }
@@ -183,15 +202,14 @@ function parseMetadataObject(content: string) {
       description: string;
       summary: string;
       series: string;
+      seriesOrder: number;
       publishedAt: string;
       updatedAt: string;
       id: string;
       status: EditorStatus;
       draft: boolean;
       archived: boolean;
-      featured: boolean;
       tags: string[] | string;
-      cover: string;
     }>
   >(content);
 }
@@ -250,6 +268,10 @@ function parseEditorDocument(
     description: metadata?.description || "",
     summary: metadata?.summary || "",
     series: metadata?.series || "",
+    seriesOrder:
+      typeof metadata?.seriesOrder === "number"
+        ? String(metadata.seriesOrder)
+        : "",
     publishedAt: metadata?.publishedAt || today(),
     updatedAt: metadata?.updatedAt || "",
     id: metadata?.id || slugFallback,
@@ -258,13 +280,11 @@ function parseEditorDocument(
       metadata?.draft,
       metadata?.archived
     ),
-    featured: normalizeBoolean(metadata?.featured),
     tagsInput: Array.isArray(metadataTags)
       ? metadataTags.join(", ")
       : typeof metadataTags === "string"
       ? metadataTags
       : "",
-    cover: typeof metadata?.cover === "string" ? metadata.cover : "",
     body,
   };
 }
@@ -291,7 +311,6 @@ function parseLocalAutosave(
       typeof parsed.publishedAt !== "string" ||
       typeof parsed.id !== "string" ||
       typeof parsed.tagsInput !== "string" ||
-      typeof parsed.cover !== "string" ||
       typeof parsed.body !== "string" ||
       typeof parsed.targetPath !== "string" ||
       typeof parsed.savedAt !== "number"
@@ -308,13 +327,13 @@ function parseLocalAutosave(
       description: parsed.description,
       summary: typeof parsed.summary === "string" ? parsed.summary : "",
       series: typeof parsed.series === "string" ? parsed.series : "",
+      seriesOrder:
+        typeof parsed.seriesOrder === "string" ? parsed.seriesOrder : "",
       publishedAt: parsed.publishedAt,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : "",
       id: parsed.id,
       status: normalizeStatus(parsed.status, parsed.isDraft, parsed.isArchived),
-      featured: Boolean(parsed.featured),
       tagsInput: parsed.tagsInput,
-      cover: parsed.cover,
       body: parsed.body,
       savedAt: parsed.savedAt,
     };
@@ -332,13 +351,12 @@ function EditorWorkspace() {
   const [description, setDescription] = useState("");
   const [summary, setSummary] = useState("");
   const [series, setSeries] = useState("");
+  const [seriesOrder, setSeriesOrder] = useState("");
   const [publishedAt, setPublishedAt] = useState(today());
   const [updatedAt, setUpdatedAt] = useState("");
   const [id, setId] = useState("my-post");
   const [status, setStatus] = useState<EditorStatus>("draft");
-  const [featured, setFeatured] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
-  const [cover, setCover] = useState("");
   const [body, setBody] = useState("Start writing here.\n");
   const [fileOptions, setFileOptions] = useState<EditorFileOption[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -377,13 +395,12 @@ function EditorWorkspace() {
         description,
         summary,
         series,
+        seriesOrder,
         publishedAt,
         updatedAt,
         id,
         status,
-        featured,
         tagsInput,
-        cover,
         body,
       }),
     [
@@ -392,13 +409,12 @@ function EditorWorkspace() {
       description,
       summary,
       series,
+      seriesOrder,
       publishedAt,
       updatedAt,
       id,
       status,
-      featured,
       tagsInput,
-      cover,
       body,
     ]
   );
@@ -497,13 +513,12 @@ function EditorWorkspace() {
       description,
       summary,
       series,
+      seriesOrder,
       publishedAt,
       updatedAt,
       id,
       status,
-      featured,
       tagsInput,
-      cover,
       body,
     });
   }, [
@@ -511,13 +526,12 @@ function EditorWorkspace() {
     description,
     summary,
     series,
+    seriesOrder,
     publishedAt,
     updatedAt,
     id,
     status,
-    featured,
     tagsInput,
-    cover,
     body,
   ]);
 
@@ -535,13 +549,12 @@ function EditorWorkspace() {
       setDescription(nextState.description);
       setSummary(nextState.summary);
       setSeries(nextState.series);
+      setSeriesOrder(nextState.seriesOrder);
       setPublishedAt(nextState.publishedAt);
       setUpdatedAt(nextState.updatedAt);
       setId(nextState.id);
       setStatus(nextState.status);
-      setFeatured(nextState.featured);
       setTagsInput(nextState.tagsInput);
-      setCover(nextState.cover);
       setBody(nextState.body);
       setCursorPos(nextState.body.length);
       setActivePath(nextActivePath);
@@ -589,13 +602,12 @@ function EditorWorkspace() {
           description: autosave.description,
           summary: autosave.summary,
           series: autosave.series,
+          seriesOrder: autosave.seriesOrder,
           publishedAt: autosave.publishedAt,
           updatedAt: autosave.updatedAt,
           id: autosave.id,
           status: autosave.status,
-          featured: autosave.featured,
           tagsInput: autosave.tagsInput,
-          cover: autosave.cover,
           body: autosave.body,
         },
         {
@@ -797,19 +809,24 @@ function EditorWorkspace() {
         return false;
       }
 
+      const seriesError = validateEditorSeries(series, seriesOrder);
+      if (seriesError) {
+        showFeedback(seriesError, "error");
+        return false;
+      }
+
       const nextStatus = options.statusOverride ?? status;
       const content = buildMdxContent({
         title,
         description,
         summary,
         series,
+        seriesOrder,
         publishedAt,
         updatedAt,
         id,
         status: nextStatus,
-        featured,
         tagsInput,
-        cover,
         body,
       });
 
@@ -838,13 +855,12 @@ function EditorWorkspace() {
           description,
           summary,
           series,
+          seriesOrder,
           publishedAt,
           updatedAt,
           id,
           status: nextStatus,
-          featured,
           tagsInput,
-          cover,
           body,
         },
         {
@@ -878,7 +894,7 @@ function EditorWorkspace() {
   async function publishPost() {
     const confirmed = await requestConfirmation({
       title: "Publish Post",
-      description: `Publish "${title}" and make it public at ${previewHref}?`,
+      description: `Mark "${title}" as published for the next deployment? It remains local until you commit and deploy.`,
       confirmLabel: "Publish",
     });
 
@@ -904,7 +920,10 @@ function EditorWorkspace() {
         );
       }
 
-      showFeedback(`Published and synchronized ${targetPath}`, "success");
+      showFeedback(
+        `Marked as published for the next deployment: ${targetPath}`,
+        "success"
+      );
     } catch (error) {
       showFeedback(
         error instanceof Error
@@ -937,6 +956,36 @@ function EditorWorkspace() {
       statusOverride: "archived",
       successHint: `Archived: ${targetPath}`,
     });
+  }
+
+  async function startNewDraft() {
+    if (isDirty) {
+      const confirmed = await requestConfirmation({
+        title: "Discard unsaved changes?",
+        description:
+          "Start a new draft? Unsaved changes to the current document will be discarded.",
+        confirmLabel: "Discard and start new",
+        tone: "danger",
+      });
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(LOCAL_AUTOSAVE_KEY);
+    }
+    pendingAutosaveRef.current = null;
+    setLocalAutosaveAt(null);
+
+    applyWorkspaceState(createEmptyEditorDocument(), {
+      activePath: null,
+      markPersisted: true,
+    });
+    setSelectedPath("");
+    setShowPicker(false);
+    showFeedback("Started a new draft.", "success");
   }
 
   async function deleteCurrentPost() {
@@ -1298,19 +1347,6 @@ function EditorWorkspace() {
     showFeedback(`Inserted asset: ${asset.path}`, "success");
   }
 
-  function applyAssetAsCover(asset: EditorAsset) {
-    if (isReadOnly) {
-      showFeedback(
-        "Archived posts are read-only. Restore to draft before editing.",
-        "error"
-      );
-      return;
-    }
-
-    setCover(asset.path);
-    showFeedback(`Set cover image: ${asset.path}`, "success");
-  }
-
   async function deleteAsset(asset: EditorAsset) {
     if (isReadOnly) {
       showFeedback(
@@ -1321,12 +1357,11 @@ function EditorWorkspace() {
     }
 
     const references = removeAssetReferencesFromBody(body, asset.path);
-    const coverWillBeCleared = cover === asset.path;
     const confirmed = await requestConfirmation({
       title: "Delete Asset",
       description:
-        references.removed > 0 || coverWillBeCleared
-          ? `Delete asset "${asset.name}"? The current editor will also remove matching body or cover references. Save the post afterward to persist those content changes.`
+        references.removed > 0
+          ? `Delete asset "${asset.name}"? The current editor will also remove matching body references. Save the post afterward to persist those content changes.`
           : `Delete asset "${asset.name}"? This only removes the file from /public/images.`,
       confirmLabel: "Delete",
       tone: "danger",
@@ -1359,11 +1394,8 @@ function EditorWorkspace() {
         setBody(references.body);
         setCursorPos(current => Math.min(current, references.body.length));
       }
-      if (coverWillBeCleared) {
-        setCover("");
-      }
       showFeedback(
-        references.removed > 0 || coverWillBeCleared
+        references.removed > 0
           ? `Deleted asset and removed current editor references. Save the post to persist the content change.`
           : `Deleted asset: ${asset.path}`,
         "success"
@@ -1380,6 +1412,7 @@ function EditorWorkspace() {
 
   return (
     <main
+      aria-busy={!initialLoadComplete}
       className="flex w-screen max-w-none flex-col gap-6 px-4 py-8 lg:px-6"
       style={{ marginLeft: "calc(50% - 50vw)" }}
     >
@@ -1387,9 +1420,8 @@ function EditorWorkspace() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">MDX Editor</h1>
           <p className="text-sm text-slate-500">
-            Fill in metadata and body content, then save directly to disk.
-            Publishing first switches the post out of draft mode and then
-            synchronizes the post index.
+            Save changes locally. Publishing marks an article for the next
+            deployment; it does not deploy to the VPS.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1457,6 +1489,12 @@ function EditorWorkspace() {
             </button>
           ) : null}
           <button
+            onClick={() => void startNewDraft()}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            New Draft
+          </button>
+          <button
             onClick={() => setShowPicker(true)}
             className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
           >
@@ -1473,8 +1511,9 @@ function EditorWorkspace() {
           </div>
         ) : null}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <Field label="Title">
+          <Field label="Title" htmlFor="editor-title">
             <input
+              id="editor-title"
               value={title}
               onChange={event => setTitle(event.target.value)}
               placeholder="A clear article title"
@@ -1482,8 +1521,9 @@ function EditorWorkspace() {
               disabled={isReadOnly}
             />
           </Field>
-          <Field label="ID">
+          <Field label="ID" htmlFor="editor-id">
             <input
+              id="editor-id"
               value={id}
               onChange={event => setId(event.target.value)}
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
@@ -1505,15 +1545,19 @@ function EditorWorkspace() {
               </span>
               <span className="ml-3 text-xs text-slate-500">
                 {currentStatus === "draft"
-                  ? "Use Publish to make this article public."
+                  ? "Use Publish to include this article in the next deployment."
                   : currentStatus === "archived"
                   ? "Archived posts are read-only until you restore them."
                   : "Use Move To Draft for private editing or Archive to freeze and hide this article."}
               </span>
             </div>
           </Field>
-          <Field label="Published At (YYYY-MM-DD)">
+          <Field
+            label="Published At (YYYY-MM-DD)"
+            htmlFor="editor-published-at"
+          >
             <input
+              id="editor-published-at"
               type="date"
               value={publishedAt}
               onChange={event => setPublishedAt(event.target.value)}
@@ -1521,35 +1565,63 @@ function EditorWorkspace() {
               disabled={isReadOnly}
             />
           </Field>
-          <Field label="Updated At (YYYY-MM-DD)">
+          <Field label="Updated At (optional)" htmlFor="editor-updated-at">
             <input
+              id="editor-updated-at"
               type="date"
               value={updatedAt}
               onChange={event => setUpdatedAt(event.target.value)}
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
               disabled={isReadOnly}
             />
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Set this only after a substantive published update. Leave it blank
+              for drafts, first publication, and minor edits.
+            </p>
           </Field>
-          <Field label="Series">
-            <input
+          <Field label="Series" htmlFor="editor-series">
+            <select
+              id="editor-series"
               value={series}
-              onChange={event => setSeries(event.target.value)}
+              onChange={event => {
+                setSeries(event.target.value);
+                if (!event.target.value) {
+                  setSeriesOrder("");
+                }
+              }}
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-              placeholder="Editor Workflow"
               disabled={isReadOnly}
-            />
+            >
+              <option value="">Not part of a series</option>
+              {SERIES_DEFINITIONS.map(definition => (
+                <option key={definition.slug} value={definition.slug}>
+                  {definition.title}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Series are defined in <code>content/series.json</code>.
+            </p>
           </Field>
-          <Field label="Featured">
-            <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          {series ? (
+            <Field label="Series Position" htmlFor="editor-series-position">
               <input
-                type="checkbox"
-                checked={featured}
-                onChange={event => setFeatured(event.target.checked)}
+                id="editor-series-position"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={seriesOrder}
+                onChange={event => setSeriesOrder(event.target.value)}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+                placeholder="1"
                 disabled={isReadOnly}
               />
-              Feature this post on landing surfaces.
-            </label>
-          </Field>
+              <p className="mt-1 text-xs text-slate-500">
+                Reading order within this series. Each position must be unique.
+              </p>
+            </Field>
+          ) : null}
           <Field label="Topics">
             <div
               className="grid gap-2 sm:grid-cols-2"
@@ -1584,30 +1656,31 @@ function EditorWorkspace() {
               <code className="ml-1">content/topics.json</code> before using it.
             </p>
           </Field>
-          <Field label="Cover">
+          <Field
+            label="Search & sharing description"
+            htmlFor="editor-description"
+            spanFull
+          >
             <input
-              value={cover}
-              onChange={event => setCover(event.target.value)}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-              placeholder="/images/post/cover.jpg"
-              disabled={isReadOnly}
-            />
-          </Field>
-          <Field label="Description" spanFull>
-            <input
+              id="editor-description"
               value={description}
               onChange={event => setDescription(event.target.value)}
-              placeholder="One-sentence summary for readers and search engines"
+              placeholder="Required: concise text for search results and shared links"
               className="rounded-md border border-slate-200 px-3 py-2 text-sm"
               disabled={isReadOnly}
             />
           </Field>
-          <Field label="Summary" spanFull>
+          <Field
+            label="Reader summary (optional)"
+            htmlFor="editor-summary"
+            spanFull
+          >
             <textarea
+              id="editor-summary"
               value={summary}
               onChange={event => setSummary(event.target.value)}
               className="min-h-24 rounded-md border border-slate-200 px-3 py-2 text-sm"
-              placeholder="Short card summary for featured sections, search, and related posts."
+              placeholder="A reader-facing introduction for search, related posts, and series."
               disabled={isReadOnly}
             />
           </Field>
@@ -1617,7 +1690,6 @@ function EditorWorkspace() {
           <span>Target path: {targetPath}</span>
           <span>Estimated reading time: {readingTimeEstimate} min</span>
           <span>Current status: {currentStatus}</span>
-          <span>{featured ? "Featured post" : "Standard post"}</span>
           <span>
             {isDirty ? "Unsaved changes" : "All changes saved to disk"}
           </span>
@@ -1633,7 +1705,10 @@ function EditorWorkspace() {
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-600">
+            <label
+              htmlFor="editor-body"
+              className="text-xs font-semibold text-slate-600"
+            >
               Body (MDX)
             </label>
             {isUploading ? (
@@ -1715,9 +1790,6 @@ function EditorWorkspace() {
               <span>
                 {assets.length} asset{assets.length === 1 ? "" : "s"}
               </span>
-              <span>
-                {cover ? `Current cover: ${cover}` : "No cover selected"}
-              </span>
             </div>
 
             {assets.length === 0 ? (
@@ -1747,11 +1819,6 @@ function EditorWorkspace() {
                           <p className="truncate text-sm font-semibold text-slate-700">
                             {asset.name}
                           </p>
-                          {cover === asset.path ? (
-                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900">
-                              Cover
-                            </span>
-                          ) : null}
                         </div>
                         <p className="mt-1 truncate font-mono text-[11px] text-slate-500">
                           {asset.path}
@@ -1778,14 +1845,6 @@ function EditorWorkspace() {
                         className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-white/60 disabled:text-slate-400"
                       >
                         Insert
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyAssetAsCover(asset)}
-                        disabled={isReadOnly}
-                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-white/60 disabled:text-slate-400"
-                      >
-                        Set Cover
                       </button>
                       <button
                         type="button"
@@ -2020,26 +2079,24 @@ function buildMdxContent({
   description,
   summary,
   series,
+  seriesOrder,
   publishedAt,
   updatedAt,
   id,
   status,
-  featured,
   tagsInput,
-  cover,
   body,
 }: {
   title: string;
   description: string;
   summary: string;
   series: string;
+  seriesOrder: string;
   publishedAt: string;
   updatedAt: string;
   id: string;
   status: EditorStatus;
-  featured: boolean;
   tagsInput: string;
-  cover: string;
   body: string;
 }) {
   const metadata = buildMetadataObject({
@@ -2047,13 +2104,12 @@ function buildMdxContent({
     description,
     summary,
     series,
+    seriesOrder,
     publishedAt,
     updatedAt,
     id,
     status,
-    featured,
     tagsInput,
-    cover,
   });
 
   return `export const metadata = ${JSON.stringify(
@@ -2068,25 +2124,23 @@ function buildMetadataObject({
   description,
   summary,
   series,
+  seriesOrder,
   publishedAt,
   updatedAt,
   id,
   status,
-  featured,
   tagsInput,
-  cover,
 }: {
   title: string;
   description: string;
   summary: string;
   series: string;
+  seriesOrder: string;
   publishedAt: string;
   updatedAt: string;
   id: string;
   status: EditorStatus;
-  featured: boolean;
   tagsInput: string;
-  cover: string;
 }) {
   const tags = parseTagsInput(tagsInput);
 
@@ -2105,18 +2159,11 @@ function buildMetadataObject({
 
   if (series.trim()) {
     metadata.series = series.trim();
+    metadata.seriesOrder = Number(seriesOrder);
   }
 
   if (updatedAt.trim()) {
     metadata.updatedAt = updatedAt.trim();
-  }
-
-  if (featured) {
-    metadata.featured = true;
-  }
-
-  if (cover.trim()) {
-    metadata.cover = cover.trim();
   }
 
   return metadata;
@@ -2345,10 +2392,12 @@ function resolveApiError(payload: unknown, fallbackMessage: string) {
 
 function Field({
   label,
+  htmlFor,
   children,
   spanFull,
 }: {
   label: string;
+  htmlFor?: string;
   children: ReactNode;
   spanFull?: boolean;
 }) {
@@ -2358,7 +2407,12 @@ function Field({
         spanFull ? "md:col-span-2 lg:col-span-4" : ""
       }`}
     >
-      <label className="text-xs font-semibold text-slate-600">{label}</label>
+      <label
+        htmlFor={htmlFor}
+        className="text-xs font-semibold text-slate-600"
+      >
+        {label}
+      </label>
       {children}
     </div>
   );

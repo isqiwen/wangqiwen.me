@@ -2,13 +2,14 @@
 
 import { useSelectedLayoutSegments } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 import useSWR, { type KeyedMutator } from "swr";
 import type { Post } from "@/app/get-posts";
+import { PostDate } from "@/app/(post)/post-date";
 import { logger } from "@/utils/logger";
 import { uiCopy } from "@/utils/ui-copy";
 import { getPrimarySocialHandle, siteConfig } from "@/utils/site-config";
 import { getTopicSlug } from "@/utils/topics";
+import { getSeriesContext } from "@/utils/series";
 import Link from "next/link";
 
 const fetcher = async (url: string): Promise<Post> => {
@@ -42,8 +43,22 @@ export function Header({ posts }: { posts: Post[] }) {
     return null;
   }
 
+  const seriesContext = getSeriesContext(hydratedPost, posts);
+
   return (
     <>
+      {seriesContext ? (
+        <p className="mb-2 font-mono text-xs text-gray-500 dark:text-gray-400">
+          <Link
+            href={`/series/${seriesContext.definition.slug}`}
+            className="text-gray-700 underline-offset-4 hover:underline dark:text-gray-200"
+          >
+            {seriesContext.definition.title}
+          </Link>
+          <span aria-hidden="true"> · </span>
+          Part {seriesContext.position} of {seriesContext.posts.length}
+        </p>
+      ) : null}
       <h1 className="mb-1 text-2xl font-bold dark:text-gray-100">
         {hydratedPost.title}
       </h1>
@@ -155,17 +170,6 @@ function Views({
     <span className="pr-1.5" data-view-count="true">
       {views} {uiCopy.post.views}
     </span>
-  );
-}
-
-function PostDate({ post }: { post: { date: string; publishedAt: string } }) {
-  const dateValue = new Date(post.publishedAt);
-  const relative = formatDistanceToNow(dateValue, { addSuffix: true });
-
-  return (
-    <>
-      {post.date} ({relative})
-    </>
   );
 }
 

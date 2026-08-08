@@ -17,6 +17,7 @@ async function main() {
   const targets = [
     ["app/(post)", "app/(post)"],
     ["posts/manifest.json", "posts/manifest.json"],
+    ["content", "content"],
     ["public/images", "public/images"],
     ["site.config.js", "site.config.js"],
   ];
@@ -34,7 +35,7 @@ async function main() {
       "Site content backup created by pnpm backup:content.",
       "",
       `Created at: ${new Date().toISOString()}`,
-      "Includes posts, manifest, public images, and site config.",
+      "Includes posts, manifest, content catalogs, public images, and site config.",
     ].join("\n"),
     "utf8"
   );

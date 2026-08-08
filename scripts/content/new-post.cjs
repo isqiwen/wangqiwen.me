@@ -5,6 +5,7 @@ const { mkdir, writeFile, stat } = require("fs/promises");
 const { spawnSync } = require("child_process");
 const { normalizeTags } = require("./lib/posts");
 const { TOPICS, getUnknownTopics } = require("./lib/topics");
+const { SERIES, isKnownSeries } = require("./lib/series");
 
 const POSTS_ROOT = join(process.cwd(), "app", "(post)");
 
@@ -53,13 +54,11 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg.startsWith("--series=")) {
       options.series = arg.slice(9);
-    } else if (arg === "--cover" && argv[i + 1]) {
-      options.cover = argv[i + 1];
+    } else if (arg === "--series-order" && argv[i + 1]) {
+      options.seriesOrder = argv[i + 1];
       i += 1;
-    } else if (arg.startsWith("--cover=")) {
-      options.cover = arg.slice(8);
-    } else if (arg === "--featured") {
-      options.featured = true;
+    } else if (arg.startsWith("--series-order=")) {
+      options.seriesOrder = arg.slice(15);
     } else if (arg === "--published") {
       options.published = true;
     } else if (arg === "--help") {
@@ -107,9 +106,7 @@ Options:
   --date 2024-12-01
   --updated-at 2024-12-05
   --tags "Frontend,Web Performance"
-  --series "Editor Workflow"
-  --cover "/images/my-post/cover.jpg"
-  --featured
+  --series reliable-web-delivery --series-order 1
   --published
 
 By default, new posts are created as drafts.`);
@@ -166,15 +163,24 @@ By default, new posts are created as drafts.`);
   }
 
   if (args.series) {
-    metadata.series = args.series;
-  }
-
-  if (args.cover) {
-    metadata.cover = args.cover;
-  }
-
-  if (args.featured) {
-    metadata.featured = true;
+    const series = args.series.trim();
+    if (!isKnownSeries(series)) {
+      throw new Error(
+        `Unknown series: ${series}. Choose from: ${SERIES.map(
+          item => item.slug
+        ).join(", ")}`
+      );
+    }
+    const seriesOrder = Number(args.seriesOrder);
+    if (!Number.isInteger(seriesOrder) || seriesOrder < 1) {
+      throw new Error(
+        "Posts in a series require --series-order with a positive integer."
+      );
+    }
+    metadata.series = series;
+    metadata.seriesOrder = seriesOrder;
+  } else if (args.seriesOrder) {
+    throw new Error("--series-order requires --series.");
   }
 
   const targetPath = join(POSTS_ROOT, year, slug, "article.mdx");

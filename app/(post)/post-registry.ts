@@ -14,6 +14,9 @@ import Article010 from "./2020/next-for-vercel/article.mdx";
 import Article011 from "./2020/static-hoisting/article.mdx";
 import Article012 from "./2020/vercel/article.mdx";
 import Article013 from "./2021/making-the-web-faster/article.mdx";
+import Article014 from "./2026/measure-the-user-journey/article.mdx";
+import Article015 from "./2026/release-with-evidence/article.mdx";
+import Article016 from "./2026/reliability-is-a-product-requirement/article.mdx";
 
 type ArticleComponent = ComponentType;
 
@@ -31,6 +34,9 @@ const articleComponents: Record<string, ArticleComponent> = {
   "2020/static-hoisting": Article011,
   "2020/vercel": Article012,
   "2021/making-the-web-faster": Article013,
+  "2026/measure-the-user-journey": Article014,
+  "2026/release-with-evidence": Article015,
+  "2026/reliability-is-a-product-requirement": Article016,
 };
 
 export function getArticleComponent(year: string, slug: string) {

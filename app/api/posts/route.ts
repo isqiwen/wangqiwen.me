@@ -13,12 +13,11 @@ export async function GET() {
         description: post.description,
         summary: post.summary,
         series: post.series,
+        seriesOrder: post.seriesOrder,
         publishedAt: post.publishedAt,
         updatedAt: post.updatedAt,
         status: post.status ?? "published",
-        featured: post.featured ?? false,
         tags: post.tags ?? [],
-        cover: post.cover ?? null,
         readingTimeMinutes: post.readingTimeMinutes ?? 1,
         path: post.path,
       }))

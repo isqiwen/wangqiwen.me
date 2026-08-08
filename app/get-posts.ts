@@ -13,13 +13,12 @@ export type Post = {
   description: string;
   summary: string;
   series: string | null;
+  seriesOrder: number | null;
   date: string;
   publishedAt: string;
   updatedAt: string | null;
   status: PostStatus;
-  featured: boolean;
   tags: string[];
-  cover: string | null;
   readingTimeMinutes: number;
   views: number;
   viewsFormatted: string;
@@ -31,16 +30,14 @@ type Frontmatter = {
   summary?: string;
   excerpt?: string;
   series?: string;
+  seriesOrder?: number | string;
   publishedAt?: string;
   updatedAt?: string;
   id?: string;
   status?: PostStatus | string;
   draft?: boolean | string;
   archived?: boolean | string;
-  featured?: boolean | string;
   tags?: string[] | string;
-  cover?: string;
-  coverImage?: string;
   readingTimeMinutes?: number | string;
 };
 
@@ -50,15 +47,14 @@ type PostMetadata = {
   description: string;
   summary: string;
   series: string | null;
+  seriesOrder: number | null;
   date: string;
   publishedAt: string;
   updatedAt: string | null;
   publishedAtTimestamp: number;
   postId: string;
   status: PostStatus;
-  featured: boolean;
   tags: string[];
-  cover: string | null;
   readingTimeMinutes: number;
 };
 
@@ -69,14 +65,13 @@ type Manifest = {
     description?: string;
     summary?: string;
     series?: string | null;
+    seriesOrder?: number | null;
     publishedAt: string;
     updatedAt?: string | null;
     status?: PostStatus | string;
     draft?: boolean;
     archived?: boolean;
-    featured?: boolean;
     tags?: string[];
-    cover?: string | null;
     readingTimeMinutes?: number;
     path: string;
   }>;
@@ -138,15 +133,14 @@ export const getPostById = async (
           description: match.description ?? "",
           summary: match.summary ?? match.description ?? "",
           series: normalizeOptionalString(match.series) || null,
+          seriesOrder: normalizePositiveInteger(match.seriesOrder) || null,
           date: DATE_FORMATTER.format(new Date(match.publishedAt)),
           publishedAt: match.publishedAt,
           updatedAt: normalizeDateString(match.updatedAt) || null,
           publishedAtTimestamp: new Date(match.publishedAt).getTime(),
           postId: match.id,
           status,
-          featured: Boolean(match.featured),
           tags: normalizeTags(match.tags),
-          cover: normalizeOptionalString(match.cover) || null,
           readingTimeMinutes:
             normalizePositiveInteger(match.readingTimeMinutes) || 1,
         },
@@ -211,15 +205,14 @@ async function loadManifestMetadata(
         description: post.description ?? "",
         summary: post.summary ?? post.description ?? "",
         series: normalizeOptionalString(post.series) || null,
+        seriesOrder: normalizePositiveInteger(post.seriesOrder) || null,
         date: DATE_FORMATTER.format(new Date(post.publishedAt)),
         publishedAt: post.publishedAt,
         updatedAt: normalizeDateString(post.updatedAt) || null,
         publishedAtTimestamp: new Date(post.publishedAt).getTime(),
         postId: post.id,
         status: post.status,
-        featured: Boolean(post.featured),
         tags: normalizeTags(post.tags),
-        cover: normalizeOptionalString(post.cover) || null,
         readingTimeMinutes:
           normalizePositiveInteger(post.readingTimeMinutes) || 1,
       }));
@@ -274,6 +267,7 @@ async function loadPostsMetadata(
         description: metadata.description ?? "",
         summary: metadata.summary || metadata.description || "",
         series: normalizeOptionalString(metadata.series) || null,
+        seriesOrder: normalizePositiveInteger(metadata.seriesOrder) || null,
         date: DATE_FORMATTER.format(publishedAt),
         publishedAt: publishedAtRaw,
         updatedAt: normalizeDateString(metadata.updatedAt) || null,
@@ -284,11 +278,7 @@ async function loadPostsMetadata(
           metadata.draft,
           metadata.archived
         ),
-        featured: normalizeBoolean(metadata.featured),
         tags: normalizeTags(metadata.tags),
-        cover:
-          normalizeOptionalString(metadata.cover ?? metadata.coverImage) ||
-          null,
         readingTimeMinutes:
           normalizePositiveInteger(metadata.readingTimeMinutes) ||
           estimateReadingTimeMinutes(stripMetadataAndFrontmatter(file)),
@@ -320,13 +310,12 @@ function buildPost(metadata: PostMetadata, views: Views): Post {
     description: metadata.description,
     summary: metadata.summary || metadata.description,
     series: metadata.series,
+    seriesOrder: metadata.seriesOrder,
     date: metadata.date,
     publishedAt: metadata.publishedAt,
     updatedAt: metadata.updatedAt,
     status: metadata.status,
-    featured: metadata.featured,
     tags: metadata.tags,
-    cover: metadata.cover,
     readingTimeMinutes: metadata.readingTimeMinutes,
     views: viewValue,
     viewsFormatted: commaNumber(viewValue),
@@ -365,6 +354,7 @@ function parseFileMetadata(fileContents: string): Frontmatter {
       frontmatter.excerpt,
     summary: metadata.summary ?? frontmatter.summary,
     series: metadata.series ?? frontmatter.series,
+    seriesOrder: metadata.seriesOrder ?? frontmatter.seriesOrder,
     publishedAt: metadata.publishedAt ?? frontmatter.publishedAt,
     updatedAt: metadata.updatedAt ?? frontmatter.updatedAt,
     id: metadata.id ?? frontmatter.id,
@@ -378,10 +368,7 @@ function parseFileMetadata(fileContents: string): Frontmatter {
       ),
     draft: metadata.draft ?? frontmatter.draft,
     archived: metadata.archived ?? frontmatter.archived,
-    featured: metadata.featured ?? frontmatter.featured,
     tags: metadata.tags ?? frontmatter.tags,
-    cover: metadata.cover ?? frontmatter.cover,
-    coverImage: metadata.coverImage ?? frontmatter.coverImage,
     readingTimeMinutes:
       metadata.readingTimeMinutes ?? frontmatter.readingTimeMinutes,
   };

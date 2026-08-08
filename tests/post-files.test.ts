@@ -69,6 +69,39 @@ test("validates post metadata against its target file", () => {
     () => validatePostContent(validPost({ tags: ["Uncategorized"] }), target),
     /unknown topics: Uncategorized/
   );
+  assert.equal(
+    validatePostContent(
+      validPost({
+        series: "reliable-web-delivery",
+        seriesOrder: 1,
+      }),
+      target
+    ),
+    validPost({
+      series: "reliable-web-delivery",
+      seriesOrder: 1,
+    })
+  );
+  assert.throws(
+    () =>
+      validatePostContent(
+        validPost({ series: "unknown", seriesOrder: 1 }),
+        target
+      ),
+    /unknown series: unknown/
+  );
+  assert.throws(
+    () =>
+      validatePostContent(
+        validPost({ series: "reliable-web-delivery" }),
+        target
+      ),
+    /seriesOrder must be a positive integer/
+  );
+  assert.throws(
+    () => validatePostContent(validPost({ seriesOrder: 1 }), target),
+    /seriesOrder requires a series/
+  );
 });
 
 test("writes files atomically and serializes concurrent mutations", async () => {

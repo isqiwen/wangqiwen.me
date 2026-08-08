@@ -22,13 +22,12 @@ type SourceMetadata = {
   description?: unknown;
   summary?: unknown;
   series?: unknown;
+  seriesOrder?: unknown;
   publishedAt?: unknown;
   updatedAt?: unknown;
   id?: unknown;
   status?: unknown;
-  featured?: unknown;
   tags?: unknown;
-  cover?: unknown;
   readingTimeMinutes?: unknown;
 };
 
@@ -38,12 +37,11 @@ type ManifestPost = {
   description: string;
   summary: string;
   series: string | null;
+  seriesOrder: number | null;
   publishedAt: string;
   updatedAt: string | null;
   status: PostStatus;
-  featured: boolean;
   tags: string[];
-  cover: string | null;
   readingTimeMinutes: number;
   path: string;
 };
@@ -113,12 +111,11 @@ export async function syncPostsMetadata(
         description: normalizeString(metadata.description),
         summary: normalizeString(metadata.summary),
         series: normalizeString(metadata.series) || null,
+        seriesOrder: normalizePositiveInteger(metadata.seriesOrder) || null,
         publishedAt: metadata.publishedAt as string,
         updatedAt: normalizeDate(metadata.updatedAt),
         status,
-        featured: metadata.featured === true,
         tags: normalizeTags(metadata.tags),
-        cover: normalizeString(metadata.cover) || null,
         readingTimeMinutes:
           normalizePositiveInteger(metadata.readingTimeMinutes) ||
           estimateReadingTimeMinutes(stripExportedMetadata(source)),
@@ -128,6 +125,7 @@ export async function syncPostsMetadata(
   }
 
   validateContentQualityForPosts(sourcePosts);
+  validateUniqueSeriesOrders(posts);
 
   const outputPosts = options.publishedOnly
     ? posts.filter(post => post.status === "published")
@@ -174,6 +172,27 @@ function validateContentQualityForPosts(posts: SourcePost[]) {
       "Post content quality validation failed.\n" +
         errors.map(error => ` - ${error}`).join("\n")
     );
+  }
+}
+
+function validateUniqueSeriesOrders(posts: ManifestPost[]) {
+  const occupiedPositions = new Map<string, string>();
+
+  for (const post of posts) {
+    if (post.status === "archived" || !post.series || !post.seriesOrder) {
+      continue;
+    }
+
+    const key = `${post.series}:${post.seriesOrder}`;
+    const existingPostId = occupiedPositions.get(key);
+    if (existingPostId) {
+      throw new Error(
+        `Series "${post.series}" has duplicate position ${post.seriesOrder} ` +
+          `for ${existingPostId} and ${post.id}.`
+      );
+    }
+
+    occupiedPositions.set(key, post.id);
   }
 }
 

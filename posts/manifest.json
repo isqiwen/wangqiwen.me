@@ -1,20 +1,70 @@
 {
   "posts": [
     {
+      "id": "release-with-evidence",
+      "title": "Release With Evidence, Not Optimism",
+      "description": "Use validation, a reproducible artifact, and public verification to turn deployment into a controlled release process.",
+      "summary": "A release is complete only when the public system provides evidence that the intended change is live and healthy.",
+      "series": "reliable-web-delivery",
+      "seriesOrder": 3,
+      "publishedAt": "2026-08-05",
+      "updatedAt": null,
+      "status": "published",
+      "tags": [
+        "Developer Experience",
+        "Web Performance"
+      ],
+      "readingTimeMinutes": 3,
+      "path": "/2026/release-with-evidence"
+    },
+    {
+      "id": "measure-the-user-journey",
+      "title": "Measure the User Journey, Not Just the Server",
+      "description": "Build a small measurement system around the user journeys that define reliability, from the browser through the public route.",
+      "summary": "A service can be healthy while a reader is still unable to complete the task that brought them to the site.",
+      "series": "reliable-web-delivery",
+      "seriesOrder": 2,
+      "publishedAt": "2026-08-03",
+      "updatedAt": null,
+      "status": "published",
+      "tags": [
+        "Frontend",
+        "Web Performance"
+      ],
+      "readingTimeMinutes": 3,
+      "path": "/2026/measure-the-user-journey"
+    },
+    {
+      "id": "reliability-is-a-product-requirement",
+      "title": "Reliability Is a Product Requirement",
+      "description": "Start a reliable delivery practice by defining the user promises that must continue to hold when software changes.",
+      "summary": "Reliability begins with explicit promises to users, not a dashboard full of technical counters.",
+      "series": "reliable-web-delivery",
+      "seriesOrder": 1,
+      "publishedAt": "2026-08-01",
+      "updatedAt": null,
+      "status": "published",
+      "tags": [
+        "Frontend",
+        "Product"
+      ],
+      "readingTimeMinutes": 3,
+      "path": "/2026/reliability-is-a-product-requirement"
+    },
+    {
       "id": "making-the-web-faster",
       "title": "Making the Web. Faster",
       "description": "Our vision of the Web is a global realtime medium for both creators and consumers, where all friction and latency are eliminated",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2021-06-23",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Web Performance",
         "Frontend"
       ],
-      "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2021/making-the-web-faster"
     },
@@ -24,15 +74,14 @@
       "description": "Reflecting on the growth of our business, which in 2020 alone added the likes of Airbnb, The Washington Post, Trip Advisor, Scale and Hashicorp as flagship customers, I'm sharing 7 tailwinds behind our acceleration.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-12-16",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Frontend",
         "Product"
       ],
-      "cover": null,
       "readingTimeMinutes": 7,
       "path": "/2020/next-for-vercel"
     },
@@ -42,14 +91,13 @@
       "description": "In this essay I want to make the case that prioritizing end-to-end (E2E) testing for the critical parts of your app will reduce risk and give you the best return. Further, I'll show how you can adopt this methodology in mere minutes.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-06-11",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Developer Experience"
       ],
-      "cover": null,
       "readingTimeMinutes": 5,
       "path": "/2020/develop-preview-test"
     },
@@ -59,15 +107,14 @@
       "description": "Exploring Static hoisting, the process of moving static assets to the edge, where they can be served with maximum speed and reliability.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-05-02",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Web Performance",
         "Frontend"
       ],
-      "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2020/static-hoisting"
     },
@@ -77,15 +124,14 @@
       "description": "Reflecting on the joy and lessons of code golf competitions and hacking challenges.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-04-26",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "JavaScript",
         "Developer Experience"
       ],
-      "cover": null,
       "readingTimeMinutes": 9,
       "path": "/2020/an-ode-to-code-golf"
     },
@@ -95,15 +141,14 @@
       "description": "Today we announced that we’ve re-branded as Vercel, alongside the news of $21M in funding from some of the best VCs (Accel, CRV) and individual investors we could have possibly imagined (Jordan Walke, Nat Friedman, Pete Hunt, Jessie Frazelle, Soleio, Naval Ravikant, and too many others to list).",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-04-21",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Frontend",
         "Product"
       ],
-      "cover": null,
       "readingTimeMinutes": 6,
       "path": "/2020/vercel"
     },
@@ -113,15 +158,14 @@
       "description": "A quick summary of the evolution of our company, our open-source work, interesting news and lessons in product design and engineering throughout 2019.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2020-01-06",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Retrospective",
         "Product"
       ],
-      "cover": null,
       "readingTimeMinutes": 16,
       "path": "/2020/2019-in-review"
     },
@@ -131,14 +175,13 @@
       "description": "Once you’ve grown accustomed to a certain level of efficiency provided by the system or environment you are in, it’s extraordinarily difficult to forego it.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2017-03-28",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Developer Experience"
       ],
-      "cover": null,
       "readingTimeMinutes": 3,
       "path": "/2017/its-hard-to-forego-efficiency"
     },
@@ -148,15 +191,14 @@
       "description": "A brief summary of my year organized by different categories.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2017-01-06",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Retrospective",
         "Product"
       ],
-      "cover": null,
       "readingTimeMinutes": 14,
       "path": "/2017/2016-in-review"
     },
@@ -166,14 +208,13 @@
       "description": "How to improve DX by making errors shareable and collaborative.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2016-02-04",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Developer Experience"
       ],
-      "cover": null,
       "readingTimeMinutes": 2,
       "path": "/2016/addressable-errors"
     },
@@ -183,15 +224,14 @@
       "description": "The growing convergence of the designer and programmer roles by way of React",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2015-07-13",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Frontend",
         "JavaScript"
       ],
-      "cover": null,
       "readingTimeMinutes": 10,
       "path": "/2015/pure-ui"
     },
@@ -201,14 +241,13 @@
       "description": "An overview of some of the most interesting features of ECMAScript 6, the latest version of the JavaScript specification.",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2015-02-22",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "JavaScript"
       ],
-      "cover": null,
       "readingTimeMinutes": 6,
       "path": "/2015/ecmascript-6"
     },
@@ -218,15 +257,14 @@
       "description": "7 actionable principles for websites that want to make use of JavaScript to control their UI and deliver the best performance",
       "summary": "",
       "series": null,
+      "seriesOrder": null,
       "publishedAt": "2014-11-04",
       "updatedAt": null,
       "status": "published",
-      "featured": false,
       "tags": [
         "Frontend",
         "Web Performance"
       ],
-      "cover": null,
       "readingTimeMinutes": 22,
       "path": "/2014/7-principles-of-rich-web-applications"
     }

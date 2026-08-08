@@ -1,0 +1,63 @@
+export const metadata = {
+  "title": "Reliability Is a Product Requirement",
+  "description": "Start a reliable delivery practice by defining the user promises that must continue to hold when software changes.",
+  "publishedAt": "2026-08-01",
+  "id": "reliability-is-a-product-requirement",
+  "status": "published",
+  "tags": [
+    "Frontend",
+    "Product"
+  ],
+  "readingTimeMinutes": 3,
+  "summary": "Reliability begins with explicit promises to users, not a dashboard full of technical counters.",
+  "series": "reliable-web-delivery",
+  "seriesOrder": 1
+};
+
+Software teams often describe reliability as an operational concern: uptime, error rate, alert volume, or the number of incidents resolved. Those measures are useful, but they are not the thing a reader or customer experiences. A product is reliable when a person can complete an important task with the expectations the product has created.
+
+That framing changes the work. It asks us to begin with promises, then design technical safeguards that make those promises credible.
+
+## Start with the moments that carry trust
+
+Not every request has the same cost of failure. A broken decorative animation is unpleasant; a lost draft, a duplicated payment, or a page that claims a deployment succeeded when it did not are failures of trust. The first step is to list the small set of journeys where an incorrect result would make a user hesitate to return.
+
+For each journey, write one sentence in user language. For example:
+
+- A saved draft remains available after a refresh or a temporary network failure.
+- A published article is either visible at its final URL or the author receives a clear failure.
+- A reader can load an article without waiting for an optional analytics or social embed.
+
+These statements are better design inputs than a generic target such as “99.9% availability.” They make it possible to decide what must be synchronous, what can be retried, and what should fail quietly.
+
+## Turn a promise into an observable contract
+
+A promise needs evidence. For every important journey, define four parts of a contract:
+
+1. The triggering action and the expected outcome.
+2. The time window in which that outcome should be visible.
+3. The durable record that proves the outcome happened.
+4. The safe behavior when the system cannot meet the expectation.
+
+Consider saving a post. The trigger is an explicit save action. The expected outcome is that the MDX file and its generated index agree. The durable record is the committed file state, not a toast notification. If synchronization fails, the safe behavior is to reject the save and preserve the previous valid version. The implementation can change over time; the contract should not.
+
+This approach also prevents a common mistake: measuring a successful HTTP response while missing an unsuccessful user outcome. A `200` from an API is not evidence that the post became discoverable, that its route compiled, or that its metadata is valid.
+
+## Choose a small reliability budget
+
+Teams make progress when reliability has explicit constraints. A useful budget is deliberately narrow:
+
+- Which journeys receive a smoke test on every release?
+- Which failures must block publishing?
+- Which external dependencies are optional and must not block rendering?
+- How long may a recovery take before the product promise is broken?
+
+The point is not to eliminate all failure. It is to avoid spending the same attention on every failure. A personal publishing system, for instance, should prioritize preserving authored content and serving public pages over reporting a transient social-media fetch error.
+
+## Make the trade-offs visible
+
+Reliability work becomes fragile when its assumptions live only in a person’s memory. Put the contract near the code that enforces it: a validation rule next to metadata parsing, a smoke test next to the public route, and a recovery note beside the deployment procedure.
+
+This is not bureaucracy. It gives future changes something concrete to preserve. When a dependency is upgraded or a new feature is introduced, the question becomes simple: which user promise does this change touch, and what evidence says it still holds?
+
+The next article turns those promises into measurements that help a team see regressions before users have to report them.

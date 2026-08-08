@@ -25,13 +25,12 @@ type BasePost = {
   description: string;
   summary: string;
   series: string | null;
+  seriesOrder: number | null;
   date: string;
   publishedAt: string;
   updatedAt: string | null;
   status: Post["status"];
-  featured: boolean;
   tags: string[];
-  cover: string | null;
   readingTimeMinutes: number;
 };
 
@@ -75,12 +74,11 @@ export function Posts({
         description?: string;
         summary?: string;
         series?: string | null;
+        seriesOrder?: number | null;
         publishedAt: string;
         updatedAt?: string | null;
         status?: Post["status"];
-        featured?: boolean;
         tags?: string[];
-        cover?: string | null;
         readingTimeMinutes?: number;
       }> = data.posts ?? [];
 
@@ -91,13 +89,12 @@ export function Posts({
         description: item.description ?? "",
         summary: item.summary ?? item.description ?? "",
         series: item.series ?? null,
+        seriesOrder: item.seriesOrder ?? null,
         date: formatPublishedAt(item.publishedAt),
         publishedAt: item.publishedAt,
         updatedAt: item.updatedAt ?? null,
         status: item.status ?? "published",
-        featured: item.featured ?? false,
         tags: item.tags ?? [],
-        cover: item.cover ?? null,
         readingTimeMinutes: item.readingTimeMinutes ?? 1,
       }));
     },
@@ -382,13 +379,12 @@ function stripPost(post: Post): BasePost {
     description: post.description,
     summary: post.summary,
     series: post.series,
+    seriesOrder: post.seriesOrder,
     date: post.date,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
     status: post.status,
-    featured: post.featured,
     tags: post.tags,
-    cover: post.cover,
     readingTimeMinutes: post.readingTimeMinutes,
   };
 }

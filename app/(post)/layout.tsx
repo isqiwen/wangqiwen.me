@@ -4,6 +4,7 @@ import { canPreviewDrafts } from "@/utils/server/local-editor";
 import { EquationNumbering } from "./components/equation-numbering";
 import { TableOfContents } from "./components/table-of-contents";
 import { RelatedPosts } from "./related-posts";
+import { SeriesNavigation } from "./series-navigation";
 
 export const revalidate = 60;
 
@@ -31,6 +32,7 @@ export default async function Layout({ children }) {
         <Header posts={posts} />
 
         {children}
+        <SeriesNavigation posts={posts} />
         <RelatedPosts posts={posts} />
       </article>
     </div>
