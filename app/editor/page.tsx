@@ -85,7 +85,7 @@ type PublishReadinessCheck = {
 };
 
 type EditorOutlineHeading = {
-  level: 2 | 3;
+  level: 2 | 3 | 4;
   line: number;
   position: number;
   text: string;
@@ -1995,7 +1995,7 @@ function EditorWorkspace() {
                 Article Outline
               </h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Built from <code>##</code> and <code>###</code> headings. Select
+                Built from <code>##</code>, <code>###</code>, and <code>####</code> headings. Select
                 one to move the editor cursor there.
               </p>
             </div>
@@ -2009,7 +2009,11 @@ function EditorWorkspace() {
                         type="button"
                         onClick={() => jumpToOutlineHeading(heading)}
                         className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 ${
-                          heading.level === 3 ? "pl-6" : ""
+                          heading.level === 3
+                            ? "pl-6"
+                            : heading.level === 4
+                              ? "pl-10"
+                              : ""
                         }`}
                       >
                         <span className="font-mono text-[10px] text-slate-400">
@@ -2441,12 +2445,12 @@ function extractOutlineHeadings(source: string): EditorOutlineHeading[] {
     if (/^\s*```/.test(line)) {
       inCodeFence = !inCodeFence;
     } else if (!inCodeFence) {
-      const match = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
+      const match = line.match(/^(#{2,4})\s+(.+?)\s*#*\s*$/);
       if (match) {
         const text = match[2].trim();
         if (text) {
           headings.push({
-            level: match[1].length as 2 | 3,
+            level: match[1].length as 2 | 3 | 4,
             line: index + 1,
             position,
             text,

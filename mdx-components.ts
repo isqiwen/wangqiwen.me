@@ -3,6 +3,7 @@ import { P as p } from "app/(post)/components/p";
 import { H1 as h1 } from "app/(post)/components/h1";
 import { H2 as h2 } from "app/(post)/components/h2";
 import { H3 as h3 } from "app/(post)/components/h3";
+import { H4 as h4 } from "app/(post)/components/h4";
 import { OL as ol } from "app/(post)/components/ol";
 import { UL as ul } from "app/(post)/components/ul";
 import { LI as li } from "app/(post)/components/li";
@@ -76,6 +77,7 @@ export function useMDXComponents(components: {
     h1,
     h2,
     h3,
+    h4,
     ol,
     ul,
     li,

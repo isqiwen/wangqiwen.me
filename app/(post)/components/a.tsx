@@ -1,25 +1,63 @@
 import Link from "next/link";
+import type { ComponentPropsWithoutRef } from "react";
 
-export function A({ children, className = "", href, ...props }) {
-  if (href[0] === "#") {
+type AnchorProps = ComponentPropsWithoutRef<"a"> & {
+  href: string;
+};
+
+const linkClassName =
+  "border-b border-gray-300 text-gray-600 transition-[border-color] hover:border-gray-600 dark:border-gray-500 dark:text-white dark:hover:border-white";
+
+function isExternalHttpLink(href: string) {
+  return /^https?:\/\//i.test(href);
+}
+
+function withSecurityRel(rel?: string) {
+  return Array.from(
+    new Set([...(rel?.split(/\s+/).filter(Boolean) ?? []), "noopener", "noreferrer"])
+  ).join(" ");
+}
+
+export function A({
+  children,
+  className = "",
+  href,
+  rel,
+  target,
+  ...props
+}: AnchorProps) {
+  const classes = `${linkClassName} ${className}`.trim();
+
+  if (isExternalHttpLink(href)) {
+    const externalTarget = target ?? "_blank";
+
     return (
       <a
         href={href}
-        className={`border-b text-gray-600 border-gray-300 transition-[border-color] hover:border-gray-600 dark:text-white dark:border-gray-500 dark:hover:border-white ${className}`}
+        className={classes}
+        target={externalTarget}
+        rel={withSecurityRel(rel)}
         {...props}
       >
+        {children}
+        {externalTarget === "_blank" ? (
+          <span className="sr-only"> (opens in a new tab)</span>
+        ) : null}
+      </a>
+    );
+  }
+
+  if (href.startsWith("#") || /^[a-z][a-z\d+.-]*:/i.test(href)) {
+    return (
+      <a href={href} className={classes} rel={rel} target={target} {...props}>
         {children}
       </a>
     );
-  } else {
-    return (
-      <Link
-        href={href}
-        className={`border-b text-gray-600 border-gray-300 transition-[border-color] hover:border-gray-600 dark:text-white dark:border-gray-500 dark:hover:border-white ${className}`}
-        {...props}
-      >
-        {children}
-      </Link>
-    );
   }
+
+  return (
+    <Link href={href} className={classes} rel={rel} target={target} {...props}>
+      {children}
+    </Link>
+  );
 }

@@ -74,7 +74,7 @@ Git commit, or VPS deployment.
 
 ## Writing Assistance
 
-The editor builds an **Article Outline** from `##` and `###` headings. Select a
+The editor builds an **Article Outline** from `##`, `###`, and `####` headings. Select a
 heading to move the cursor to it; hierarchy errors are shown immediately.
 
 The MDX editor highlights Markdown syntax while keeping the same native text
@@ -105,7 +105,7 @@ steps; the result remains plain MDX that can also be edited by hand. Use
 discusses directly; it is not syntax highlighting.
 
 For formal results, use `Table` with an explicit label, title, caption, source,
-and notes. Use `RegressionTable` only for empirical estimates with model
+and notes rather than a bare pipe table. Use `RegressionTable` only for empirical estimates with model
 columns, supplied standard errors or confidence intervals, and disclosed sample
 statistics. It never calculates p-values or significance markers: every
 annotation must be supplied and justified by the author. `Chart` supports an

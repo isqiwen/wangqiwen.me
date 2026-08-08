@@ -1794,8 +1794,9 @@ export const componentsPalette: ComponentSnippet[] = [
     label: "Markdown Basics",
     hint: "Headings, paragraphs, lists, and inline code",
     searchTerms: ["markdown", "heading", "list", "paragraph"],
-    snippet: `# Primary heading
-## Secondary heading
+    snippet: `## Section heading
+### Subsection heading
+#### Detail heading
 
 Write a paragraph with inline code like \`const ready = true;\`.
 
@@ -1804,8 +1805,9 @@ Write a paragraph with inline code like \`const ready = true;\`.
 
 1. Ordered step one
 2. Ordered step two`,
-    template: `# [[Primary heading]]
-## Secondary heading
+    template: `## [[Section heading]]
+### Subsection heading
+#### Detail heading
 
 Write a paragraph with inline code like \`const ready = true;\`.
 
@@ -1815,7 +1817,7 @@ Write a paragraph with inline code like \`const ready = true;\`.
 1. Ordered step one
 2. Ordered step two`,
     notes: [
-      "Use regular Markdown first. Reach for custom components when plain prose is no longer enough.",
+      "Article metadata renders the page title, so start body headings at ##. Use regular Markdown first; reach for custom components only when plain prose is no longer enough.",
     ],
   },
   {

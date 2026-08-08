@@ -525,10 +525,9 @@ function renderPreview(id: string) {
     case "markdown-basics":
       return (
         <div className="space-y-4 text-slate-700">
-          <h1 className="text-2xl font-bold text-slate-950">Primary heading</h1>
-          <h2 className="text-xl font-semibold text-slate-900">
-            Secondary heading
-          </h2>
+          <h2 className="text-xl font-bold text-slate-950">Section heading</h2>
+          <h3 className="text-lg font-semibold text-slate-900">Subsection heading</h3>
+          <h4 className="font-semibold text-slate-800">Detail heading</h4>
           <p>
             This is a normal paragraph with inline code like{" "}
             <code>const ready = true;</code>.
