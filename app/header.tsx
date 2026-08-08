@@ -18,13 +18,15 @@ export async function Header() {
   }));
 
   return (
-    <header className="mb-5 flex flex-wrap items-center gap-y-1 md:mb-10 md:flex-nowrap">
+    <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-y-1 md:mb-10 md:flex">
       <Logo />
 
-      <nav className="flex w-full flex-wrap items-center justify-end gap-0 font-mono text-xs sm:gap-1 md:w-auto md:flex-nowrap md:grow md:gap-3">
+      <div className="ml-auto flex items-center gap-0 font-mono text-xs sm:gap-1 md:gap-3">
         <ThemeToggle />
         <ArticleSearch articles={articles} />
+      </div>
 
+      <nav className="order-1 col-span-3 flex items-center gap-0 font-mono text-xs sm:gap-1 md:order-none md:gap-3">
         {navigationLinks.map(item => (
           <Link
             key={item.href}
@@ -34,20 +36,21 @@ export async function Header() {
             {item.label}
           </Link>
         ))}
-        {siteConfig.social.primary.url ? (
-          <a
-            href={siteConfig.social.primary.url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={followLabel}
-            title={followLabel}
-            className="inline-flex items-center rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424]"
-          >
-            <TweetIcon className="sm:mr-1" />
-            <span className="sr-only sm:not-sr-only">{followLabel}</span>
-          </a>
-        ) : null}
       </nav>
+
+      {siteConfig.social.primary.url ? (
+        <a
+          href={siteConfig.social.primary.url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={followLabel}
+          title={followLabel}
+          className="inline-flex items-center rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424] md:order-1"
+        >
+          <TweetIcon className="sm:mr-1" />
+          <span className="sr-only sm:not-sr-only">{followLabel}</span>
+        </a>
+      ) : null}
     </header>
   );
 }
