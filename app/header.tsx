@@ -18,10 +18,10 @@ export async function Header() {
   }));
 
   return (
-    <header className="mb-5 flex items-center md:mb-10">
+    <header className="mb-5 flex flex-wrap items-center gap-y-1 md:mb-10 md:flex-nowrap">
       <Logo />
 
-      <nav className="flex grow items-center justify-end gap-1 font-mono text-xs md:gap-3">
+      <nav className="flex w-full flex-wrap items-center justify-end gap-0 font-mono text-xs sm:gap-1 md:w-auto md:flex-nowrap md:grow md:gap-3">
         <ThemeToggle />
         <ArticleSearch articles={articles} />
 
@@ -39,10 +39,12 @@ export async function Header() {
             href={siteConfig.social.primary.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center whitespace-nowrap rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424] md:-mr-2"
+            aria-label={followLabel}
+            title={followLabel}
+            className="inline-flex items-center rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424]"
           >
-            <TweetIcon style={{ marginRight: 4 }} />
-            {followLabel}
+            <TweetIcon className="sm:mr-1" />
+            <span className="sr-only sm:not-sr-only">{followLabel}</span>
           </a>
         ) : null}
       </nav>
