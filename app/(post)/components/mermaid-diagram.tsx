@@ -4,8 +4,6 @@ import { useEffect, useId, useState } from "react";
 import {
   mdxEmptyStateClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type MermaidDiagramProps = {
@@ -67,20 +65,14 @@ export function MermaidDiagram({
   }, [chart, diagramId, theme]);
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Diagram</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
         </div>
       ) : null}
 
-      <div className="mt-5 rounded-3xl border border-slate-200/70 bg-white px-4 py-5 shadow-sm dark:border-white/10 dark:bg-slate-950/20 sm:px-5">
+      <div className="mt-5 border-y border-slate-200/80 px-4 py-5 dark:border-white/10 sm:px-5">
         {svg ? (
           <div
             className="mdx-mermaid"
@@ -92,7 +84,7 @@ export function MermaidDiagram({
               Mermaid render failed
             </p>
             <p className="mt-2">{error}</p>
-            <pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-950 px-4 py-3 text-xs text-slate-200">
+            <pre className="mt-4 overflow-x-auto bg-slate-950 px-4 py-3 text-xs text-slate-200">
               {chart}
             </pre>
           </div>
@@ -100,6 +92,7 @@ export function MermaidDiagram({
           <div className={mdxEmptyStateClass}>Rendering diagram...</div>
         )}
       </div>
-    </section>
+      {caption ? <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption> : null}
+    </figure>
   );
 }

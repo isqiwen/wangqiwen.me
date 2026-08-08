@@ -1,10 +1,4 @@
 import type { ReactNode } from "react";
-import {
-  mdxInsetClass,
-  mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
-} from "./surface";
 
 type ProofBlockProps = {
   title?: string;
@@ -20,32 +14,30 @@ export function ProofBlock({
   conclusion,
 }: ProofBlockProps) {
   return (
-    <section className={mdxPanelClass}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <p className={mdxSubtleTextClass}>Proof</p>
-          <h3 className="text-lg font-semibold text-slate-950 dark:text-white">
-            {title}
-          </h3>
-        </div>
-        {strategy ? (
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            {strategy}
-          </span>
-        ) : null}
-      </div>
+    <section className="my-8 pl-5 scroll-mt-24 sm:pl-6">
+      <p className="text-base leading-8 text-slate-900 dark:text-white">
+        <span className="font-semibold">Proof.</span>{" "}
+        {title !== "Proof sketch" ? <span className="italic">{title}.</span> : null}
+        {strategy ? <span className="text-slate-500 dark:text-slate-400"> ({strategy})</span> : null}
+      </p>
 
-      <div className={`${mdxInsetClass} mt-5 px-4 py-4 sm:px-5`}>
-        <div className="space-y-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
-          {children}
-        </div>
+      <div className="mt-3 text-base leading-8 text-slate-700 dark:text-slate-200">
+        {children}
       </div>
 
       {conclusion ? (
-        <div className={`mt-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200`}>
-          {conclusion}
-        </div>
-      ) : null}
+        <p className="mt-3 text-base leading-8 text-slate-700 dark:text-slate-200">
+          <span className="font-semibold">Therefore.</span>{" "}
+          {conclusion} <span aria-label="end of proof">∎</span>
+        </p>
+      ) : (
+        <span
+          className="mt-3 block text-right text-slate-700 dark:text-slate-200"
+          aria-label="end of proof"
+        >
+          ∎
+        </span>
+      )}
     </section>
   );
 }

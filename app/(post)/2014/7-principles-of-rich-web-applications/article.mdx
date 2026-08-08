@@ -38,7 +38,7 @@ What follows is my attempt to answer these. My approach is to examine the usage 
 
 ## 1. Pre rendered pages are not optional [#pre-rendered-pages-are-not-optional]
 
-<Callout emoji="⚡️" text="Pre-rendering is not (just) about SEO, it’s about performance. Consider the additional roundtrips to get scripts, styles, and subsequent API requests. In the future, consider HTTP 2.0 “pushing” of resources." />
+<Callout type="important">Pre-rendering is not (just) about SEO, it’s about performance. Consider the additional roundtrips to get scripts, styles, and subsequent API requests. In the future, consider HTTP 2.0 “pushing” of resources.</Callout>
 
 _Note: this title used to be "server-rendered". However, "pre-rendered" also encapsulates [static site generation](/2020/2019-in-review#static-is-the-new-dynamic), so it was edited accordingly._
 
@@ -109,7 +109,7 @@ It's helpful to refer to some of the initial discussions around the design of th
 
 ## 2. Act immediately on user input [#act-immediately-on-user-input]
 
-<Callout emoji="⚡️" text="JavaScript allows us to mask network latency altogether. Applying this as a design principle should even remove most spinners or “loading” messages from your applications. PJAX or TurboLinks miss out on opportunities to improve the perception of speed." />
+<Callout type="important">JavaScript allows us to mask network latency altogether. Applying this as a design principle should even remove most spinners or “loading” messages from your applications. PJAX or TurboLinks miss out on opportunities to improve the perception of speed.</Callout>
 
 The first principle builds heavily on the idea of minimizing latency as the user interacts with your website.
 
@@ -168,7 +168,7 @@ Techniques like PJAX or TurboLinks unfortunately largely miss out on the opportu
 
 ## 3. React to data changes [#react-to-data-changes]
 
-<Callout emoji="⚡️" text="When data changes on the server, let the clients know without asking. This is a form of performance improvement that frees the user from manual refresh actions (F5, pull to refresh). New challenges: (re)connection management, state reconciliation." />
+<Callout type="important">When data changes on the server, let the clients know without asking. This is a form of performance improvement that frees the user from manual refresh actions (F5, pull to refresh). New challenges: (re)connection management, state reconciliation.</Callout>
 
 The third principle is that of *reactivity* of the UI with respect to data changes in the source, typically one or more database servers.
 
@@ -200,7 +200,7 @@ The ability for your application to reconcile states disjointed in time is also 
 
 ## 4. Control the data exchange with the server [#control-the-data-exchange-with-the-server]
 
-<Callout emoji="⚡️" text="We can now fine-tune the data exchange with the server. Make sure to handle errors, retry on behalf of the user, sync data on the background and maintain offline caches." />
+<Callout type="important">We can now fine-tune the data exchange with the server. Make sure to handle errors, retry on behalf of the user, sync data on the background and maintain offline caches.</Callout>
 
 When the WWW was conceived, data exchange between the client and server was limited to a few ways:
 
@@ -234,7 +234,7 @@ The other (and less obvious) one is capturing page transitions before they happe
 
 ## 5. Don't break history, enhance it [#dont-break-history-enhance-it]
 
-<Callout emoji="⚡️" text="Without the browser managing URLs and history for us, new challenges emerge. Make sure not to break expectations related to scrolling. Keep your own caches for fast feedback." />
+<Callout type="important">Without the browser managing URLs and history for us, new challenges emerge. Make sure not to break expectations related to scrolling. Keep your own caches for fast feedback.</Callout>
 
 Form submissions aside, if we were to design any modern web application with only hyperlinks, we'd end up with fully functional back/forward navigation.
 
@@ -266,7 +266,7 @@ If the page was re-rendered by following a link within the application, the expe
 
 ## 6. Push code updates [#push-code-updates]
 
-<Callout emoji="⚡️" text="Pushing data without pushing code is insufficient. If your data updates automatically, so should your code. Avoid API errors and improve performance. Use stateless DOM for side-effect free repainting." />
+<Callout type="important">Pushing data without pushing code is insufficient. If your data updates automatically, so should your code. Avoid API errors and improve performance. Use stateless DOM for side-effect free repainting.</Callout>
 
 Making your application react to code changes is crucially important.
 
@@ -294,7 +294,7 @@ In essence, the idea that you *render to* the DOM (or *paint* it) is what si
 
 ## 7. Predict behavior [#predict-behavior]
 
-<Callout emoji="⚡️" text="Negative latency." />
+<Callout type="important">Negative latency.</Callout>
 
 A rich JavaScript application can have mechanisms in place for predicting the *eventual user input*.
 

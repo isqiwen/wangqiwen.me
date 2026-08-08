@@ -1,8 +1,6 @@
 import {
   mdxEmptyStateClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type HeatmapProps = {
@@ -37,23 +35,17 @@ export function Heatmap({
   const max = Math.max(...flat);
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Heatmap</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
         </div>
       ) : null}
 
       <Legend lowLabel={lowLabel} highLabel={highLabel} />
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[36rem] border-separate border-spacing-2 text-sm">
+        <table className="w-full min-w-[36rem] border-collapse text-sm">
           <thead>
             <tr>
               <th className="px-3 py-2 text-left text-xs uppercase tracking-[0.22em] text-slate-500">
@@ -72,7 +64,7 @@ export function Heatmap({
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={row}>
-                <th className="px-3 py-3 text-left font-semibold text-slate-900 dark:text-white">
+                <th scope="row" className="px-3 py-3 text-left font-semibold text-slate-900 dark:text-white">
                   {row}
                 </th>
                 {columns.map((column, columnIndex) => {
@@ -80,9 +72,9 @@ export function Heatmap({
                   const ratio = max === min ? 0.5 : (value - min) / (max - min);
 
                   return (
-                    <td key={`${row}-${column}`} className="px-1 py-1">
+                    <td key={`${row}-${column}`} className="border border-white/70 p-0.5 dark:border-slate-950">
                       <div
-                        className="rounded-2xl px-3 py-4 text-center text-sm font-semibold shadow-sm"
+                        className="px-3 py-3 text-center text-sm font-semibold tabular-nums"
                         style={{
                           backgroundColor: `hsl(215 ${60 + ratio * 20}% ${95 - ratio * 46}%)`,
                           color: ratio > 0.58 ? "#ffffff" : "#0f172a",
@@ -98,7 +90,8 @@ export function Heatmap({
           </tbody>
         </table>
       </div>
-    </section>
+      {caption ? <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption> : null}
+    </figure>
   );
 }
 
@@ -106,7 +99,7 @@ function Legend({ lowLabel, highLabel }: { lowLabel: string; highLabel: string }
   return (
     <div className="mt-5 flex items-center gap-3 text-xs uppercase tracking-[0.22em] text-slate-500">
       <span>{lowLabel}</span>
-      <div className="h-3 w-40 rounded-full bg-gradient-to-r from-slate-100 via-sky-300 to-sky-700" />
+      <div className="h-3 w-40 bg-gradient-to-r from-slate-100 via-sky-300 to-sky-700" />
       <span>{highLabel}</span>
     </div>
   );

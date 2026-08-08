@@ -1,0 +1,349 @@
+export const metadata = {
+  "title": "MRI Reconstruction Is an Inverse Problem Before It Is a Model",
+  "description": "A methodological note on accelerated MRI that separates acquisition physics, reconstruction priors, validation, and clinical claims.",
+  "publishedAt": "2026-08-08",
+  "id": "mri-reconstruction-is-an-inverse-problem",
+  "status": "draft",
+  "tags": [
+    "MRI"
+  ],
+  "readingTimeMinutes": 12,
+  "summary": "A reconstruction model is only one term in an MRI measurement system; the acquisition, forward operator, validation target, and uncertainty statement are equally part of the result."
+};
+
+MRI reconstruction is often discussed as a competition between algorithms. That is too narrow. An accelerated scan is a measurement system: an acquisition selects samples from k-space, a forward operator maps a proposed image to those measurements, and a reconstruction method contributes assumptions about what images are plausible. A learned model changes the third part; it does not make the first two disappear.
+
+This note is a methodological template rather than a clinical study. All visual panels, tables, numerical values, and classifications below are synthetic rendering fixtures. They demonstrate what a complete technical report must expose; they make no claim about diagnostic performance or patient outcomes.
+
+<Callout type="caution" title="Scope and evidence">
+  The illustrations are not patient images, and the tabulated values are not experimental results. A clinical claim requires a protocol, an independent test set, reader study design where appropriate, and a safety analysis matched to the intended use.
+</Callout>
+
+## State the inverse problem before selecting an architecture
+
+<Definition id="def-mri-forward-model" label="1" title="Multicoil acquisition model">
+  Let <InlineMath tex="x \in \mathbb{C}^N" /> be the target image, <InlineMath tex="S" /> coil sensitivity operators, <InlineMath tex="F" /> the Fourier encoding, and <InlineMath tex="M" /> a sampling mask. The acquired data are <InlineMath tex="y = MFSx + \varepsilon" />, where <InlineMath tex="\varepsilon" /> represents noise and model mismatch.
+</Definition>
+
+The point of <CrossReference target="def-mri-forward-model" label="Definition 1" /> is not notation for its own sake. It forces an author to distinguish an image prior from a claim about data consistency. When a reconstruction is evaluated, readers should be able to ask which part of the pipeline changed: the sampling operator, calibration, coil model, regularizer, or solver.
+
+<MathBlock
+  id="eq-mri-objective"
+  tex="\hat{x} = \underset{x}{\operatorname{arg\,min}}\; \frac{1}{2}\lVert MFSx-y\rVert_2^2 + \lambda \mathcal{R}(x)"
+  caption="A generic regularized reconstruction objective. The data-fidelity term alone cannot select one image from an undersampled acquisition."
+/>
+
+<DerivationBlock
+  title="From measurement fidelity to an iterative update"
+  caption="The terms are intentionally displayed separately so the choice of prior remains inspectable."
+  steps={[
+    { label: "Model", title: "Write the acquisition", equation: "y = Ax + \\varepsilon, \\quad A = MFS", note: "The operator must correspond to the protocol and coil model used to collect the data." },
+    { label: "Objective", title: "Add a prior", equation: "J(x) = \\tfrac12\\lVert Ax-y\\rVert_2^2 + \\lambda\\mathcal{R}(x)", note: "A prior is an assumption; it is not evidence that the recovered feature exists." },
+    { label: "Update", title: "Separate consistency and regularisation", equation: "x^{k+1} = \\operatorname{prox}_{\\alpha\\lambda\\mathcal{R}}\\!\\left(x^k - \\alpha A^H(Ax^k-y)\\right)", note: "Unrolled networks often learn parts of this update, but the acquisition operator should remain explicit." }
+  ]}
+/>
+
+The objective in <AutoEquationRef target="eq-mri-objective" /> is deliberately generic. Sparse MRI made the relationship between undersampling, sparse representations, and nonlinear reconstruction explicit; modern variational and unrolled approaches retain the same inverse-problem structure while learning parts of the reconstruction map.<Citation refId="lustig-2007" label="[1]" /> <Citation refId="hammernik-2018" label="[2]" />
+
+<TheoremBlock id="prop-identifiability" kind="proposition" label="1" title="Data consistency is necessary but not sufficient">
+  If the sampling operator <InlineMath tex="A" /> is non-injective on the admissible image class, there can be distinct images <InlineMath tex="x_1 \ne x_2" /> with <InlineMath tex="Ax_1 = Ax_2" />. A reconstruction rule therefore needs an additional preference, whether handcrafted, learned, or imposed by a low-dimensional parameterisation.
+</TheoremBlock>
+
+<ProofBlock title="Why the proposition matters" strategy="null-space argument" conclusion="Validation must test the prior, not merely the residual.">
+  When <InlineMath tex="A" /> has a non-trivial null space, choose a non-zero <InlineMath tex="z" /> such that <InlineMath tex="Az=0" />. Then <InlineMath tex="A(x_1+z)=Ax_1" />. Both candidates agree with the acquired samples, so data fidelity cannot distinguish them. A regularizer or learned denoiser selects one candidate by adding information not present in the measurements.
+</ProofBlock>
+
+<EquationGroup
+  title="A reportable reconstruction contract"
+  caption="Number the equations that later sections need to cite; avoid a detached wall of notation."
+  numbering="group"
+  equations={[
+    { id: "eq-contract-acquisition", title: "Acquisition", tex: "y = MFSx + \\varepsilon", note: "Record mask, sequence, coil compression, and any calibration procedure." },
+    { id: "eq-contract-reconstruction", title: "Reconstruction", tex: "\\hat{x} = f_{\\theta}(y, M, S)", note: "State what is learned, what is fixed, and the source of training data." },
+    { id: "eq-contract-decision", title: "Downstream decision", tex: "d = g(\\hat{x})", note: "If the intended use is diagnostic, assess the effect on the decision—not only image similarity." }
+  ]}
+/>
+
+## Make sampling and failure modes legible
+
+<Figure id="fig-sampling" wide>
+  <Image src="/images/research/mri-kspace.svg" alt="Synthetic k-space schematic with dense central and sparse peripheral samples" />
+  <Caption>Figure 1. A synthetic sampling schematic. It represents the geometry of an acquisition, not a measured k-space dataset.</Caption>
+</Figure>
+
+<KSpaceViewer
+  title="What should be visible in a reconstruction report"
+  caption="A reader should be able to inspect what was acquired, what was reconstructed, and what remains unexplained."
+  columns={4}
+  panels={[
+    { label: "Acquired coefficients", kind: "kspace", src: "/images/research/mri-kspace.svg", alt: "Synthetic k-space with a dense center", note: "The sampling pattern belongs in the methods, not an appendix." },
+    { label: "Sampling mask", kind: "mask", src: "/images/research/mri-mask.svg", alt: "Synthetic variable-density k-space mask", note: "State whether the mask is fixed, random, learned, or retrospectively applied." },
+    { label: "Reconstruction", kind: "reconstruction", src: "/images/research/mri-reconstruction.svg", alt: "Synthetic regularized reconstruction schematic", note: "Use data from an appropriately governed cohort in a real report." },
+    { label: "Residual inspection", kind: "error", src: "/images/research/mri-reconstruction.svg", alt: "Synthetic residual schematic", note: "A residual image is not a substitute for task-specific validation." }
+  ]}
+/>
+
+<MultiPanelFigure
+  title="Same acquisition, different reporting questions"
+  caption="The panel labels make a comparison scannable without turning every image into a decorative card."
+  columns={3}
+  panels={[
+    { label: "A", title: "Encoding", src: "/images/research/mri-kspace.svg", alt: "Synthetic encoding domain schematic", note: "Which information was actually measured?", aspect: "video", tone: "dark" },
+    { label: "B", title: "Prior", src: "/images/research/mri-mask.svg", alt: "Synthetic sampling prior schematic", note: "What distributional preference was imposed?", aspect: "video", tone: "accent" },
+    { label: "C", title: "Residual", src: "/images/research/mri-reconstruction.svg", alt: "Synthetic reconstruction residual schematic", note: "Which errors remain concentrated or structured?", aspect: "video", tone: "muted" }
+  ]}
+  footer="All panels are synthetic diagrams. They exist to test figure layout and captions without implying clinical evidence."
+/>
+
+<Gallery
+  columns={3}
+  images={[
+    { src: "/images/research/mri-kspace.svg", alt: "Synthetic k-space sampling field", caption: "Acquisition geometry" },
+    { src: "/images/research/mri-mask.svg", alt: "Synthetic variable-density mask", caption: "Sampling policy" },
+    { src: "/images/research/mri-reconstruction.svg", alt: "Synthetic reconstruction comparison", caption: "Inspection view" }
+  ]}
+/>
+
+The visual diagnosis must remain tied to the signal model. <CrossReference target="fig-sampling" label="Figure 1" /> cannot show whether a reconstruction is safe; it can only help a reader determine whether the reported acquisition is plausible and sufficiently specified.
+
+<Algorithm
+  id="alg-reconstruction-audit"
+  label="1"
+  title="Reconstruction reporting audit"
+  input="Acquisition metadata, raw multicoil measurements, reconstruction output"
+  output="A traceable methods and validation record"
+  caption="This is a reporting procedure, not a reconstruction algorithm."
+  emphasizedSteps={[2, 3]}
+  steps={[
+    { statement: "Record the sequence, mask, coil model, and preprocessing transforms." },
+    { statement: "Lock the target use and primary endpoint before selecting a model." },
+    { statement: "Evaluate fidelity, failure modes, and downstream task performance on held-out data." },
+    { statement: "Stratify error analysis by acquisition and population factors that may shift the data distribution.", indent: 1 },
+    { statement: "Release code, configuration, and provenance sufficient to reproduce every reported number." }
+  ]}
+/>
+
+<ArchitectureDiagram
+  title="A transparent reconstruction pipeline"
+  caption="The diagram distinguishes measurement, model, and review rather than treating the network as the whole system."
+  direction="LR"
+  nodes={[
+    { id: "scan", label: "Multicoil scan", shape: "rounded", tone: "default" },
+    { id: "operator", label: "Forward operator", shape: "rect", tone: "accent" },
+    { id: "model", label: "Reconstruction rule", shape: "rounded", tone: "accent" },
+    { id: "audit", label: "Validation and review", shape: "rounded", tone: "success" }
+  ]}
+  edges={[
+    { from: "scan", to: "operator", label: "measurements" },
+    { from: "operator", to: "model", label: "data consistency" },
+    { from: "model", to: "audit", label: "candidate image" }
+  ]}
+/>
+
+<MermaidDiagram
+  title="Failure analysis must feed back into the protocol"
+  caption="A report is incomplete if validation only produces a scalar score and cannot change the next acquisition or analysis decision."
+  chart={`flowchart TD
+  A[Pre-register target use] --> B[Acquire and reconstruct]
+  B --> C[Evaluate held-out cases]
+  C --> D{Failure mode found?}
+  D -->|Yes| E[Revise protocol or model]
+  E --> A
+  D -->|No| F[Document scope and release evidence]`}
+/>
+
+## Evaluate the decision, not only the image
+
+<ExperimentSetup
+  title="Example reporting checklist for an accelerated MRI study"
+  dataset="Named acquisition cohort with governance, inclusion criteria, and de-identification procedure."
+  split="Patient-level train / validation / test partitions fixed before optimisation."
+  metrics={["NMSE", "SSIM", "reader agreement", "task-specific sensitivity analysis"]}
+  compute="Report hardware, software versions, random seeds, and inference latency."
+  settings={[
+    { label: "Sampling", value: "Mask, acceleration, calibration region" },
+    { label: "Reference", value: "Definition and known limitations of the comparator" },
+    { label: "Uncertainty", value: "Intervals, subgroup analysis, and failure review" },
+    { label: "Release", value: "Code, configuration, and evaluation manifest" }
+  ]}
+  notes="The fields are intentionally descriptive. A compact component should not hide the study design that gives a metric meaning."
+/>
+
+<TaskSpecCard
+  title="Clinical reconstruction as a decision-support task"
+  domain="MRI reconstruction"
+  environment="Protocol-specific multicoil acquisition and a governed evaluation cohort"
+  goal="Provide an image that supports a defined clinical or scientific decision without silently changing the limits of evidence."
+  observations={["raw measurements and acquisition metadata", "reconstruction residuals", "held-out task outcomes"]}
+  actions={["select a reconstruction under a prespecified protocol", "flag out-of-distribution or low-confidence cases", "route failures for expert review"]}
+  successCriteria={["data consistency is documented", "evaluation is patient-level and held-out", "failure modes are visible and scoped"]}
+  notes="Use this component only where a task framing clarifies responsibility; it is not a substitute for a study protocol."
+/>
+
+<MetricTable
+  title="Illustrative reporting table"
+  caption="Synthetic values chosen solely to test metric-table formatting. They are not a benchmark."
+  rowLabel="Reconstruction"
+  metrics={[
+    { key: "nmse", label: "NMSE", direction: "lower" },
+    { key: "ssim", label: "SSIM", direction: "higher" },
+    { key: "latency", label: "Latency", direction: "lower", format: "integer" }
+  ]}
+  rows={[
+    { label: "Zero-filled inverse FFT", values: { nmse: 0.094, ssim: 0.741, latency: 5 }, note: "Baseline fixture" },
+    { label: "Fixed regulariser", values: { nmse: 0.057, ssim: 0.812, latency: 84 }, note: "Synthetic comparison" },
+    { label: "Unrolled model", values: { nmse: 0.043, ssim: 0.851, latency: 46 }, tag: "fixture", featured: true, note: "No clinical interpretation" }
+  ]}
+/>
+
+<AblationTable
+  title="Synthetic ablation layout"
+  caption="Ablations should identify a controlled intervention; rows that mix several changes cannot support causal attribution."
+  variantLabel="Changed element"
+  metrics={[{ key: "nmse", label: "NMSE ↓", direction: "lower" }, { key: "ssim", label: "SSIM ↑", direction: "higher" }]}
+  rows={[
+    { label: "Data consistency only", values: { nmse: 0.092, ssim: 0.744 } },
+    { label: "+ fixed sparsity prior", values: { nmse: 0.061, ssim: 0.807 } },
+    { label: "+ learned prior", values: { nmse: 0.049, ssim: 0.838 } }
+  ]}
+/>
+
+<Heatmap
+  title="Synthetic robustness map"
+  caption="The layout is suitable for a prespecified stratified analysis, not a heatmap of post-hoc wins."
+  rows={["Nominal", "Mask shift", "Noise shift", "Motion proxy"]}
+  columns={["NMSE", "SSIM", "Reader agreement"]}
+  values={[[0.04, 0.86, 0.88], [0.07, 0.79, 0.81], [0.08, 0.76, 0.78], [0.12, 0.69, 0.70]]}
+  lowLabel="Lower / weaker"
+  highLabel="Higher / stronger"
+/>
+
+<ConfusionMatrix
+  title="Synthetic downstream decision audit"
+  caption="A diagnostic confusion matrix needs its reference standard and threshold stated beside it."
+  labels={["Negative", "Positive"]}
+  values={[[88, 12], [15, 85]]}
+  normalize
+/>
+
+<Chart
+  id="chart-acceleration"
+  title="Illustrative metric trajectory by acceleration"
+  description="Synthetic values make the chart inspectable; no general performance conclusion follows from this figure."
+  xLabels={["2×", "4×", "6×", "8×"]}
+  yFormat="percent"
+  min={0}
+  max={1}
+  series={[
+    {
+      label: "SSIM fixture",
+      data: [0.91, 0.86, 0.79, 0.70],
+      color: "#2563eb",
+      type: "line",
+      interval: {
+        label: "synthetic 95% interval",
+        lower: [0.89, 0.83, 0.74, 0.63],
+        upper: [0.93, 0.89, 0.84, 0.77],
+      },
+    },
+    {
+      label: "Reader agreement fixture",
+      data: [0.93, 0.88, 0.82, 0.73],
+      color: "#0f766e",
+      type: "line",
+      interval: {
+        label: "synthetic 95% interval",
+        lower: [0.90, 0.84, 0.76, 0.64],
+        upper: [0.95, 0.91, 0.87, 0.80],
+      },
+    },
+  ]}
+  caption="A plot should communicate the operating range and uncertainty, not merely advertise the best point."
+/>
+
+<ScatterPlot
+  id="fig-calibration"
+  title="Synthetic agreement against a reference measurement"
+  description="A scatter plot exposes dispersion and calibration that a single average error can conceal."
+  xLabel="Reference quantity"
+  yLabel="Reconstruction quantity"
+  minX={0}
+  maxX={1}
+  minY={0}
+  maxY={1}
+  series={[
+    {
+      label: "Held-out fixture",
+      color: "#2563eb",
+      points: [
+        { x: 0.12, y: 0.16 }, { x: 0.25, y: 0.23 }, { x: 0.37, y: 0.39 },
+        { x: 0.48, y: 0.44 }, { x: 0.64, y: 0.66 }, { x: 0.81, y: 0.76 },
+      ],
+    },
+  ]}
+  caption="Synthetic points only. In a real study, state the reference, unit, cohort, and any clustering or repeated-measurement structure."
+/>
+
+<Histogram
+  id="fig-residual-distribution"
+  title="Synthetic residual distribution"
+  description="Use explicitly declared bins rather than letting a display component choose a binning rule invisibly."
+  xLabel="Absolute residual"
+  yLabel="Cases"
+  bins={[
+    { label: "0–0.02", count: 42 }, { label: "0.02–0.04", count: 31 },
+    { label: "0.04–0.06", count: 16 }, { label: "0.06–0.08", count: 7 },
+    { label: ">0.08", count: 4 },
+  ]}
+  caption="Synthetic bins demonstrate the component. A histogram requires the bin edges, denominator, and excluded observations to be stated in the surrounding methods."
+/>
+
+<PaperCard
+  title="Sparse MRI: The Application of Compressed Sensing for Rapid MR Imaging"
+  authors={["Michael Lustig", "David Donoho", "John M. Pauly"]}
+  venue="Magnetic Resonance in Medicine"
+  year={2007}
+  status="Foundational method paper"
+  tags={["compressed sensing", "MRI reconstruction"]}
+  summary="A concise entry point for the link between undersampled k-space, sparse representations, and nonlinear reconstruction."
+  links={[{ label: "DOI", href: "https://doi.org/10.1002/mrm.21391" }]}
+/>
+
+## What the article refuses to claim
+
+<PullQuote author="Methodological principle">
+  A low residual is evidence that a candidate image matches the acquired data under a model. It is not evidence that every visible structure is clinically faithful.
+</PullQuote>
+
+The most useful model card is therefore not a marketing summary. It records the acquisition domain, exclusions, optimisation objective, reference definition, primary endpoint, known failure modes, and who should decide when the system is uncertain. Public datasets such as fastMRI make reproducible reconstruction benchmarks possible, but a benchmark remains a bounded evaluation setting rather than universal evidence.<Citation refId="fastmri-2019" label="[3]" />
+
+<Tabs caption="Use a tabbed comparison only when the alternatives share the same question.">
+  <Tab title="Image fidelity">
+    Ask whether the reconstruction matches a defined reference under the stated acquisition conditions. Use metrics with uncertainty and inspect error structure.
+  </Tab>
+  <Tab title="Decision fidelity">
+    Ask whether a downstream scientific or clinical decision changes. This requires a reference standard and an endpoint defined before analysis.
+  </Tab>
+  <Tab title="Operational safety">
+    Ask what happens under protocol drift, motion, missing calibration, or an input outside the training distribution.
+  </Tab>
+</Tabs>
+
+<Accordion>
+  <AccordionItem title="Why not report only PSNR or SSIM?" open>
+    They are useful image-comparison summaries, but neither metric by itself validates a diagnostic decision, distribution shift, or a clinically material local error.
+  </AccordionItem>
+  <AccordionItem title="When is a learned reconstruction appropriate?">
+    When its training distribution, forward model, validation target, and failure handling are explicit enough for the intended use—not merely when it produces visually pleasing images.
+  </AccordionItem>
+</Accordion>
+
+<YouTube videoId="2S3LiDkfl-0" />
+
+<Caption>Supplementary explanatory media: an external MRI physics lecture. It is a learning aid, not a cited experimental result; availability is controlled by the host platform.</Caption>
+
+<Bibliography note="Reference links point to original papers or primary project material.">
+  <BibliographyItem id="lustig-2007" label="[1]" title="Sparse MRI: The Application of Compressed Sensing for Rapid MR Imaging" authors={["M. Lustig", "D. Donoho", "J. M. Pauly"]} venue="Magnetic Resonance in Medicine" year={2007} links={[{ label: "DOI", href: "https://doi.org/10.1002/mrm.21391" }]} />
+  <BibliographyItem id="hammernik-2018" label="[2]" title="Learning a Variational Network for Reconstruction of Accelerated MRI Data" authors={["K. Hammernik", "T. Klatzer", "E. Kobler", "et al."]} venue="Magnetic Resonance in Medicine" year={2018} links={[{ label: "arXiv", href: "https://arxiv.org/abs/1704.00447" }]} />
+  <BibliographyItem id="fastmri-2019" label="[3]" title="fastMRI: An Open Dataset and Benchmarks for Accelerated MRI" authors={["J. Zbontar", "F. Knoll", "A. Sriram", "et al."]} venue="arXiv" year={2018} links={[{ label: "arXiv", href: "https://arxiv.org/abs/1811.08839" }]} />
+</Bibliography>

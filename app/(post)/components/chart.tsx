@@ -1,13 +1,28 @@
-import { mdxEmptyStateClass, mdxMutedTextClass, mdxPanelClass, mdxSubtleTextClass } from "./surface";
+import {
+  mdxEmptyStateClass,
+  mdxMutedTextClass,
+} from "./surface";
 
-type ChartSeries = {
+export type ChartInterval = {
+  /** Lower and upper bounds must align with the series data by index. */
+  lower: number[];
+  upper: number[];
+  /** Lines default to a confidence band; bars default to error bars. */
+  display?: "band" | "bars";
+  /** For example, "95% CI" or "bootstrap interval". */
+  label?: string;
+};
+
+export type ChartSeries = {
   label: string;
   data: number[];
   color?: string;
   type?: "line" | "area" | "bar";
+  interval?: ChartInterval;
 };
 
 type ChartProps = {
+  id?: string;
   title?: string;
   description?: string;
   caption?: string;
@@ -17,11 +32,14 @@ type ChartProps = {
   yFormat?: "number" | "percent";
   min?: number;
   max?: number;
+  /** Bar series are grouped by default; use stacked only for compositional totals. */
+  barMode?: "grouped" | "stacked";
 };
 
 const DEFAULT_COLORS = ["#2563eb", "#0f766e", "#7c3aed", "#ea580c", "#db2777"];
 
 export function Chart({
+  id,
   title,
   description,
   caption,
@@ -31,6 +49,7 @@ export function Chart({
   yFormat = "number",
   min,
   max,
+  barMode = "grouped",
 }: ChartProps) {
   const normalizedSeries = series
     .filter(entry => entry.data.some(value => Number.isFinite(value)))
@@ -41,59 +60,102 @@ export function Chart({
     }));
 
   if (!normalizedSeries.length) {
-    return <div className={mdxEmptyStateClass}>Add at least one numeric series to render a chart.</div>;
+    return (
+      <div className={mdxEmptyStateClass}>
+        Add at least one numeric series to render a chart.
+      </div>
+    );
   }
 
   const valueCount = Math.max(
     xLabels.length,
     ...normalizedSeries.map(entry => entry.data.length),
-    1,
+    1
   );
-  const labels = Array.from({ length: valueCount }, (_, index) => xLabels[index] ?? `${index + 1}`);
-  const flatValues = normalizedSeries.flatMap(entry => entry.data.filter(Number.isFinite));
-  const containsBarSeries = normalizedSeries.some(entry => entry.type === "bar");
+  const labels = Array.from(
+    { length: valueCount },
+    (_, index) => xLabels[index] ?? `${index + 1}`
+  );
+  const containsBarSeries = normalizedSeries.some(
+    entry => entry.type === "bar"
+  );
+  const barSeries = normalizedSeries.filter(entry => entry.type === "bar");
+  const nonBarSeries = normalizedSeries.filter(entry => entry.type !== "bar");
+  const stackedBarSegments =
+    barMode === "stacked"
+      ? buildStackedBarSegments(barSeries, valueCount)
+      : [];
+  const flatValues = [
+    ...nonBarSeries.flatMap(entry => [
+      ...entry.data.filter(Number.isFinite),
+      ...(entry.interval?.lower.filter(Number.isFinite) ?? []),
+      ...(entry.interval?.upper.filter(Number.isFinite) ?? []),
+    ]),
+    ...(barMode === "stacked"
+      ? stackedBarSegments.flatMap(segment => [segment.start, segment.end])
+      : barSeries.flatMap(entry => [
+          ...entry.data.filter(Number.isFinite),
+          ...(entry.interval?.lower.filter(Number.isFinite) ?? []),
+          ...(entry.interval?.upper.filter(Number.isFinite) ?? []),
+        ])),
+  ];
   const rawMin = min ?? Math.min(...flatValues);
   const rawMax = max ?? Math.max(...flatValues);
   const domainMin =
-    min ?? (containsBarSeries ? Math.min(0, rawMin) : rawMin === rawMax ? rawMin - 1 : rawMin);
+    min ??
+    (containsBarSeries
+      ? Math.min(0, rawMin)
+      : rawMin === rawMax
+      ? rawMin - 1
+      : rawMin);
   const domainMax = max ?? (rawMin === rawMax ? rawMax + 1 : rawMax);
   const width = 960;
   const padding = { top: 28, right: 24, bottom: 52, left: 58 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const zeroLineY = scaleY(Math.max(domainMin, Math.min(domainMax, 0)), domainMin, domainMax, innerHeight, padding.top);
-  const barSeries = normalizedSeries.filter(entry => entry.type === "bar");
-  const nonBarSeries = normalizedSeries.filter(entry => entry.type !== "bar");
+  const zeroLineY = scaleY(
+    Math.max(domainMin, Math.min(domainMax, 0)),
+    domainMin,
+    domainMax,
+    innerHeight,
+    padding.top
+  );
   const useCenteredXPositions = containsBarSeries;
   const xStep = valueCount > 1 ? innerWidth / (valueCount - 1) : 0;
   const columnWidth = valueCount > 0 ? innerWidth / valueCount : innerWidth;
   const groupedBarWidth = Math.min(columnWidth * 0.72, 56);
-  const singleBarWidth = barSeries.length ? groupedBarWidth / Math.max(barSeries.length, 1) : groupedBarWidth;
+  const singleBarWidth = barSeries.length
+    ? groupedBarWidth / Math.max(barSeries.length, 1)
+    : groupedBarWidth;
   const yTicks = buildTicks(domainMin, domainMax, 5);
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || description) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Chart</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">{title}</h3>
-          ) : null}
-          {description ? <p className={mdxMutedTextClass}>{description}</p> : null}
+    <figure
+      id={id}
+      data-reference-kind={id ? "chart" : undefined}
+      className="my-10 scroll-mt-24"
+    >
+      {title || description ? (
+        <div className="mb-5">
+          {title ? <p className="font-semibold text-slate-950 dark:text-white">{title}</p> : null}
+          {description ? <p className={`mt-2 ${mdxMutedTextClass}`}>{description}</p> : null}
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-600 dark:text-slate-300">
         {normalizedSeries.map(entry => (
           <div
             key={entry.label}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+            className="inline-flex items-center gap-2"
           >
             <span
-              className="h-2.5 w-2.5 rounded-full"
+              className="h-0.5 w-5"
               style={{ backgroundColor: entry.color }}
             />
-            {entry.label}
+            <span>
+              {entry.label}
+              {entry.interval?.label ? ` (${entry.interval.label})` : ""}
+            </span>
           </div>
         ))}
       </div>
@@ -101,12 +163,18 @@ export function Chart({
       <div className="mt-5 overflow-x-auto">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="min-w-[720px] w-full"
+          className="min-w-[600px] w-full"
           role="img"
           aria-label={title || "Chart"}
         >
           {yTicks.map(tick => {
-            const y = scaleY(tick, domainMin, domainMax, innerHeight, padding.top);
+            const y = scaleY(
+              tick,
+              domainMin,
+              domainMax,
+              innerHeight,
+              padding.top
+            );
             return (
               <g key={tick}>
                 <line
@@ -144,7 +212,7 @@ export function Chart({
               valueCount,
               innerWidth,
               padding.left,
-              useCenteredXPositions,
+              useCenteredXPositions
             );
             return (
               <text
@@ -160,60 +228,187 @@ export function Chart({
             );
           })}
 
-          {barSeries.map((entry, seriesIndex) =>
-            entry.data.map((value, pointIndex) => {
-              if (!Number.isFinite(value)) {
-                return null;
-              }
+          {barMode === "stacked"
+            ? stackedBarSegments.map(segment => {
+                const center = getXPosition(
+                  segment.index,
+                  valueCount,
+                  innerWidth,
+                  padding.left,
+                  true
+                );
+                const startY = scaleY(
+                  segment.start,
+                  domainMin,
+                  domainMax,
+                  innerHeight,
+                  padding.top
+                );
+                const endY = scaleY(
+                  segment.end,
+                  domainMin,
+                  domainMax,
+                  innerHeight,
+                  padding.top
+                );
 
-              const groupCenter =
-                getXPosition(pointIndex, valueCount, innerWidth, padding.left, true);
-              const x =
-                groupCenter -
-                groupedBarWidth / 2 +
-                singleBarWidth * seriesIndex +
-                1.5;
-              const y = scaleY(value, domainMin, domainMax, innerHeight, padding.top);
-              const barHeight = Math.max(1.5, Math.abs(zeroLineY - y));
-              const top = value >= 0 ? y : zeroLineY;
+                return (
+                  <rect
+                    key={`${segment.label}-${segment.index}`}
+                    x={center - groupedBarWidth / 2}
+                    y={Math.min(startY, endY)}
+                    width={groupedBarWidth}
+                    height={Math.max(1.5, Math.abs(startY - endY))}
+                    rx="4"
+                    fill={segment.color}
+                    opacity={0.82}
+                  />
+                );
+              })
+            : barSeries.map((entry, seriesIndex) =>
+                entry.data.map((value, pointIndex) => {
+                  if (!Number.isFinite(value)) {
+                    return null;
+                  }
 
-              return (
-                <rect
-                  key={`${entry.label}-${pointIndex}`}
-                  x={x}
-                  y={top}
-                  width={Math.max(singleBarWidth - 3, 6)}
-                  height={barHeight}
-                  rx="6"
-                  fill={entry.color}
-                  opacity={0.82}
-                />
-              );
-            }),
-          )}
+                  const groupCenter = getXPosition(
+                    pointIndex,
+                    valueCount,
+                    innerWidth,
+                    padding.left,
+                    true
+                  );
+                  const x =
+                    groupCenter -
+                    groupedBarWidth / 2 +
+                    singleBarWidth * seriesIndex +
+                    1.5;
+                  const y = scaleY(
+                    value,
+                    domainMin,
+                    domainMax,
+                    innerHeight,
+                    padding.top
+                  );
+                  const barHeight = Math.max(1.5, Math.abs(zeroLineY - y));
+                  const top = value >= 0 ? y : zeroLineY;
+
+                  return (
+                    <rect
+                      key={`${entry.label}-${pointIndex}`}
+                      x={x}
+                      y={top}
+                      width={Math.max(singleBarWidth - 3, 6)}
+                      height={barHeight}
+                      rx="6"
+                      fill={entry.color}
+                      opacity={0.82}
+                    />
+                  );
+                })
+              )}
+
+          {normalizedSeries.map(entry => {
+            if (
+              !entry.interval ||
+              getIntervalDisplay(entry) !== "bars" ||
+              (barMode === "stacked" && entry.type === "bar")
+            ) {
+              return null;
+            }
+
+            return buildIntervalSegments(
+              entry.interval,
+              valueCount,
+              innerWidth,
+              innerHeight,
+              padding.left,
+              padding.top,
+              domainMin,
+              domainMax,
+              useCenteredXPositions
+            ).map((segment, segmentIndex) =>
+              segment.map((point, pointIndex) => (
+                <g key={`${entry.label}-interval-${segmentIndex}-${pointIndex}`}>
+                  <line
+                    x1={point.x}
+                    x2={point.x}
+                    y1={point.upperY}
+                    y2={point.lowerY}
+                    stroke={entry.color}
+                    strokeWidth="1.5"
+                    opacity="0.78"
+                  />
+                  <line
+                    x1={point.x - 4}
+                    x2={point.x + 4}
+                    y1={point.upperY}
+                    y2={point.upperY}
+                    stroke={entry.color}
+                    strokeWidth="1.5"
+                    opacity="0.78"
+                  />
+                  <line
+                    x1={point.x - 4}
+                    x2={point.x + 4}
+                    y1={point.lowerY}
+                    y2={point.lowerY}
+                    stroke={entry.color}
+                    strokeWidth="1.5"
+                    opacity="0.78"
+                  />
+                </g>
+              ))
+            );
+          })}
 
           {nonBarSeries.map(entry => {
             const points = buildPoints(
               entry.data,
               valueCount,
+              innerWidth,
+              innerHeight,
+              padding.left,
+              padding.top,
+              domainMin,
+              domainMax,
+              useCenteredXPositions
+            );
+
+            if (!points.length) {
+              return null;
+            }
+
+            const pointList = points
+              .map(point => `${point.x},${point.y}`)
+              .join(" ");
+            const areaPath = buildAreaPath(points, zeroLineY);
+            const intervalSegments = entry.interval
+              ? buildIntervalSegments(
+                  entry.interval,
+                  valueCount,
                   innerWidth,
                   innerHeight,
                   padding.left,
                   padding.top,
                   domainMin,
                   domainMax,
-                  useCenteredXPositions,
-                );
-
-            if (!points.length) {
-              return null;
-            }
-
-            const pointList = points.map(point => `${point.x},${point.y}`).join(" ");
-            const areaPath = buildAreaPath(points, zeroLineY);
+                  useCenteredXPositions
+                )
+              : [];
 
             return (
               <g key={entry.label}>
+                {getIntervalDisplay(entry) === "band"
+                  ? intervalSegments.map((segment, segmentIndex) => (
+                      <path
+                        key={`${entry.label}-band-${segmentIndex}`}
+                        d={buildIntervalBandPath(segment)}
+                        fill={entry.color}
+                        opacity={0.13}
+                      />
+                    ))
+                  : null}
                 {entry.type === "area" ? (
                   <path d={areaPath} fill={entry.color} opacity={0.16} />
                 ) : null}
@@ -242,8 +437,10 @@ export function Chart({
         </svg>
       </div>
 
-      {caption ? <p className={`mt-4 ${mdxMutedTextClass}`}>{caption}</p> : null}
-    </section>
+      {caption ? (
+        <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption>
+      ) : null}
+    </figure>
   );
 }
 
@@ -263,7 +460,7 @@ function scaleY(
   min: number,
   max: number,
   innerHeight: number,
-  offsetTop: number,
+  offsetTop: number
 ) {
   const ratio = (value - min) / Math.max(max - min, Number.EPSILON);
   return offsetTop + innerHeight - ratio * innerHeight;
@@ -278,7 +475,7 @@ function buildPoints(
   offsetTop: number,
   min: number,
   max: number,
-  centerSteps: boolean,
+  centerSteps: boolean
 ) {
   return data
     .map((value, index) => {
@@ -299,7 +496,7 @@ function getXPosition(
   valueCount: number,
   innerWidth: number,
   offsetLeft: number,
-  centered: boolean,
+  centered: boolean
 ) {
   if (centered) {
     const columnWidth = valueCount > 0 ? innerWidth / valueCount : innerWidth;
@@ -325,6 +522,108 @@ function buildAreaPath(points: { x: number; y: number }[], baselineY: number) {
     .join(" ");
 
   return `${curve} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
+}
+
+type IntervalPoint = {
+  x: number;
+  upperY: number;
+  lowerY: number;
+};
+
+function buildIntervalSegments(
+  interval: ChartInterval,
+  valueCount: number,
+  innerWidth: number,
+  innerHeight: number,
+  offsetLeft: number,
+  offsetTop: number,
+  min: number,
+  max: number,
+  centerSteps: boolean
+) {
+  const segments: IntervalPoint[][] = [];
+  let current: IntervalPoint[] = [];
+
+  for (let index = 0; index < valueCount; index += 1) {
+    const lower = interval.lower[index];
+    const upper = interval.upper[index];
+
+    if (!Number.isFinite(lower) || !Number.isFinite(upper)) {
+      if (current.length) {
+        segments.push(current);
+        current = [];
+      }
+      continue;
+    }
+
+    const lowerBound = Math.min(lower, upper);
+    const upperBound = Math.max(lower, upper);
+    current.push({
+      x: getXPosition(index, valueCount, innerWidth, offsetLeft, centerSteps),
+      upperY: scaleY(upperBound, min, max, innerHeight, offsetTop),
+      lowerY: scaleY(lowerBound, min, max, innerHeight, offsetTop),
+    });
+  }
+
+  if (current.length) {
+    segments.push(current);
+  }
+
+  return segments;
+}
+
+function buildIntervalBandPath(points: IntervalPoint[]) {
+  if (!points.length) {
+    return "";
+  }
+
+  const upper = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.upperY}`)
+    .join(" ");
+  const lower = [...points]
+    .reverse()
+    .map(point => `L ${point.x} ${point.lowerY}`)
+    .join(" ");
+
+  return `${upper} ${lower} Z`;
+}
+
+function getIntervalDisplay(entry: ChartSeries) {
+  return entry.interval?.display ?? (entry.type === "bar" ? "bars" : "band");
+}
+
+type StackedBarSegment = {
+  label: string;
+  color: string;
+  index: number;
+  start: number;
+  end: number;
+};
+
+function buildStackedBarSegments(
+  series: Array<ChartSeries & { color: string }>,
+  valueCount: number
+) {
+  const positive = Array.from({ length: valueCount }, () => 0);
+  const negative = Array.from({ length: valueCount }, () => 0);
+  const segments: StackedBarSegment[] = [];
+
+  series.forEach(entry => {
+    entry.data.forEach((value, index) => {
+      if (!Number.isFinite(value)) return;
+
+      const start = value >= 0 ? positive[index] : negative[index];
+      const end = start + value;
+      if (value >= 0) {
+        positive[index] = end;
+      } else {
+        negative[index] = end;
+      }
+      segments.push({ label: entry.label, color: entry.color, index, start, end });
+    });
+  });
+
+  return segments;
 }
 
 function formatTick(value: number, yFormat: "number" | "percent") {

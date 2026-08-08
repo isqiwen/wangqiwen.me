@@ -71,11 +71,6 @@ load_deploy_config() {
   done
 }
 
-# Preserve the old VPS_HOST alias as a command-line override.
-if [[ -z "${DEPLOY_HOST+x}" && -n "${VPS_HOST+x}" ]]; then
-  DEPLOY_HOST="${VPS_HOST}"
-fi
-
 load_deploy_config "${DEPLOY_CONFIG}"
 
 APP_NAME="${APP_NAME:-}"

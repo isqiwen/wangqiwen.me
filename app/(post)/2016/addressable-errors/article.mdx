@@ -29,11 +29,36 @@ from others. But even then, user feedback tends to be scattered in many
 different places, some of which the project’s authors hardly ever visit.
 
 The solution is simple: <b>attach URLs</b>
-<Ref id="1" /> to all your errors and make them collaborative
-<Ref id="2" />. GitHub wikis, gists or issues are good candidates for
-hosting these. Bonus points: shorten them to make [live debugging](https://i.imgur.com/OANtEbP.jpg) easier.
 
-<FootNotes>
-  <FootNote id="1">The inspiration for this portion came from seeing [http://fb.me/react-warning-keys](http://fb.me/react-warning-keys) in Web Inspector a bunch of times.</FootNote>
-  <FootNote id="2">User comments about best-practices, errors and snippets in combination with permalinks made the [PHP manual](http://php.net/manual/en/keyword.paamayim-nekudotayim.php#69537) one of the best resources for newcomers and experts alike.</FootNote>
-</FootNotes>
+<Citation refId="react-warning-keys" label="[1]" /> to all your errors and make them
+collaborative
+<Citation refId="php-manual" label="[2]" />. GitHub wikis, gists or issues are
+good candidates for hosting these. Bonus points: shorten them to make [live
+debugging](https://i.imgur.com/OANtEbP.jpg) easier.
+
+<Bibliography>
+  <BibliographyItem
+    id="react-warning-keys"
+    label="[1]"
+    title="React warning keys"
+    links={[{ label: "Source", href: "http://fb.me/react-warning-keys" }]}
+  >
+    The inspiration for this portion came from seeing this warning in Web
+    Inspector a number of times.
+  </BibliographyItem>
+  <BibliographyItem
+    id="php-manual"
+    label="[2]"
+    title="PHP manual: paamayim nekudotayim"
+    links={[
+      {
+        label: "Source",
+        href: "http://php.net/manual/en/keyword.paamayim-nekudotayim.php#69537",
+      },
+    ]}
+  >
+    User comments about best practices, errors, and snippets in combination with
+    permalinks made the PHP manual one of the best resources for newcomers and
+    experts alike.
+  </BibliographyItem>
+</Bibliography>

@@ -4,15 +4,10 @@ import { readFile } from "fs/promises";
 import { Caption } from "./caption";
 import NextImage from "next/image";
 import { resolvePathInside } from "@/utils/server/path-safety";
-import { Children, isValidElement, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 const MAX_REMOTE_IMAGE_BYTES = 20 * 1024 * 1024;
-const REMOTE_IMAGE_HOSTS = new Set([
-  "pbs.twimg.com",
-  "abs.twimg.com",
-  "m.media-amazon.com",
-  "images-na.ssl-images-amazon.com",
-]);
+const REMOTE_IMAGE_HOSTS = new Set(["pbs.twimg.com", "abs.twimg.com"]);
 
 function formatImageFetchLabel(url: string) {
   try {
@@ -81,22 +76,24 @@ async function fetchImageBuffer(url: string) {
 
 export async function Image({
   src,
-  alt: originalAlt,
+  alt,
   title,
   width = null,
   height = null,
+  caption,
 }: {
   src: string;
-  alt?: ReactNode;
+  alt: string;
   title?: string;
   width?: number | null;
   height?: number | null;
+  /** Visible explanatory text. Alt text is intentionally not reused as a caption. */
+  caption?: ReactNode;
 }) {
-  const { altText, caption, factor } = parseImageAlt(originalAlt);
   const isDataImage = src.startsWith("data:");
   if (isDataImage) {
     /* eslint-disable @next/next/no-img-element */
-    return <img src={src} alt={altText} title={title} />;
+    return <img src={src} alt={alt} title={title} />;
   } else {
     if (width === null || height === null) {
       let imageBuffer: Buffer | null = null;
@@ -125,64 +122,16 @@ export async function Image({
     return (
       <span className="my-5 flex flex-col items-center">
         <NextImage
-          width={Math.max(1, Math.round(width * factor))}
-          height={Math.max(1, Math.round(height * factor))}
-          alt={altText}
+          width={Math.max(1, Math.round(width))}
+          height={Math.max(1, Math.round(height))}
+          alt={alt}
           title={title}
           src={src}
           unoptimized={src.endsWith(".gif")}
         />
 
-        {caption && <Caption>{caption}</Caption>}
+        {caption ? <Caption>{caption}</Caption> : null}
       </span>
     );
   }
-}
-
-function parseImageAlt(value?: ReactNode): {
-  altText: string;
-  caption: ReactNode;
-  factor: number;
-} {
-  if (typeof value !== "string") {
-    return {
-      altText: getTextContent(value).trim(),
-      caption: value ?? null,
-      factor: 1,
-    };
-  }
-
-  const alt = value.trim();
-  const match = alt.match(/^(.*?)\s+\[(\d+(?:\.\d+)?)%\]$/);
-  if (!match) {
-    return { altText: alt, caption: alt, factor: 1 };
-  }
-
-  const percentage = Number(match[2]);
-  if (!Number.isFinite(percentage) || percentage <= 0) {
-    return { altText: alt, caption: alt, factor: 1 };
-  }
-
-  const altText = match[1].trimEnd();
-  return {
-    altText,
-    caption: altText,
-    factor: percentage / 100,
-  };
-}
-
-function getTextContent(value: ReactNode): string {
-  return Children.toArray(value)
-    .map(child => {
-      if (typeof child === "string" || typeof child === "number") {
-        return String(child);
-      }
-
-      if (!isValidElement(child)) {
-        return "";
-      }
-
-      return getTextContent((child.props as { children?: ReactNode }).children);
-    })
-    .join("");
 }

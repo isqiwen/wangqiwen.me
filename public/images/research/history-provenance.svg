@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Provenance chain schematic</title>
+  <desc id="desc">A document moves from creator to repository to digitisation to analytical claim, with uncertainty notes preserved at every stage.</desc>
+  <rect width="1200" height="720" fill="#fbfaf7"/>
+  <g stroke="#d6d3d1" stroke-width="3" fill="#fffdf8"><rect x="70" y="250" width="210" height="190" rx="8"/><rect x="350" y="250" width="210" height="190" rx="8"/><rect x="630" y="250" width="210" height="190" rx="8"/><rect x="910" y="250" width="210" height="190" rx="8"/></g>
+  <g fill="#1c1917" font-family="ui-sans-serif, system-ui" font-size="27" font-weight="600"><text x="105" y="315">Creator</text><text x="385" y="315">Repository</text><text x="665" y="315">Digitisation</text><text x="945" y="315">Claim</text></g>
+  <g fill="#78716c" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="19"><text x="105" y="355">occasion</text><text x="105" y="385">purpose</text><text x="385" y="355">series</text><text x="385" y="385">reference code</text><text x="665" y="355">derivative</text><text x="665" y="385">transcription</text><text x="945" y="355">scope</text><text x="945" y="385">confidence</text></g>
+  <g fill="none" stroke="#a16207" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M290 345h45l-14-14m14 14l-14 14"/><path d="M570 345h45l-14-14m14 14l-14 14"/><path d="M850 345h45l-14-14m14 14l-14 14"/></g>
+  <text x="70" y="95" fill="#57534e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">CHAIN OF CUSTODY IS PART OF THE ARGUMENT</text><text x="70" y="650" fill="#78716c" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20">SYNTHETIC DOCUMENTATION MAP · NOT A DESCRIPTION OF A SPECIFIC ARCHIVE</text>
+</svg>

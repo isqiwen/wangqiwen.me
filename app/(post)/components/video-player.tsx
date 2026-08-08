@@ -11,28 +11,18 @@ import {
 } from "./surface";
 
 type Chapter = { label: string; time: number };
-type Danmaku = { time: number; text: string };
 
 type VideoPlayerProps = {
   src: string;
   poster?: string;
   title?: string;
   chapters?: Chapter[];
-  danmaku?: Danmaku[];
   children?: ReactNode;
 };
 
-export function VideoPlayer({ src, poster, title, chapters = [], danmaku = [], children }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, title, chapters = [], children }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [now, setNow] = useState(0);
-
-  const activeDanmaku = useMemo(
-    () =>
-      [...danmaku]
-        .filter(item => item.time <= now)
-        .sort((a, b) => b.time - a.time)[0],
-    [danmaku, now],
-  );
 
   const activeChapterIndex = useMemo(() => {
     if (chapters.length === 0) {
@@ -70,11 +60,6 @@ export function VideoPlayer({ src, poster, title, chapters = [], danmaku = [], c
           controls
           onTimeUpdate={e => setNow(e.currentTarget.currentTime)}
         />
-        {activeDanmaku ? (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 w-[80%] max-w-2xl -translate-x-1/2 rounded-full bg-black/65 px-4 py-2 text-center text-sm text-white shadow-lg backdrop-blur">
-            {activeDanmaku.text}
-          </div>
-        ) : null}
       </div>
 
       {(chapters.length > 0 || children) ? (

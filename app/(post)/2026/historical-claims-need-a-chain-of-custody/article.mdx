@@ -1,0 +1,195 @@
+export const metadata = {
+  "title": "Historical Claims Need a Chain of Custody",
+  "description": "A methodological note on turning archival traces into precise historical claims without losing provenance, transcription choices, or uncertainty.",
+  "publishedAt": "2026-08-08",
+  "id": "historical-claims-need-a-chain-of-custody",
+  "status": "draft",
+  "tags": [
+    "History"
+  ],
+  "readingTimeMinutes": 10,
+  "summary": "Historical interpretation begins before the quotation: a claim remains only as strong as its provenance, version history, transcription policy, context, and statement of uncertainty."
+};
+
+Historical writing often becomes least reliable at the moment it becomes most readable. A clean quotation, a precise date, or a persuasive narrative can conceal the practical work that made it possible: locating a record, determining what version was seen, preserving reference codes, distinguishing transcription from normalisation, and measuring the distance between an artefact and the claim made from it.
+
+This note proposes a simple rule: provenance is not a footnote after the argument. It is one of the argument's premises. The diagrams and text examples below are synthetic; no real collection, record, or transcription is being represented.
+
+<Callout type="note" title="A source is not self-interpreting">
+  Primary sources are records from the period under study, but their usefulness depends on questions of creator, purpose, context, preservation, and access. Those questions belong in the method, not merely in a bibliography.<Citation refId="tna-working-records" label="[1]" />
+</Callout>
+
+## Treat provenance as a chain, not a label
+
+<Figure id="fig-provenance" wide>
+  <Image src="/images/research/history-provenance.svg" alt="Synthetic provenance chain showing creator, repository, digitisation, and historical claim" />
+  <Caption>Figure 1. A claim should retain links to its creator, archival description, derivative, and interpretation. The diagram is illustrative only.</Caption>
+</Figure>
+
+<Definition id="def-provenance-chain" label="1" title="Chain of custody for a historical assertion">
+  A provenance chain is the documented path from a source object through custody, description, digitisation, transcription, and interpretation to a stated claim. Each transformation carries a possible loss, addition, or uncertainty that should remain recoverable.
+</Definition>
+
+<Timeline>
+  <TimelineItem date="1. Creation" title="An artefact is produced">
+    Record the actor, occasion, audience, material form, and purpose if known. These are historical facts to establish, not defaults to assume.
+  </TimelineItem>
+  <TimelineItem date="2. Custody" title="The artefact enters a collection">
+    Preserve repository, collection, series, item identifier, catalogue state, and access date. Precise citations let another reader retrieve the relevant documentary evidence.<Citation refId="tna-citing" label="[2]" />
+  </TimelineItem>
+  <TimelineItem date="3. Derivative" title="A scan, photograph, OCR, or transcription is made">
+    Name the derivative and its procedure. A digitised image is not the physical object; OCR is not a diplomatic transcription.
+  </TimelineItem>
+  <TimelineItem date="4. Claim" title="An interpretation is published">
+    State the inferential step, the scope of the conclusion, and what evidence would weaken it.
+  </TimelineItem>
+</Timeline>
+
+<ArchitectureDiagram
+  title="From artefact to proposition"
+  caption="The arrows are not guarantees of truth; they are the transformations a reader must be able to inspect."
+  direction="LR"
+  nodes={[
+    { id: "object", label: "Source object", shape: "rounded", tone: "default" },
+    { id: "catalogue", label: "Catalogue record", shape: "rect", tone: "muted" },
+    { id: "derivative", label: "Scan / transcription", shape: "rounded", tone: "accent" },
+    { id: "claim", label: "Scoped historical claim", shape: "rounded", tone: "success" }
+  ]}
+  edges={[
+    { from: "object", to: "catalogue", label: "description" },
+    { from: "catalogue", to: "derivative", label: "identification" },
+    { from: "derivative", to: "claim", label: "interpretation" }
+  ]}
+/>
+
+<MermaidDiagram
+  title="A disciplined route from query to claim"
+  caption="The loop makes disconfirming evidence an explicit part of research rather than an embarrassment to be hidden."
+  chart={`flowchart TD
+  A[Formulate a bounded question] --> B[Locate and cite records]
+  B --> C[Describe provenance and version]
+  C --> D[Transcribe or inspect]
+  D --> E[Compare with independent context]
+  E --> F{Claim still supported?}
+  F -->|No| G[Revise scope or suspend claim]
+  F -->|Yes| H[Publish claim with uncertainty]
+  G --> A`}
+/>
+
+The insistence on traceability does not make interpretation mechanical. It identifies where interpretation begins. The National Archives' guidance on historical evidence explicitly directs readers to consider perspective, bias, limitations, reliability, and context rather than treating a document as transparent speech from the past.<Citation refId="nara-raw" label="[3]" />
+
+## Show transformations instead of smoothing them away
+
+<SourceExcerpt
+  id="source-synthetic-minute"
+  title="Committee minute: a synthetic transcription example"
+  source="Synthetic fixture created for this article; not an archival record"
+  repository="Not applicable"
+  locator="Fixture H-1"
+  date="Undated"
+  facsimile={{
+    src: "/images/research/history-transcription.svg",
+    alt: "Synthetic comparison of a diplomatic transcription and a normalised reading transcription",
+    caption: "A rendering fixture showing why a facsimile and a reading text should remain visibly connected.",
+  }}
+  transcription={"the [illeg.] commttee\nmet at 3 o'Clocke\n& agreed to defer"}
+  reading={"The [illegible] committee\nmet at 3 o'clock\nand agreed to defer."}
+  note="Use this component when the reader must inspect the relation among the image, the transcription, the normalisation or translation, and the archival locator. State every editorial intervention that changes the reading text."
+/>
+
+The second column may be appropriate for a general reader, but it has editorial content. Capitalisation, expansions, punctuation, and silently corrected errors are interpretive choices. A formal article should state the transcription policy and preserve a route back to the observed form. Digital history work on transformations makes the same point in computational terms: derivative files and transformations need provenance if later users are to understand what they see.<Citation refId="externalizing-transformations" label="[4]" />
+
+<Table
+  id="table-transcription-policy"
+  label="Table 1"
+  title="A declared transcription policy"
+  caption="The point is not to force one transcription style, but to make the transformation and its evidential consequences recoverable."
+  source="Methodological fixture for this article."
+>
+  <THead><TR><TH>Layer</TH><TH>What is preserved</TH><TH>What is declared</TH></TR></THead>
+  <TBody>
+    <TR><TD>Facsimile</TD><TD>Visual materiality and page layout</TD><TD>Capture date, source file, crop, colour processing</TD></TR>
+    <TR><TD>Diplomatic transcription</TD><TD>Spelling, deletion, uncertainty, lineation where relevant</TD><TD>Markup conventions and symbols</TD></TR>
+    <TR><TD>Reading text</TD><TD>Accessible wording for analysis or quotation</TD><TD>Every normalisation and editorial expansion policy</TD></TR>
+  </TBody>
+</Table>
+
+<Compare
+  leftTitle="Citation as decoration"
+  rightTitle="Citation as retrieval protocol"
+  left="A title, date, and vague archive name that signals research but cannot reliably lead another person to the item."
+  right="Repository, collection, series, item, stable identifier or folio, derivative if used, and an access date for mutable online material."
+/>
+
+> The question is not whether a source has bias. The question is which conditions produced its perspective, which traces it leaves, and how far the evidence can support the proposed claim.
+
+## Use media as evidence only when its record is preserved
+
+<AudioPlayer
+  src="https://commons.wikimedia.org/wiki/Special:FilePath/Aroundworldonphon1888.ogg"
+  cover="/images/research/history-provenance.svg"
+  title="A public-domain sound recording as an archival object"
+  subtitle="External file served by Wikimedia Commons; the player is a rendering test, not a substitute for item-level description."
+>
+  For audio evidence, record the item page, rights statement, technical derivative, duration or segment, and any transcript used to make a claim. The audio file itself remains hosted elsewhere.
+</AudioPlayer>
+
+<VideoPlayer
+  src="https://commons.wikimedia.org/wiki/Special:FilePath/The%20Day%20after%20%281909%29.webm"
+  poster="/images/research/history-provenance.svg"
+  title="A public-domain moving-image object"
+  chapters={[{ label: "Catalogue context", time: 0 }, { label: "Close reading", time: 30 }]}
+>
+  Moving images require the same discipline as paper records: identify the specific copy, its condition, its derivative, and the timestamps or frames on which an interpretation rests.
+</VideoPlayer>
+
+<Callout type="caution" title="Embed availability is not preservation">
+  The audio and video widgets render media supplied by third parties. A durable citation must point to the catalogue record and identify the specific derivative; an embed is only a convenience for a current reader.
+</Callout>
+
+<PaperCard
+  title="Working with records"
+  authors="The National Archives (UK)"
+  venue="Education and research guidance"
+  status="Method reference"
+  tags={["archives", "primary sources"]}
+  summary="A concise primary-source guide that frames evidence through questions about provenance, purpose, audience, and context."
+  links={[{ label: "Guidance", href: "https://www.nationalarchives.gov.uk/education/students/study-resources/working-with-records/" }]}
+/>
+
+<Accordion>
+  <AccordionItem title="What is the smallest defensible claim?" open>
+    Start with what the object directly records under a stated reading. Move to wider claims only when the inferential bridge, corroboration, and uncertainty are visible.
+  </AccordionItem>
+  <AccordionItem title="Can a digitised record be cited?">
+    Yes, but cite both the archival identity and the digital derivative where possible. A URL alone usually cannot describe the object, version, or relation to a physical source.
+  </AccordionItem>
+  <AccordionItem title="When should uncertainty appear in the prose?">
+    Whenever it changes the scope of the inference: uncertain dating, attribution, transcription, survival, representativeness, or a gap in the chain of custody.
+  </AccordionItem>
+</Accordion>
+
+## Publish a claim with its limits intact
+
+<PullQuote author="Historical method">
+  A precise citation lets a reader find the artefact. A precise method lets that reader understand the distance between the artefact and the argument.
+</PullQuote>
+
+<Tabs caption="The same artefact can support several forms of writing, provided the transformation is explicit.">
+  <Tab title="Catalogue note">
+    Prioritise identification: title or supplied title, repository, reference code, date range, material description, and access conditions.
+  </Tab>
+  <Tab title="Edition">
+    Prioritise transcription policy: witness, normalisation, editorial symbols, variants, and a reliable link from reading text to facsimile.
+  </Tab>
+  <Tab title="Argument">
+    Prioritise inference: which observed feature matters, what alternative explanation exists, and what would change the conclusion.
+  </Tab>
+</Tabs>
+
+<Bibliography note="Sources below are institutional guidance and a methodological research paper. The embedded media are separately described as hosted archival objects, not as the authority for this essay.">
+  <BibliographyItem id="tna-working-records" label="[1]" title="Working with records" authors="The National Archives (UK)" venue="Research guidance" links={[{ label: "Guidance", href: "https://www.nationalarchives.gov.uk/education/students/study-resources/working-with-records/" }]} />
+  <BibliographyItem id="tna-citing" label="[2]" title="Citing records at The National Archives" authors="The National Archives (UK)" venue="Research guidance" links={[{ label: "Citation guidance", href: "https://www.nationalarchives.gov.uk/help-with-your-research/discovery-help/citing-records-national-archives/" }]} />
+  <BibliographyItem id="nara-raw" label="[3]" title="History in the Raw" authors="US National Archives" venue="Education resources" links={[{ label: "Guidance", href: "https://www.archives.gov/education/research/history-in-the-raw.html" }]} />
+  <BibliographyItem id="externalizing-transformations" label="[4]" title="Externalizing Transformations of Historical Documents" authors="Sebastian Barbot" venue="arXiv" year={2020} links={[{ label: "arXiv", href: "https://arxiv.org/abs/2009.02288" }]} />
+</Bibliography>

@@ -1,7 +1,7 @@
 import {
+  mdxDataTableFrameClass,
+  mdxDataTableHeadClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 export type MetricTableMetric = {
@@ -53,57 +53,42 @@ export function MetricTable({
   }, {});
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Metric Table</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
         </div>
       ) : null}
 
-      <div className="mt-5 overflow-x-auto rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className={mdxDataTableFrameClass}>
         <table className="w-full min-w-[760px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-xs uppercase tracking-[0.24em] text-slate-500 dark:bg-white/5 dark:text-slate-400">
+          <thead className={mdxDataTableHeadClass}>
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
+              <th scope="col" className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
                 {rowLabel}
               </th>
               {metrics.map(metric => (
                 <th
                   key={metric.key}
+                  scope="col"
                   className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white"
                 >
-                  <div className="space-y-1">
-                    <div>{metric.label}</div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                      {metric.direction === "lower" ? "Lower is better" : "Higher is better"}
-                    </div>
-                  </div>
+                  {formatMetricHeading(metric.label, metric.direction)}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr
-                key={row.label}
-                className={`border-t border-slate-200/70 dark:border-white/10 ${
-                  row.featured ? "bg-sky-50/70 dark:bg-sky-500/5" : ""
-                }`}
-              >
-                <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+              <tr key={row.label} className="border-t border-slate-200/70 dark:border-white/10">
+                <th scope="row" className="px-4 py-3 text-left text-slate-700 dark:text-slate-200">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="font-semibold text-slate-950 dark:text-white">
                       {row.label}
                     </div>
                     {row.tag ? (
-                      <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white dark:bg-white dark:text-slate-950">
-                        {row.tag}
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                        ({row.tag})
                       </span>
                     ) : null}
                   </div>
@@ -112,7 +97,7 @@ export function MetricTable({
                       {row.note}
                     </div>
                   ) : null}
-                </td>
+                </th>
                 {metrics.map(metric => {
                   const value = row.values[metric.key];
                   const isBest =
@@ -123,10 +108,10 @@ export function MetricTable({
                   return (
                     <td key={metric.key} className="px-4 py-3 text-slate-700 dark:text-slate-200">
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 font-semibold ${
+                        className={`tabular-nums ${
                           isBest
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200"
+                            ? "font-semibold text-slate-950 dark:text-white"
+                            : "text-slate-700 dark:text-slate-200"
                         }`}
                       >
                         {formatMetricValue(value, metric.format)}
@@ -140,11 +125,27 @@ export function MetricTable({
         </table>
       </div>
 
-      <p className={`mt-4 ${mdxMutedTextClass}`}>
-        Best numeric values are highlighted automatically for each metric column.
-      </p>
-    </section>
+      {(caption || metrics.some(metric => metric.direction)) ? (
+        <figcaption className={`mt-4 ${mdxMutedTextClass}`}>
+          {caption ? `${caption} ` : ""}
+          {metrics.some(metric => metric.direction)
+            ? "Bold values are best within their metric column."
+            : null}
+        </figcaption>
+      ) : null}
+    </figure>
   );
+}
+
+function formatMetricHeading(
+  label: string,
+  direction: MetricTableMetric["direction"],
+) {
+  if (!direction || /[↑↓]/.test(label)) {
+    return label;
+  }
+
+  return `${label} ${direction === "lower" ? "↓" : "↑"}`;
 }
 
 function formatMetricValue(

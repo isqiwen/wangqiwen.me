@@ -1,8 +1,4 @@
-const withMDX = require("@next/mdx")({
-  options: {
-    remarkPlugins: [require.resolve("./utils/remark/remove-frontmatter")],
-  },
-});
+const withMDX = require("@next/mdx")();
 
 module.exports = withMDX({
   output: "standalone",
@@ -28,18 +24,6 @@ module.exports = withMDX({
         port: "",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "m.media-amazon.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images-na.ssl-images-amazon.com",
-        port: "",
-        pathname: "/**",
-      },
     ],
   },
   headers() {
@@ -52,15 +36,6 @@ module.exports = withMDX({
             value: "public, max-age=31536000, immutable",
           },
         ],
-      },
-    ];
-  },
-  redirects() {
-    return [
-      {
-        source: "/essays/:nested*",
-        destination: "/",
-        permanent: true,
       },
     ];
   },

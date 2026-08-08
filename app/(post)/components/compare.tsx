@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import {
-  mdxInsetClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type CompareProps = {
@@ -15,17 +12,25 @@ type CompareProps = {
 
 export function Compare({ leftTitle, rightTitle, left, right }: CompareProps) {
   return (
-    <div className={`${mdxPanelClass} grid gap-4 md:grid-cols-2`}>
+    <section className="my-10 grid divide-y divide-slate-200/80 border-y border-slate-200/80 dark:divide-white/10 dark:border-white/10 md:grid-cols-2 md:divide-x md:divide-y-0">
       <CompareColumn title={leftTitle}>{left}</CompareColumn>
-      <CompareColumn title={rightTitle}>{right}</CompareColumn>
-    </div>
+      <CompareColumn title={rightTitle} secondary>{right}</CompareColumn>
+    </section>
   );
 }
 
-function CompareColumn({ title, children }: { title: string; children: ReactNode }) {
+function CompareColumn({
+  title,
+  children,
+  secondary = false,
+}: {
+  title: string;
+  children: ReactNode;
+  secondary?: boolean;
+}) {
   return (
-    <div className={`${mdxInsetClass} space-y-3 p-4 shadow-sm`}>
-      <p className={mdxSubtleTextClass}>{title}</p>
+    <div className={`space-y-3 py-4 ${secondary ? "md:pl-6" : "md:pr-6"}`}>
+      <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
       <div className={`text-base ${mdxMutedTextClass}`}>{children}</div>
     </div>
   );

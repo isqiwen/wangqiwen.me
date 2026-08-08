@@ -6,10 +6,10 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "^5.1.1",
-    "@fontsource-variable/roboto-mono": "^5.1.1",
-    "@fontsource/inter": "^5.1.1",
-    "@fontsource/roboto-mono": "^5.1.1",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/roboto-mono": "^5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/roboto-mono": "5.3.0",
     "@mdx-js/react": "^2.3.0",
     "@next/mdx": "15.5.21",
     "@upstash/redis": "^1.20.1",
@@ -67,7 +67,7 @@
     "dev": "next dev --turbopack -H 0.0.0.0",
     "build": "node scripts/content/build-site.cjs",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint app scripts tests utils mdx-components.ts next.config.js --ext .js,.cjs,.mjs,.jsx,.ts,.tsx --no-error-on-unmatched-pattern",
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "tsx --test tests/smoke/*.test.ts",
     "test:e2e": "NEXT_DIST_DIR=.next-e2e playwright test",

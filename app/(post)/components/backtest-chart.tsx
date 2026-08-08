@@ -1,8 +1,6 @@
 import {
   mdxEmptyStateClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type BacktestChartProps = {
@@ -101,20 +99,14 @@ export function BacktestChart({
   );
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Backtest</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          {title ? <p className="font-semibold text-slate-950 dark:text-white">{title}</p> : null}
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
         <LegendPill color="#2563eb" label={strategyLabel} />
         {benchmark.length ? <LegendPill color="#0f766e" label={benchmarkLabel} /> : null}
         <LegendPill color="#dc2626" label="Drawdown" />
@@ -252,14 +244,15 @@ export function BacktestChart({
           })}
         </svg>
       </div>
-    </section>
+      {caption ? <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption> : null}
+    </figure>
   );
 }
 
 function LegendPill({ color, label }: { color: string; label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+    <div className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+      <span className="h-0.5 w-5" style={{ backgroundColor: color }} />
       {label}
     </div>
   );

@@ -1,8 +1,5 @@
 import {
-  mdxInsetClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type ExperimentSetting = {
@@ -30,54 +27,44 @@ export function ExperimentSetup({
   settings = [],
 }: ExperimentSetupProps) {
   return (
-    <section className={mdxPanelClass}>
-      <div className="space-y-2">
-        <p className={mdxSubtleTextClass}>Experiment Setup</p>
-        <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-          {title}
-        </h3>
-      </div>
+    <section className="my-10 border-y border-slate-200/80 py-5 dark:border-white/10">
+      <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <SetupCard title="Dataset" body={dataset} />
-        <SetupCard title="Split" body={split} />
-        <SetupCard title="Compute" body={compute} />
-        <SetupCard title="Metrics" body={metrics.length ? metrics.join(", ") : undefined} />
-      </div>
+      <dl className="mt-5 grid divide-y divide-slate-200/80 border-y border-slate-200/80 dark:divide-white/10 dark:border-white/10 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <SetupItem title="Dataset" body={dataset} />
+        <SetupItem title="Split" body={split} />
+        <SetupItem title="Compute" body={compute} />
+        <SetupItem title="Metrics" body={metrics.length ? metrics.join(", ") : undefined} />
+      </dl>
 
       {settings.length ? (
-        <div className={`${mdxInsetClass} mt-4 overflow-x-auto px-4 py-4 sm:px-5`}>
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">
-            Key settings
-          </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {settings.map(setting => (
-              <div
-                key={`${setting.label}-${setting.value}`}
-                className="rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-white/5"
-              >
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                  {setting.label}
-                </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                  {setting.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <dl className="mt-5 grid divide-y divide-slate-200/80 dark:divide-white/10 md:grid-cols-2 md:divide-x md:divide-y-0">
+          {settings.map(setting => (
+            <div
+              key={`${setting.label}-${setting.value}`}
+              className="px-4 py-3 first:pl-0 last:pb-0 md:first:pb-3 md:last:pr-0 md:last:pb-3"
+            >
+              <dt className="text-sm font-semibold text-slate-900 dark:text-white">{setting.label}</dt>
+              <dd className={`mt-1 ${mdxMutedTextClass}`}>{setting.value}</dd>
+            </div>
+          ))}
+        </dl>
       ) : null}
 
-      {notes ? <p className={`mt-4 ${mdxMutedTextClass}`}>{notes}</p> : null}
+      {notes ? <p className={`mt-5 ${mdxMutedTextClass}`}>{notes}</p> : null}
     </section>
   );
 }
 
-function SetupCard({ title, body }: { title: string; body?: string }) {
+function SetupItem({ title, body }: { title: string; body?: string }) {
+  if (!body) {
+    return null;
+  }
+
   return (
-    <div className={`${mdxInsetClass} px-4 py-4 sm:px-5`}>
-      <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
-      <p className={`mt-2 ${mdxMutedTextClass}`}>{body || "Add setup details."}</p>
+    <div className="px-4 py-4 first:pl-0 last:pb-0 lg:first:pb-4 lg:last:pr-0 lg:last:pb-4">
+      <dt className="text-sm font-semibold text-slate-900 dark:text-white">{title}</dt>
+      <dd className={`mt-1 ${mdxMutedTextClass}`}>{body}</dd>
     </div>
   );
 }

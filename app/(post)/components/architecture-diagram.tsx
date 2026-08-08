@@ -100,16 +100,16 @@ function buildArchitectureChart(
   }
 
   lines.push(
-    "  classDef node-default fill:#f8fafc,stroke:#cbd5e1,color:#0f172a,stroke-width:1.2px",
+    "  classDef node-default fill:#ffffff,stroke:#475569,color:#0f172a,stroke-width:1.2px",
   );
   lines.push(
-    "  classDef node-accent fill:#dbeafe,stroke:#2563eb,color:#0f172a,stroke-width:1.4px",
+    "  classDef node-accent fill:#f8fafc,stroke:#0f172a,color:#0f172a,stroke-width:1.4px",
   );
   lines.push(
-    "  classDef node-muted fill:#f1f5f9,stroke:#94a3b8,color:#334155,stroke-width:1.1px",
+    "  classDef node-muted fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1.1px",
   );
   lines.push(
-    "  classDef node-success fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:1.4px",
+    "  classDef node-success fill:#f8fafc,stroke:#0f172a,color:#0f172a,stroke-width:1.4px",
   );
 
   for (const entry of classEntries) {

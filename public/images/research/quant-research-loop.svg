@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Research measurement loop</title>
+  <desc id="desc">A compact four-stage loop: define the data, state the rule, simulate execution, and audit sensitivity before feeding findings back into the data contract.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <g fill="#ffffff" stroke="#94a3b8" stroke-width="2">
+    <rect x="80" y="52" width="390" height="128" rx="4"/>
+    <rect x="730" y="52" width="390" height="128" rx="4"/>
+    <rect x="730" y="278" width="390" height="128" rx="4"/>
+    <rect x="80" y="278" width="390" height="128" rx="4"/>
+  </g>
+  <g fill="#0f172a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600">
+    <text x="116" y="105">1. Define the data</text>
+    <text x="766" y="105">2. State the rule</text>
+    <text x="766" y="331">3. Simulate execution</text>
+    <text x="116" y="331">4. Audit sensitivity</text>
+  </g>
+  <g fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
+    <text x="116" y="142">calendar · universe</text>
+    <text x="116" y="166">point-in-time availability</text>
+    <text x="766" y="142">signal · sizing</text>
+    <text x="766" y="166">constraints · rebalance</text>
+    <text x="766" y="368">cost · delay · turnover</text>
+    <text x="116" y="368">subperiods · trials · failure</text>
+  </g>
+  <g fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round" marker-end="url(#arrow)">
+    <path d="M494 116H706"/>
+    <path d="M925 204V254"/>
+    <path d="M706 342H494"/>
+    <path d="M275 254V204"/>
+  </g>
+  <text x="600" y="450" text-anchor="middle" fill="#64748b" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16">Findings revise the measurement contract.</text>
+  <text x="80" y="482" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">FIGURE 1 · SCHEMATIC RESEARCH WORKFLOW · NOT AN INVESTMENT RECOMMENDATION</text>
+</svg>

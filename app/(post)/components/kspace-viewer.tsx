@@ -2,10 +2,7 @@ import type { ReactNode } from "react";
 import { RawImage } from "./raw-image";
 import {
   mdxEmptyStateClass,
-  mdxInsetClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type KSpaceViewerPanel = {
@@ -29,19 +26,6 @@ const columnsClassName: Record<NonNullable<KSpaceViewerProps["columns"]>, string
   4: "md:grid-cols-2 xl:grid-cols-4",
 };
 
-const kindClassName: Record<NonNullable<KSpaceViewerPanel["kind"]>, string> = {
-  kspace:
-    "border-sky-300/40 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_rgba(2,6,23,0.98)_58%)]",
-  mask:
-    "border-violet-300/35 bg-[radial-gradient(circle_at_top,_rgba(167,139,250,0.18),_rgba(2,6,23,0.98)_58%)]",
-  reconstruction:
-    "border-emerald-300/35 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.18),_rgba(2,6,23,0.98)_58%)]",
-  error:
-    "border-rose-300/35 bg-[radial-gradient(circle_at_top,_rgba(251,113,133,0.18),_rgba(2,6,23,0.98)_58%)]",
-  reference:
-    "border-amber-300/35 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.16),_rgba(2,6,23,0.98)_58%)]",
-};
-
 export function KSpaceViewer({
   title,
   caption,
@@ -57,57 +41,40 @@ export function KSpaceViewer({
   }
 
   return (
-    <section className={mdxPanelClass}>
+    <section className="my-10">
       {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>MRI Viewer</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+        <div className="mb-5">
+          {title ? <p className="font-semibold text-slate-950 dark:text-white">{title}</p> : null}
+          {caption ? <p className={`mt-2 ${mdxMutedTextClass}`}>{caption}</p> : null}
         </div>
       ) : null}
 
-      <div className={`mt-5 grid gap-4 ${columnsClassName[columns]}`}>
+      <div className={`grid gap-x-5 gap-y-7 ${columnsClassName[columns]}`}>
         {panels.map((panel, index) => {
-          const kind = panel.kind ?? "kspace";
+          const kind = panel.kind ?? "image";
 
           return (
             <figure
               key={panel.id ?? `${panel.label}-${index}`}
-              className={`${mdxInsetClass} overflow-hidden p-3`}
+              className="min-w-0"
             >
-              <div
-                className={`overflow-hidden rounded-[1.75rem] border text-white shadow-[0_24px_60px_rgba(2,6,23,0.25)] ${kindClassName[kind]}`}
-              >
-                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
-                      {kind}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-white">
-                      {panel.label}
-                    </div>
-                  </div>
-                </div>
+              <figcaption className="mb-2 flex items-baseline justify-between gap-3 text-sm leading-6">
+                <span className="font-semibold text-slate-900 dark:text-white">{panel.label}</span>
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{kind}</span>
+              </figcaption>
 
-                <div className="aspect-square px-4 py-4">
-                  <div className="flex h-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/35 p-4">
-                    <RawImage
-                      src={panel.src}
-                      alt={panel.alt}
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
-                </div>
+              <div className="aspect-square border border-slate-200/80 bg-slate-950 p-4 dark:border-white/10">
+                <RawImage
+                  src={panel.src}
+                  alt={panel.alt}
+                  className="h-full w-full object-contain"
+                />
               </div>
 
               {panel.note ? (
-                <figcaption className={`mt-3 px-1 ${mdxMutedTextClass}`}>
+                <p className={`mt-3 ${mdxMutedTextClass}`}>
                   {panel.note}
-                </figcaption>
+                </p>
               ) : null}
             </figure>
           );

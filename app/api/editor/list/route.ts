@@ -135,11 +135,7 @@ async function walk(dir: string, bucket: EditorFileEntry[]) {
       bucket.push({
         path: normalizedRel,
         label: cleanLabel,
-        status: normalizeStatus(
-          metadata?.status,
-          metadata?.draft,
-          metadata?.archived
-        ),
+        status: normalizeStatus(metadata?.status),
         updatedAt: mtime,
       });
     }
@@ -150,50 +146,16 @@ function extractMetadata(content: string) {
   return parseExportedMetadata<
     Partial<{
       status: "draft" | "published" | "archived";
-      draft: boolean;
-      archived: boolean;
     }>
   >(content);
 }
 
-function normalizeStatus(
-  value: unknown,
-  legacyDraft?: unknown,
-  legacyArchived?: unknown
-): "draft" | "published" | "archived" {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (
-      normalized === "draft" ||
-      normalized === "published" ||
-      normalized === "archived"
-    ) {
-      return normalized;
-    }
-  }
-
-  if (normalizeBoolean(legacyArchived)) {
-    return "archived";
-  }
-
-  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
-    return "draft";
-  }
-
-  return "published";
-}
-
-function normalizeBoolean(value: unknown): boolean {
-  if (typeof value === "boolean") {
+function normalizeStatus(value: unknown): "draft" | "published" | "archived" {
+  if (value === "draft" || value === "published" || value === "archived") {
     return value;
   }
 
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
-  }
-
-  return false;
+  return "archived";
 }
 
 async function safeExists(target: string) {

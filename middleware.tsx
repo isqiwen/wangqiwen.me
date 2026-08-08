@@ -4,10 +4,8 @@ import { logger } from "@/utils/logger";
 import manifest from "@/posts/manifest.json";
 
 type ManifestPost = {
-  status?: "draft" | "published" | "archived" | string;
-  draft?: boolean;
-  archived?: boolean;
-  path?: string;
+  status: "draft" | "published" | "archived";
+  path: string;
 };
 
 type Manifest = {
@@ -26,24 +24,16 @@ function normalizePathname(pathname: string): string {
   return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
-function normalizeStatus(post?: ManifestPost): "draft" | "published" | "archived" {
-  const value = post?.status;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "draft" || normalized === "published" || normalized === "archived") {
-      return normalized;
-    }
+function getStatus(post: ManifestPost): "draft" | "published" | "archived" {
+  if (
+    post.status === "draft" ||
+    post.status === "published" ||
+    post.status === "archived"
+  ) {
+    return post.status;
   }
 
-  if (post?.archived) {
-    return "archived";
-  }
-
-  if (post?.draft) {
-    return "draft";
-  }
-
-  return "published";
+  throw new Error(`Post manifest contains an invalid status for ${post.path}.`);
 }
 
 function canPreviewDraftRequest(): boolean {
@@ -59,7 +49,7 @@ function loadPost(pathname: string): ManifestPost | null {
     postsManifest.posts.find(
       post =>
         typeof post.path === "string" &&
-        normalizePathname(post.path) === pathname,
+        normalizePathname(post.path) === pathname
     ) ?? null
   );
 }
@@ -88,7 +78,7 @@ export async function middleware(req: NextRequest) {
       return new NextResponse("Not Found", { status: 404 });
     }
 
-    const status = normalizeStatus(post);
+    const status = getStatus(post);
     if (status === "archived") {
       return new NextResponse("Not Found", { status: 404 });
     }

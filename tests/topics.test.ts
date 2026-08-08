@@ -60,8 +60,11 @@ test("uses the predefined topic catalog", () => {
     [
       "Developer Experience",
       "Frontend",
+      "History",
       "JavaScript",
+      "MRI",
       "Product",
+      "Quantitative Finance",
       "Retrospective",
       "Web Performance",
     ]

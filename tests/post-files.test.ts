@@ -66,6 +66,10 @@ test("validates post metadata against its target file", () => {
     validPost({ tags: ["Frontend"] })
   );
   assert.throws(
+    () => validatePostContent(validPost({ tags: "Frontend" }), target),
+    /tags must be an array of strings/
+  );
+  assert.throws(
     () => validatePostContent(validPost({ tags: ["Uncategorized"] }), target),
     /unknown topics: Uncategorized/
   );
@@ -101,6 +105,14 @@ test("validates post metadata against its target file", () => {
   assert.throws(
     () => validatePostContent(validPost({ seriesOrder: 1 }), target),
     /seriesOrder requires a series/
+  );
+  assert.throws(
+    () => validatePostContent(validPost({ seriesOrder: "1" }), target),
+    /seriesOrder must be a positive integer/
+  );
+  assert.throws(
+    () => validatePostContent(validPost({ draft: true }), target),
+    /retired metadata field: draft/
   );
 });
 

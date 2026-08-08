@@ -24,21 +24,18 @@ export type Post = {
   viewsFormatted: string;
 };
 
-type Frontmatter = {
+type PostFileMetadata = {
   title?: string;
   description?: string;
   summary?: string;
-  excerpt?: string;
   series?: string;
-  seriesOrder?: number | string;
+  seriesOrder?: number;
   publishedAt?: string;
   updatedAt?: string;
   id?: string;
-  status?: PostStatus | string;
-  draft?: boolean | string;
-  archived?: boolean | string;
-  tags?: string[] | string;
-  readingTimeMinutes?: number | string;
+  status?: PostStatus;
+  tags?: string[];
+  readingTimeMinutes?: number;
 };
 
 type PostMetadata = {
@@ -68,9 +65,7 @@ type Manifest = {
     seriesOrder?: number | null;
     publishedAt: string;
     updatedAt?: string | null;
-    status?: PostStatus | string;
-    draft?: boolean;
-    archived?: boolean;
+    status?: PostStatus;
     tags?: string[];
     readingTimeMinutes?: number;
     path: string;
@@ -121,7 +116,7 @@ export const getPostById = async (
   const views = options.includeViews === false ? {} : await loadViews();
 
   if (match) {
-    const status = normalizeStatus(match.status, match.draft, match.archived);
+    const status = normalizeStatus(match.status);
     if (
       status !== "archived" &&
       (options.includeDrafts || status !== "draft")
@@ -194,7 +189,7 @@ async function loadManifestMetadata(
   if (manifest?.posts) {
     return manifest.posts
       .map(post => {
-        const status = normalizeStatus(post.status, post.draft, post.archived);
+        const status = normalizeStatus(post.status);
         return { ...post, status };
       })
       .filter(post => post.status !== "archived")
@@ -273,15 +268,11 @@ async function loadPostsMetadata(
         updatedAt: normalizeDateString(metadata.updatedAt) || null,
         publishedAtTimestamp: publishedAt.getTime(),
         postId: finalId,
-        status: normalizeStatus(
-          metadata.status,
-          metadata.draft,
-          metadata.archived
-        ),
+        status: normalizeStatus(metadata.status),
         tags: normalizeTags(metadata.tags),
         readingTimeMinutes:
           normalizePositiveInteger(metadata.readingTimeMinutes) ||
-          estimateReadingTimeMinutes(stripMetadataAndFrontmatter(file)),
+          estimateReadingTimeMinutes(stripMetadata(file)),
       });
     }
   }
@@ -339,42 +330,11 @@ function filterDrafts(
   });
 }
 
-function parseFileMetadata(fileContents: string): Frontmatter {
-  const metadata = parseExportedMetadata(fileContents);
-  const frontmatter = parseFrontmatter(fileContents);
-
-  return {
-    title: metadata.title ?? frontmatter.title,
-    description:
-      metadata.description ??
-      metadata.summary ??
-      metadata.excerpt ??
-      frontmatter.description ??
-      frontmatter.summary ??
-      frontmatter.excerpt,
-    summary: metadata.summary ?? frontmatter.summary,
-    series: metadata.series ?? frontmatter.series,
-    seriesOrder: metadata.seriesOrder ?? frontmatter.seriesOrder,
-    publishedAt: metadata.publishedAt ?? frontmatter.publishedAt,
-    updatedAt: metadata.updatedAt ?? frontmatter.updatedAt,
-    id: metadata.id ?? frontmatter.id,
-    status:
-      metadata.status ??
-      frontmatter.status ??
-      normalizeStatus(
-        undefined,
-        metadata.draft ?? frontmatter.draft,
-        metadata.archived ?? frontmatter.archived
-      ),
-    draft: metadata.draft ?? frontmatter.draft,
-    archived: metadata.archived ?? frontmatter.archived,
-    tags: metadata.tags ?? frontmatter.tags,
-    readingTimeMinutes:
-      metadata.readingTimeMinutes ?? frontmatter.readingTimeMinutes,
-  };
+function parseFileMetadata(fileContents: string): PostFileMetadata {
+  return parseExportedMetadata(fileContents);
 }
 
-function parseExportedMetadata(fileContents: string): Frontmatter {
+function parseExportedMetadata(fileContents: string): PostFileMetadata {
   const exportIndex = fileContents.indexOf("export const metadata");
   if (exportIndex === -1) {
     return {};
@@ -391,7 +351,7 @@ function parseExportedMetadata(fileContents: string): Frontmatter {
       return {};
     }
 
-    return metadata as Frontmatter;
+    return metadata as PostFileMetadata;
   } catch {
     return {};
   }
@@ -448,39 +408,6 @@ function extractObjectLiteral(
   return null;
 }
 
-function parseFrontmatter(fileContents: string): Frontmatter {
-  const match = fileContents.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) {
-    return {};
-  }
-
-  const [, body] = match;
-  const data: Frontmatter = {};
-  const lines = body.split(/\r?\n/);
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    const separatorIndex = trimmed.indexOf(":");
-    if (separatorIndex === -1) continue;
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    let value = trimmed.slice(separatorIndex + 1).trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    (data as Record<string, string>)[key] = value;
-  }
-
-  return data;
-}
-
 function normalizeOptionalString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -494,52 +421,16 @@ function normalizeDateString(value: unknown): string {
   return Number.isNaN(new Date(normalized).getTime()) ? "" : normalized;
 }
 
-function normalizeBoolean(value: unknown): boolean {
-  if (typeof value === "boolean") {
+function normalizeStatus(value: unknown): PostStatus {
+  if (value === "draft" || value === "published" || value === "archived") {
     return value;
   }
 
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
-  }
-
-  return false;
-}
-
-function normalizeStatus(
-  value: unknown,
-  legacyDraft?: unknown,
-  legacyArchived?: unknown
-): PostStatus {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (
-      normalized === "draft" ||
-      normalized === "published" ||
-      normalized === "archived"
-    ) {
-      return normalized;
-    }
-  }
-
-  if (normalizeBoolean(legacyArchived)) {
-    return "archived";
-  }
-
-  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
-    return "draft";
-  }
-
-  return "published";
+  return "archived";
 }
 
 function normalizeTags(value: unknown): string[] {
-  const source = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-    ? value.split(",")
-    : [];
+  const source = Array.isArray(value) ? value : [];
 
   return Array.from(
     new Set(
@@ -551,24 +442,16 @@ function normalizeTags(value: unknown): string[] {
 }
 
 function normalizePositiveInteger(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-    return Math.round(value);
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.round(parsed);
-    }
-  }
-
-  return 0;
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : 0;
 }
 
-function stripMetadataAndFrontmatter(source: string): string {
-  return source
-    .replace(/^---\n[\s\S]*?\n---\s*/u, "")
-    .replace(/export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u, "");
+function stripMetadata(source: string): string {
+  return source.replace(
+    /export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u,
+    ""
+  );
 }
 
 function estimateReadingTimeMinutes(source: string): number {

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AudioPlayer } from "@/app/(post)/components/audio-player";
 import { AblationTable } from "@/app/(post)/components/ablation-table";
 import { Accordion, AccordionItem } from "@/app/(post)/components/accordion";
+import { Algorithm } from "@/app/(post)/components/algorithm";
 import { ArchitectureDiagram } from "@/app/(post)/components/architecture-diagram";
 import { AutoEquationRef } from "@/app/(post)/components/auto-equation-ref";
 import { BacktestChart } from "@/app/(post)/components/backtest-chart";
@@ -16,27 +17,23 @@ import { Chart } from "@/app/(post)/components/chart";
 import { Compare } from "@/app/(post)/components/compare";
 import { Diff } from "@/app/(post)/components/diff";
 import { DerivationBlock } from "@/app/(post)/components/derivation-block";
+import { CrossReference } from "@/app/(post)/components/cross-reference";
+import { Definition } from "@/app/(post)/components/definition";
 import { EquationGroup } from "@/app/(post)/components/equation-group";
 import { EquationNumbering } from "@/app/(post)/components/equation-numbering";
 import { ExperimentSetup } from "@/app/(post)/components/experiment-setup";
 import { FileTree } from "@/app/(post)/components/file-tree";
 import { Figure } from "@/app/(post)/components/figure";
-import { FootNote, FootNotes, Ref } from "@/app/(post)/components/footnotes";
 import { Gallery } from "@/app/(post)/components/gallery";
-import { ImageGrid } from "@/app/(post)/components/image-grid";
 import { KeyValueItem, KeyValueList } from "@/app/(post)/components/key-value";
 import { InlineMath, MathBlock } from "@/app/(post)/components/math";
 import { MermaidDiagram } from "@/app/(post)/components/mermaid-diagram";
 import { PaperCard } from "@/app/(post)/components/paper-card";
-import { Playground } from "@/app/(post)/components/playground";
 import { ProofBlock } from "@/app/(post)/components/proof-block";
 import { PullQuote } from "@/app/(post)/components/pull-quote";
-import { QuoteCard } from "@/app/(post)/components/quote-card";
 import { RawImage } from "@/app/(post)/components/raw-image";
 import { Snippet } from "@/app/(post)/components/snippet";
-import { KPI, StatGrid } from "@/app/(post)/components/stat-grid";
 import { Stat, Stats } from "@/app/(post)/components/stats";
-import { StepPanel } from "@/app/(post)/components/step-panel";
 import { Step, Steps } from "@/app/(post)/components/steps";
 import { TaskSpecCard } from "@/app/(post)/components/task-spec-card";
 import { Table, TBody, TD, TH, THead, TR } from "@/app/(post)/components/table";
@@ -52,6 +49,11 @@ import { MultiPanelFigure } from "@/app/(post)/components/multi-panel-figure";
 import { KSpaceViewer } from "@/app/(post)/components/kspace-viewer";
 import { MetricTable } from "@/app/(post)/components/metric-table";
 import { LeaderboardTable } from "@/app/(post)/components/leaderboard-table";
+import { RegressionTable } from "@/app/(post)/components/regression-table";
+import { SourceExcerpt } from "@/app/(post)/components/source-excerpt";
+import { ScatterPlot } from "@/app/(post)/components/scatter-plot";
+import { Histogram } from "@/app/(post)/components/histogram";
+import { BoxPlot } from "@/app/(post)/components/box-plot";
 import {
   GuideNavigation,
   type GuideNavigationSection,
@@ -68,15 +70,17 @@ export const metadata = {
 
 const groupedComponents = groupByCategory(componentsPalette);
 const categoryEntries = Object.entries(groupedComponents);
-const navigationSections: GuideNavigationSection[] = categoryEntries.map(([category, entries]) => ({
-  id: `category-${slugifyCategory(category)}`,
-  title: category,
-  count: entries.length,
-  items: entries.map(entry => ({
-    id: `component-${entry.id}`,
-    label: entry.label,
-  })),
-}));
+const navigationSections: GuideNavigationSection[] = categoryEntries.map(
+  ([category, entries]) => ({
+    id: `category-${slugifyCategory(category)}`,
+    title: category,
+    count: entries.length,
+    items: entries.map(entry => ({
+      id: `component-${entry.id}`,
+      label: entry.label,
+    })),
+  })
+);
 const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
   "markdown-basics":
     "Use this when plain Markdown is enough and you want a clean article backbone before reaching for custom blocks.",
@@ -86,16 +90,15 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
     "Use this to interrupt the article flow with a note, warning, or success state that readers should not miss.",
   snippet:
     "Use this when one focused code sample or terminal command deserves stronger emphasis than an ordinary fenced block.",
-  tabs:
-    "Use this when readers need to compare variants such as TypeScript versus JavaScript, CLI versus UI, or setup versus output.",
+  tabs: "Use this when readers need to compare variants such as TypeScript versus JavaScript, CLI versus UI, or setup versus output.",
   table:
     "Use this for compact structured comparisons where rows and columns make the tradeoffs easier to scan.",
   steps:
     "Use this when the article explains a sequence and readers should move through the workflow in order.",
-  "step-panel":
-    "Use this for command-driven walkthroughs where each step benefits from a title, short explanation, and copyable code.",
+  algorithm:
+    "Use this for methods readers need to reproduce, especially when control flow matters more than implementation syntax.",
   "file-tree":
-    "Use this when readers need to understand where the important files live before you start discussing implementation details.",
+    "Use this sparingly for a small, reproducible set of files. Explain why the structure matters in the surrounding prose.",
   "terminal-block":
     "Use this for reproducible command sessions, training logs, or deployment output where the exact sequence matters.",
   accordion:
@@ -106,22 +109,15 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
     "Use this for a single important image that deserves breathing room, caption support, or a more editorial presentation.",
   gallery:
     "Use this when a post needs several images with equal weight and the reader benefits from browsing them together.",
-  "image-grid":
-    "Use this when you want a more interactive image set with clickable expansion and a cleaner thumbnail-first layout.",
   "pull-quote":
     "Use this to spotlight one memorable sentence or thesis line without turning it into a full testimonial card.",
-  "quote-card":
-    "Use this for testimonials, editorial highlights, or attributed quotes that should feel more produced and brand-forward.",
   stats:
-    "Use this when a few top-level metrics tell the story and readers only need the headline numbers.",
-  "stat-grid":
-    "Use this for richer KPI sections where trends and sparks matter as much as the raw values.",
+    "Use this sparingly for a few reported quantities; use a table or chart when comparison, uncertainty, or variation matters.",
   "key-value-list":
     "Use this for concise metadata, project facts, stack details, or summaries that should stay compact and scannable.",
   compare:
     "Use this when you want to put two approaches side by side and keep the contrast visually obvious.",
-  diff:
-    "Use this for before-and-after examples, refactors, rewrites, or any transformation where change is the point.",
+  diff: "Use this for before-and-after examples, refactors, rewrites, or any transformation where change is the point.",
   "inline-math":
     "Use this for notation, short formulas, and losses that should stay inside the sentence without breaking the reading rhythm.",
   "math-block":
@@ -131,11 +127,25 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
   "citation-bibliography":
     "Use this when you want explicit in-text citations and a structured references section instead of burying sources in prose.",
   chart:
-    "Use this for training curves, backtests, benchmark trends, and any result where the shape of the change matters.",
+    "Use this for training curves, backtests, benchmark trends, and any result where the shape of the change matters. Add an explicitly labeled interval when uncertainty changes the conclusion.",
+  "scatter-plot":
+    "Use this for calibration, agreement, correlation, or heterogeneity. State what one point represents and do not imply a fitted relationship that is not shown.",
+  histogram:
+    "Use this for a distribution only when the bin edges and denominator are explicit. The component never chooses bins from raw data for you.",
+  "box-plot":
+    "Use this to compare supplied five-number summaries. State the observation frequency and whisker convention beside the plot.",
+  "regression-table":
+    "Use this for formal empirical estimates: coefficients, supplied standard errors or intervals, model columns, and disclosure notes. It does not infer statistical significance.",
+  "source-excerpt":
+    "Use this when a historical claim depends on the reader being able to inspect the facsimile, transcription, reading text or translation, and archival locator together.",
   "ablation-table":
     "Use this for method comparisons where readers need to scan metric tradeoffs quickly and identify the best result at a glance.",
+  definition:
+    "Use this for a precise concept, term, or notation that readers will need later in the same article. Its required ID gives CrossReference a stable target.",
+  "cross-reference":
+    "Use this to cite a stable anchor in the current article instead of hand-writing a hash link. The content checks reject a missing target.",
   "theorem-block":
-    "Use this for definitions, assumptions, lemmas, or compact formal statements that deserve stronger structure than plain prose.",
+    "Use this for theorems, assumptions, lemmas, or compact formal statements that deserve stronger structure than plain prose. Use Definition for named concepts.",
   "proof-block":
     "Use this when the argument matters, but a full formal proof would slow the article down more than it helps.",
   "derivation-block":
@@ -170,10 +180,6 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
     "Use this for self-hosted or controlled video experiences where chapters, poster art, or extra commentary matter.",
   "audio-player":
     "Use this for podcast clips, interviews, voice notes, or any audio-first section that benefits from context and cover art.",
-  playground:
-    "Use this when readers should experiment live instead of just reading static code or screenshots.",
-  footnotes:
-    "Use this for sources, side notes, and citations that are important but should not interrupt the main narrative flow.",
 };
 
 export default function EditorComponentsGuidePage() {
@@ -194,9 +200,9 @@ export default function EditorComponentsGuidePage() {
               MDX Component Guide
             </h1>
             <p className="text-sm leading-7 text-slate-600">
-              Use this page like a real writing manual: decide when a component fits,
-              review the props that matter, copy the snippet, then confirm the final
-              result in the live preview.
+              Use this page like a real writing manual: decide when a component
+              fits, review the props that matter, copy the snippet, then confirm
+              the final result in the live preview.
             </p>
           </div>
 
@@ -305,15 +311,21 @@ function ComponentGuideCard({ entry }: { entry: ComponentSnippet }) {
             {entry.category}
           </p>
           <div>
-            <h3 className="text-xl font-semibold text-slate-900">{entry.label}</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">{entry.hint}</p>
+            <h3 className="text-xl font-semibold text-slate-900">
+              {entry.label}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              {entry.hint}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="mt-6 space-y-6">
         <GuideSection title="When to use">
-          <p className="text-sm leading-7 text-slate-600">{buildUsageText(entry)}</p>
+          <p className="text-sm leading-7 text-slate-600">
+            {buildUsageText(entry)}
+          </p>
           {entry.notes?.length ? (
             <ul className="mt-3 space-y-2 text-sm text-slate-600">
               {entry.notes.map(note => (
@@ -340,7 +352,13 @@ function ComponentGuideCard({ entry }: { entry: ComponentSnippet }) {
 
         <GuideSection title="Preview">
           {preview ? (
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div
+              className={
+                entry.id === "file-tree"
+                  ? "overflow-x-auto py-1"
+                  : "overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-5"
+              }
+            >
               <div className="mx-auto max-w-5xl">{preview}</div>
             </div>
           ) : (
@@ -354,7 +372,13 @@ function ComponentGuideCard({ entry }: { entry: ComponentSnippet }) {
   );
 }
 
-function GuideSection({ title, children }: { title: string; children: ReactNode }) {
+function GuideSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="space-y-3">
       <div className="font-mono text-[11px] uppercase tracking-[0.28em] text-slate-500">
@@ -369,8 +393,8 @@ function PropsList({ fields }: { fields?: ComponentSnippetField[] }) {
   if (!fields?.length) {
     return (
       <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm leading-7 text-slate-500">
-        No structured form props are defined for this component yet. Use the snippet as the
-        starting point and edit the inline values directly.
+        No structured form props are defined for this component yet. Use the
+        snippet as the starting point and edit the inline values directly.
       </div>
     );
   }
@@ -378,9 +402,14 @@ function PropsList({ fields }: { fields?: ComponentSnippetField[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {fields.map(field => (
-        <div key={field.id} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+        <div
+          key={field.id}
+          className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4"
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-sm font-semibold text-slate-900">{field.label}</div>
+            <div className="text-sm font-semibold text-slate-900">
+              {field.label}
+            </div>
             <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
               {field.type}
             </span>
@@ -394,22 +423,32 @@ function PropsList({ fields }: { fields?: ComponentSnippetField[] }) {
               {field.required ? "Required" : "Optional"}
             </span>
           </div>
-          <div className="mt-2 font-mono text-xs text-slate-500">{field.id}</div>
-          {field.help ? <p className="mt-3 text-sm leading-6 text-slate-600">{field.help}</p> : null}
+          <div className="mt-2 font-mono text-xs text-slate-500">
+            {field.id}
+          </div>
+          {field.help ? (
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {field.help}
+            </p>
+          ) : null}
           <div className="mt-3 space-y-1 text-sm text-slate-600">
             {field.placeholder ? <p>Placeholder: {field.placeholder}</p> : null}
             {field.defaultValue !== undefined ? (
               <p>
                 Default:{" "}
                 <span className="font-mono text-xs text-slate-700">
-                  {String(field.defaultValue)}
+                  {Array.isArray(field.defaultValue)
+                    ? `${field.defaultValue.length} rows`
+                    : String(field.defaultValue)}
                 </span>
               </p>
             ) : null}
             {field.example ? (
               <p>
                 Example:{" "}
-                <span className="font-mono text-xs text-slate-700">{field.example}</span>
+                <span className="font-mono text-xs text-slate-700">
+                  {field.example}
+                </span>
               </p>
             ) : null}
             {field.options?.length ? (
@@ -417,6 +456,14 @@ function PropsList({ fields }: { fields?: ComponentSnippetField[] }) {
                 Options:{" "}
                 <span className="font-mono text-xs text-slate-700">
                   {field.options.map(option => option.value).join(", ")}
+                </span>
+              </p>
+            ) : null}
+            {field.itemFields?.length ? (
+              <p>
+                Row fields:{" "}
+                <span className="font-mono text-xs text-slate-700">
+                  {field.itemFields.map(item => item.id).join(", ")}
                 </span>
               </p>
             ) : null}
@@ -434,19 +481,25 @@ function buildUsageText(entry: ComponentSnippet) {
   }
 
   const hint = entry.hint.trim();
-  const normalizedHint = hint.length > 0 ? hint.charAt(0).toLowerCase() + hint.slice(1) : "extra structure";
+  const normalizedHint =
+    hint.length > 0
+      ? hint.charAt(0).toLowerCase() + hint.slice(1)
+      : "extra structure";
   return `Use ${entry.label} when you need ${normalizedHint} inside an MDX post. It works best when plain Markdown is no longer enough, but you still want the content to stay readable and easy to maintain.`;
 }
 
 function slugifyCategory(category: string) {
-  return category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return category
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function buildPreviewPanelImage(
   title: string,
   accent: string,
   background: string,
-  dark = false,
+  dark = false
 ) {
   const textColor = dark ? "#f8fafc" : "#0f172a";
   const surface = dark ? "#020617" : "#ffffff";
@@ -473,9 +526,12 @@ function renderPreview(id: string) {
       return (
         <div className="space-y-4 text-slate-700">
           <h1 className="text-2xl font-bold text-slate-950">Primary heading</h1>
-          <h2 className="text-xl font-semibold text-slate-900">Secondary heading</h2>
+          <h2 className="text-xl font-semibold text-slate-900">
+            Secondary heading
+          </h2>
           <p>
-            This is a normal paragraph with inline code like <code>const ready = true;</code>.
+            This is a normal paragraph with inline code like{" "}
+            <code>const ready = true;</code>.
           </p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Bullet item one</li>
@@ -488,7 +544,12 @@ function renderPreview(id: string) {
         <div className="space-y-4 text-slate-700">
           <p>
             Links keep the default MDX text styling, like{" "}
-            <a className="underline" href="https://nextjs.org" target="_blank" rel="noreferrer">
+            <a
+              className="underline"
+              href="https://nextjs.org"
+              target="_blank"
+              rel="noreferrer"
+            >
               Next.js
             </a>
             .
@@ -500,19 +561,38 @@ function renderPreview(id: string) {
       );
     case "callout":
       return (
-        <Callout type="info" title="Heads up">
-          Add a short note, warning, or success state here.
+        <Callout type="note" title="Methodological note">
+          State the condition readers need to keep in mind when interpreting the argument.
         </Callout>
       );
     case "snippet":
       return (
-        <Snippet className="my-0" caption="Terminal command">
-          <code className="language-bash">{`pnpm dev`}</code>
+        <Snippet
+          className="my-0"
+          label="Listing 1 · reconstruction.py"
+          language="python"
+          lineNumbers
+          caption="A listing label identifies the source; line numbers are useful only when the surrounding text discusses a specific line."
+        >
+          <code className="language-python">{`def reconstruct(kspace, mask, model):
+    acquired = mask * kspace
+    estimate = inverse_fourier(acquired)
+
+    for _ in range(model.iterations):
+        prior = model.denoise(estimate)
+        residual = mask * (fourier(prior) - acquired)
+        estimate = prior - model.step_size * inverse_fourier(residual)
+
+    return estimate
+
+
+metrics = evaluate(reconstruct(kspace, mask, model), reference)
+report(metrics, protocol="held-out multicoil validation")`}</code>
         </Snippet>
       );
     case "tabs":
       return (
-        <Tabs caption="Choose the version you need">
+        <Tabs lineNumbers caption="Choose the version you need">
           <Tab title="TypeScript">
             <pre>
               <code className="language-ts">{`export function formatViews(value: number) {
@@ -531,7 +611,13 @@ function renderPreview(id: string) {
       );
     case "table":
       return (
-        <Table>
+        <Table
+          label="Table 1"
+          title="Component support by writing task"
+          caption="A formal table separates the comparison from its source and methodological notes."
+          source="Editor guide fixture."
+          notes="Use an explicit ID when prose needs to cross-reference the table."
+        >
           <THead>
             <TR>
               <TH>Component</TH>
@@ -561,30 +647,41 @@ function renderPreview(id: string) {
           <Step title="Publish">Promote the post when it is ready.</Step>
         </Steps>
       );
-    case "step-panel":
+    case "algorithm":
       return (
-        <StepPanel
+        <Algorithm
+          label="1"
+          title="Greedy selection"
+          input="Candidates C"
+          output="Selected set S"
+          caption="The invariant and proof belong in the surrounding prose; the component keeps the procedure scannable."
+          emphasizedSteps={[3, 4]}
           steps={[
-            { title: "Install", body: "Install dependencies first.", code: "pnpm install" },
-            { title: "Run", body: "Start the app locally.", code: "pnpm dev" },
+            {
+              statement: "selected ← ∅",
+              comment: "Initialize the solution set",
+            },
+            { statement: "for each candidate c in candidates do" },
+            { statement: "if improves(selected, c) then", indent: 1 },
+            { statement: "selected ← selected ∪ {c}", indent: 2 },
+            { statement: "return selected" },
           ]}
         />
       );
     case "file-tree":
       return (
         <FileTree
-          title="Inference service layout"
-          caption="Highlight the files readers should inspect first instead of dumping the entire repository."
           rootLabel="workspace"
           paths={[
             "app/api/inference/route.ts",
-            "lib/mri/reconstruct.ts",
-            "lib/mri/metrics.ts",
+            "lib/mri/reconstruct.cpp",
+            "lib/mri/reconstruct.hpp",
+            "config/CMakeLists.txt",
+            "config/research.yaml",
+            "data/manifest.json",
+            "report/methods.md",
+            "public/coil-sensitivity.svg",
             "workers/train/index.py",
-          ]}
-          highlights={[
-            "app/api/inference/route.ts",
-            "lib/mri/reconstruct.ts",
           ]}
         />
       );
@@ -615,11 +712,13 @@ function renderPreview(id: string) {
     case "timeline":
       return (
         <Timeline>
-          <TimelineItem title="Kickoff" time="09:00">
-            The project starts with a working draft.
+          <TimelineItem title="Quantitative mapping enters MRI" date="1973">
+            State the methodological or historical change and cite the primary
+            source in the narrative.
           </TimelineItem>
-          <TimelineItem title="Ship" time="15:30">
-            The final version goes live.
+          <TimelineItem title="Clinical translation accelerates" date="1990s">
+            Explain what changed, what evidence supports it, and what remained
+            unresolved.
           </TimelineItem>
         </Timeline>
       );
@@ -638,17 +737,16 @@ function renderPreview(id: string) {
         <Gallery
           columns={2}
           images={[
-            { src: "/images/avatar-placeholder.svg", alt: "Preview one", caption: "First image" },
-            { src: "/images/avatar-placeholder-muted.svg", alt: "Preview two", caption: "Second image" },
-          ]}
-        />
-      );
-    case "image-grid":
-      return (
-        <ImageGrid
-          images={[
-            { src: "/images/avatar-placeholder.svg", caption: "Primary image" },
-            { src: "/images/avatar-placeholder-muted.svg", caption: "Secondary image" },
+            {
+              src: "/images/avatar-placeholder.svg",
+              alt: "Preview one",
+              caption: "First image",
+            },
+            {
+              src: "/images/avatar-placeholder-muted.svg",
+              alt: "Preview two",
+              caption: "Second image",
+            },
           ]}
         />
       );
@@ -658,28 +756,12 @@ function renderPreview(id: string) {
           Writing gets easier when the structure helps instead of fights you.
         </PullQuote>
       );
-    case "quote-card":
-      return (
-        <QuoteCard
-          quote="A strong editorial quote deserves its own card."
-          author="Author name"
-          role="Writer"
-          avatar="/images/avatar-placeholder-muted.svg"
-        />
-      );
     case "stats":
       return (
         <Stats>
           <Stat value="24" label="Published posts" trend="+3 this month" />
           <Stat value="1.2K" label="Subscribers" trend="+9%" />
         </Stats>
-      );
-    case "stat-grid":
-      return (
-        <StatGrid>
-          <KPI label="Readers" value="3.2K" delta="+12%" spark={[2, 4, 3, 5, 6, 8]} />
-          <KPI label="Shares" value="420" delta="+5%" spark={[1, 1.5, 2, 2.5, 3, 4]} />
-        </StatGrid>
       );
     case "key-value-list":
       return (
@@ -709,20 +791,21 @@ function renderPreview(id: string) {
     case "inline-math":
       return (
         <div className="text-slate-700">
-          <InlineMath
-            tex={"\\mathcal{L}(x, y) = \\lVert Ax - y \\rVert_2^2"}
-          />
+          <InlineMath tex={"\\mathcal{L}(x, y) = \\lVert Ax - y \\rVert_2^2"} />
         </div>
       );
     case "math-block":
       return (
         <div className="space-y-4">
           <p className="text-sm leading-7 text-slate-600">
-            Mention the objective again with <AutoEquationRef target="guide-eq-varnet" />.
+            Mention the objective again with{" "}
+            <AutoEquationRef target="guide-eq-varnet" />.
           </p>
           <MathBlock
             id="guide-eq-varnet"
-            tex={"\\hat{x} = \\arg\\min_x \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)"}
+            tex={
+              "\\hat{x} = \\arg\\min_x \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)"
+            }
             caption="The page-level numbering system fills the label automatically."
           />
         </div>
@@ -741,16 +824,17 @@ function renderPreview(id: string) {
             { label: "Code", href: "https://github.com/" },
           ]}
         >
-          Summarize the main contribution, the dataset, and the one reason this paper still
-          matters for the method you are discussing.
+          Summarize the main contribution, the dataset, and the one reason this
+          paper still matters for the method you are discussing.
         </PaperCard>
       );
     case "citation-bibliography":
       return (
         <div className="space-y-4 text-slate-700">
           <p className="leading-7">
-            Reference the method inline with <Citation refId="guide-paper-1" label="[1]" /> so
-            readers can jump straight to the source.
+            Reference the method inline with{" "}
+            <Citation refId="guide-paper-1" label="[1]" /> so readers can jump
+            straight to the source.
           </p>
           <Bibliography note="Keep the entry short and add only the links readers will actually need.">
             <BibliographyItem
@@ -770,19 +854,175 @@ function renderPreview(id: string) {
       return (
         <Chart
           title="Validation PSNR across epochs"
-          description="A compact curve chart is often enough for MRI metrics, backtests, or training stability."
+          description="A compact curve chart is often enough for MRI metrics, backtests, or training stability; show the interval when it changes the interpretation."
           xLabels={["0", "10", "20", "30", "40"]}
           series={[
-            { label: "Ours", type: "line", data: [29.1, 31.4, 32.5, 33.1, 33.4] },
-            { label: "Baseline", type: "area", data: [28.4, 29.7, 30.2, 30.6, 30.9] },
+            {
+              label: "Ours",
+              type: "line",
+              data: [29.1, 31.4, 32.5, 33.1, 33.4],
+              interval: {
+                label: "synthetic 95% interval",
+                lower: [28.6, 30.7, 31.7, 32.3, 32.5],
+                upper: [29.6, 32.1, 33.3, 33.9, 34.3],
+              },
+            },
+            {
+              label: "Baseline",
+              type: "area",
+              data: [28.4, 29.7, 30.2, 30.6, 30.9],
+            },
           ]}
+        />
+      );
+    case "scatter-plot":
+      return (
+        <ScatterPlot
+          title="Observed versus estimated quantity"
+          description="Scatter plots make calibration and dispersion visible rather than hiding them inside an average error."
+          xLabel="Reference quantity"
+          yLabel="Estimated quantity"
+          minX={0}
+          maxX={1}
+          minY={0}
+          maxY={1}
+          series={[
+            {
+              label: "Held-out fixture",
+              color: "#2563eb",
+              points: [
+                { x: 0.12, y: 0.16 }, { x: 0.25, y: 0.23 }, { x: 0.37, y: 0.39 },
+                { x: 0.48, y: 0.44 }, { x: 0.64, y: 0.66 }, { x: 0.81, y: 0.76 },
+              ],
+            },
+            {
+              label: "Stress fixture",
+              color: "#ea580c",
+              points: [
+                { x: 0.19, y: 0.12 }, { x: 0.44, y: 0.31 }, { x: 0.72, y: 0.58 },
+              ],
+            },
+          ]}
+          caption="Synthetic points only. State the unit, reference, and sampling unit in a real article."
+        />
+      );
+    case "histogram":
+      return (
+        <Histogram
+          title="Residual distribution"
+          description="The displayed bins are authored, so the statistical grouping is inspectable."
+          xLabel="Absolute residual"
+          yLabel="Cases"
+          bins={[
+            { label: "0–0.02", count: 42 }, { label: "0.02–0.04", count: 31 },
+            { label: "0.04–0.06", count: 16 }, { label: "0.06–0.08", count: 7 },
+            { label: ">0.08", count: 4 },
+          ]}
+          caption="State the bin edges, denominator, and excluded observations."
+        />
+      );
+    case "box-plot":
+      return (
+        <BoxPlot
+          title="Monthly return distribution"
+          description="Each box uses an explicit five-number summary rather than a hidden statistical convention."
+          yLabel="Monthly net return"
+          yFormat="percent"
+          items={[
+            { label: "Trend", lowerWhisker: -0.14, q1: -0.03, median: 0.01, q3: 0.05, upperWhisker: 0.16, color: "#2563eb" },
+            { label: "Value", lowerWhisker: -0.12, q1: -0.02, median: 0.008, q3: 0.04, upperWhisker: 0.13, color: "#0f766e" },
+            { label: "Control", lowerWhisker: -0.09, q1: -0.025, median: 0.002, q3: 0.028, upperWhisker: 0.08, color: "#64748b" },
+          ]}
+          caption="Synthetic summaries. A real article must define the observation frequency and whisker convention."
+        />
+      );
+    case "regression-table":
+      return (
+        <RegressionTable
+          label="Table 1"
+          title="Illustrative factor-regression disclosure"
+          models={[
+            { key: "market", label: "Market model", detail: "Excess return" },
+            {
+              key: "three-factor",
+              label: "Three-factor model",
+              detail: "Excess return",
+            },
+          ]}
+          panels={[
+            {
+              title: "Panel A. Estimated exposures",
+              rows: [
+                {
+                  label: "Market excess return",
+                  values: {
+                    market: { value: 1.02, standardError: 0.06, annotation: "†" },
+                    "three-factor": {
+                      value: 0.96,
+                      standardError: 0.07,
+                      annotation: "†",
+                    },
+                  },
+                },
+                {
+                  label: "Size factor",
+                  values: {
+                    market: null,
+                    "three-factor": {
+                      value: 0.21,
+                      standardError: 0.08,
+                      interval: [0.05, 0.37],
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              title: "Panel B. Model statistics",
+              rows: [
+                {
+                  label: "Observations",
+                  kind: "statistic",
+                  values: { market: 240, "three-factor": 240 },
+                },
+                {
+                  label: "Adjusted R²",
+                  kind: "statistic",
+                  values: { market: 0.18, "three-factor": 0.24 },
+                },
+              ],
+            },
+          ]}
+          caption="A rendering fixture for an empirical-results table; values and annotations are synthetic."
+          source="Editor guide fixture."
+          notes="Parentheses contain author-supplied standard errors. † is also supplied by the author; the component does not calculate significance."
+        />
+      );
+    case "source-excerpt":
+      return (
+        <SourceExcerpt
+          title="Committee minute: a synthetic transcription example"
+          layout="reading"
+          source="Synthetic fixture created for this guide; not an archival record"
+          repository="Example repository"
+          collection="Committee records"
+          locator="Collection A, item 12, fol. 3r"
+          date="1851-03-14"
+          facsimile={{
+            src: buildPreviewPanelImage("Source witness", "#64748b", "#f1f5f9"),
+            alt: "Synthetic facsimile preview with lines representing a manuscript page",
+            caption: "The image, transcription, and reading text remain visibly linked.",
+          }}
+          transcription={"the [illeg.] commttee\nmet at 3 o'Clocke\n& agreed to defer"}
+          reading={"The [illegible] committee\nmet at 3 o'clock\nand agreed to defer."}
+          note="The component records the source locator beside every editorial transformation."
         />
       );
     case "ablation-table":
       return (
         <AblationTable
           title="Ablation on mask ratio and recurrent depth"
-          caption="Automatic highlighting helps readers spot the best result without scanning every column manually."
+          caption="Bold values identify the best result in each metric column without using colour as the only signal."
           variantLabel="Setting"
           metrics={[
             { key: "psnr", label: "PSNR", direction: "higher" },
@@ -797,14 +1037,39 @@ function renderPreview(id: string) {
     case "theorem-block":
       return (
         <TheoremBlock
-          kind="definition"
+          kind="theorem"
           label="1"
           title="Data consistency step"
           footer="Use the footer to explain why the formal statement matters in the surrounding narrative."
         >
-          State the definition, theorem, or assumption in the most compact form you can
-          defend.
+          State the definition, theorem, or assumption in the most compact form
+          you can defend.
         </TheoremBlock>
+      );
+    case "definition":
+      return (
+        <Definition
+          id="guide-signal-model"
+          label="1"
+          title="Signal model"
+          footer="Keep the identifier stable once an article is published."
+        >
+          A signal model specifies how observed measurements relate to the
+          latent quantity being estimated.
+        </Definition>
+      );
+    case "cross-reference":
+      return (
+        <div className="space-y-4">
+          <p className="text-sm leading-7 text-slate-700">
+            The reconstruction follows{" "}
+            <CrossReference target="guide-signal-model" label="Definition 1" />.
+          </p>
+          <Definition id="guide-signal-model" label="1" title="Signal model">
+            A signal model relates the measurement process to the latent
+            quantity being estimated.
+          </Definition>
+        </div>
       );
     case "proof-block":
       return (
@@ -813,9 +1078,9 @@ function renderPreview(id: string) {
           strategy="Induction"
           conclusion="End with the one-line implication that sets up the next section."
         >
-          Show the base case, state the inductive assumption, and explain only the update
-          that preserves the invariant. Skip the algebra that does not change the actual
-          intuition.
+          Show the base case, state the inductive assumption, and explain only
+          the update that preserves the invariant. Skip the algebra that does
+          not change the actual intuition.
         </ProofBlock>
       );
     case "derivation-block":
@@ -827,13 +1092,15 @@ function renderPreview(id: string) {
             {
               label: "Step 1",
               title: "Start from the objective",
-              equation: "\\mathcal{L}(x) = \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)",
+              equation:
+                "\\mathcal{L}(x) = \\lVert Ax - y \\rVert_2^2 + \\lambda R(x)",
               note: "State the objective before taking derivatives so the reader has the full context.",
             },
             {
               label: "Step 2",
               title: "Differentiate",
-              equation: "\\nabla_x \\mathcal{L}(x) = 2A^\\top(Ax - y) + \\lambda \\nabla R(x)",
+              equation:
+                "\\nabla_x \\mathcal{L}(x) = 2A^\\top(Ax - y) + \\lambda \\nabla R(x)",
               note: "Keep only the derivative that changes the update rule.",
             },
           ]}
@@ -843,11 +1110,12 @@ function renderPreview(id: string) {
       return (
         <div className="space-y-4">
           <p className="text-sm leading-7 text-slate-600">
-            Mention the update again with <AutoEquationRef target="guide-eq-update" />.
+            Mention the update again with{" "}
+            <AutoEquationRef target="guide-eq-update" />.
           </p>
           <EquationGroup
             title="Core equations"
-            caption="The reference component reads the rendered labels from the equation cards below."
+            caption="The reference component reads the rendered labels from the equation entries below."
             equations={[
               {
                 id: "guide-eq-objective",
@@ -883,14 +1151,43 @@ function renderPreview(id: string) {
           caption="The structured wrapper is easier to maintain than a long raw Mermaid string when the diagram grows."
           direction="LR"
           nodes={[
-            { id: "scanner", label: "Scanner data", group: "Acquisition", shape: "rounded", tone: "accent" },
-            { id: "loader", label: "Dataset loader", group: "Acquisition", shape: "rect", tone: "default" },
-            { id: "model", label: "VarNet", group: "Model", shape: "subroutine", tone: "success" },
-            { id: "metrics", label: "Metrics", group: "Evaluation", shape: "diamond", tone: "muted" },
+            {
+              id: "scanner",
+              label: "Scanner data",
+              group: "Acquisition",
+              shape: "rounded",
+              tone: "accent",
+            },
+            {
+              id: "loader",
+              label: "Dataset loader",
+              group: "Acquisition",
+              shape: "rect",
+              tone: "default",
+            },
+            {
+              id: "model",
+              label: "VarNet",
+              group: "Model",
+              shape: "subroutine",
+              tone: "success",
+            },
+            {
+              id: "metrics",
+              label: "Metrics",
+              group: "Evaluation",
+              shape: "diamond",
+              tone: "muted",
+            },
           ]}
           edges={[
             { from: "scanner", to: "loader", label: "shards" },
-            { from: "loader", to: "model", label: "mini-batches", style: "thick" },
+            {
+              from: "loader",
+              to: "model",
+              label: "mini-batches",
+              style: "thick",
+            },
             { from: "model", to: "metrics", label: "reconstructions" },
           ]}
         />
@@ -904,8 +1201,16 @@ function renderPreview(id: string) {
           goal="Move the target object from the source bin to the destination zone without collisions."
           observations={["RGB wrist camera", "Robot state", "Gripper width"]}
           actions={["Cartesian delta pose", "Open gripper", "Close gripper"]}
-          rewards={["Dense shaping on distance", "Success bonus", "Collision penalty"]}
-          successCriteria={["Object in goal zone", "No collision", "Episode under 10 seconds"]}
+          rewards={[
+            "Dense shaping on distance",
+            "Success bonus",
+            "Collision penalty",
+          ]}
+          successCriteria={[
+            "Object in goal zone",
+            "No collision",
+            "Episode under 10 seconds",
+          ]}
           notes="Use this notes field for reset randomness, object variations, or safety rules."
         />
       );
@@ -973,7 +1278,12 @@ function renderPreview(id: string) {
           panels={[
             {
               label: "Acquired magnitude",
-              src: buildPreviewPanelImage("k-space", "#38bdf8", "#e0f2fe", true),
+              src: buildPreviewPanelImage(
+                "k-space",
+                "#38bdf8",
+                "#e0f2fe",
+                true
+              ),
               alt: "k-space magnitude preview",
               kind: "kspace",
               note: "Log magnitude reveals the energy distribution in sampled space.",
@@ -1021,9 +1331,24 @@ function renderPreview(id: string) {
           caption="This style works well when every row is a model family and readers need to compare more than one metric."
           rowLabel="Model"
           metrics={[
-            { key: "psnr", label: "PSNR", direction: "higher", format: "number" },
-            { key: "ssim", label: "SSIM", direction: "higher", format: "number" },
-            { key: "nmse", label: "NMSE", direction: "lower", format: "number" },
+            {
+              key: "psnr",
+              label: "PSNR",
+              direction: "higher",
+              format: "number",
+            },
+            {
+              key: "ssim",
+              label: "SSIM",
+              direction: "higher",
+              format: "number",
+            },
+            {
+              key: "nmse",
+              label: "NMSE",
+              direction: "lower",
+              format: "number",
+            },
           ]}
           rows={[
             {
@@ -1110,7 +1435,7 @@ function renderPreview(id: string) {
         />
       );
     case "youtube":
-      return <YouTube id="dQw4w9WgXcQ" />;
+      return <YouTube videoId="dQw4w9WgXcQ" />;
     case "video-player":
       return (
         <VideoPlayer
@@ -1129,25 +1454,6 @@ function renderPreview(id: string) {
           title="Audio sample"
           subtitle="Short supporting context"
         />
-      );
-    case "playground":
-      return (
-        <Playground
-          title="Try it live"
-          description="Edit the code and watch the iframe update."
-          initialCode={`document.getElementById("root").innerHTML = "<h2>Hello</h2>";`}
-        />
-      );
-    case "footnotes":
-      return (
-        <div className="space-y-4 text-slate-700">
-          <p>
-            This sentence uses a footnote<Ref id={1} />.
-          </p>
-          <FootNotes>
-            <FootNote id={1}>Footnotes work well for source links and side notes.</FootNote>
-          </FootNotes>
-        </div>
       );
     default:
       return null;

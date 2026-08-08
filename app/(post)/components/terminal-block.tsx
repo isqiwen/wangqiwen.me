@@ -1,7 +1,5 @@
 import {
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type TerminalLine = {
@@ -27,28 +25,14 @@ const toneClassName: Record<NonNullable<TerminalLine["tone"]>, string> = {
 
 export function TerminalBlock({ title, caption, lines }: TerminalBlockProps) {
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Terminal Session</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
         </div>
       ) : null}
 
-      <div className="mt-5 overflow-hidden rounded-3xl border border-slate-900/80 bg-slate-950 text-sm shadow-[0_24px_80px_rgba(2,6,23,0.28)]">
-        <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-          <span className="ml-3 font-mono text-xs uppercase tracking-[0.26em] text-slate-500">
-            session.log
-          </span>
-        </div>
+      <div className="overflow-x-auto border-y border-slate-800 bg-slate-950 text-sm">
         <div className="space-y-2 px-4 py-4 font-mono leading-7">
           {lines.map((line, index) => {
             const normalized = normalizeLine(line);
@@ -69,7 +53,8 @@ export function TerminalBlock({ title, caption, lines }: TerminalBlockProps) {
           })}
         </div>
       </div>
-    </section>
+      {caption ? <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption> : null}
+    </figure>
   );
 }
 

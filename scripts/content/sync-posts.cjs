@@ -39,12 +39,8 @@ async function main() {
 
   for (const entry of entries.values()) {
     const normalized = buildNormalizedMetadata(entry, {
-      postId: entry.metadata.id || entry.frontmatter.id || entry.id,
-      publishedAt:
-        entry.metadata.publishedAt ||
-        entry.frontmatter.publishedAt ||
-        `${entry.year}-01-01`,
-      id: entry.id,
+      postId: entry.metadata.id,
+      publishedAt: entry.metadata.publishedAt,
     });
     const unknownTopics = getUnknownTopics(normalized.tags ?? []);
     if (unknownTopics.length > 0) {
@@ -74,7 +70,7 @@ async function main() {
       seriesOrder: normalized.seriesOrder ?? null,
       publishedAt: normalized.publishedAt,
       updatedAt: normalized.updatedAt ?? null,
-      status: normalized.status ?? "published",
+      status: normalized.status,
       tags: normalized.tags ?? [],
       readingTimeMinutes: normalized.readingTimeMinutes ?? 1,
       path: `/${entry.year}/${entry.id}`,
@@ -146,9 +142,8 @@ async function main() {
 }
 
 function validateSeriesMetadata(entry, metadata) {
-  const rawSeries = entry.metadata.series ?? entry.frontmatter.series;
-  const rawSeriesOrder =
-    entry.metadata.seriesOrder ?? entry.frontmatter.seriesOrder;
+  const rawSeries = entry.metadata.series;
+  const rawSeriesOrder = entry.metadata.seriesOrder;
 
   if (rawSeries != null && typeof rawSeries !== "string") {
     throw new Error(`${entry.path} series must be a string.`);

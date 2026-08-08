@@ -1,6 +1,54 @@
 {
   "posts": [
     {
+      "id": "a-backtest-is-a-measurement-system",
+      "title": "A Backtest Is a Measurement System, Not a Forecast",
+      "description": "A research note on treating quantitative backtests as auditable measurements with explicit data, costs, trials, and failure modes.",
+      "summary": "The useful output of a backtest is not an impressive equity curve; it is a reproducible measurement whose data horizon, execution assumptions, selection process, and uncertainty can be inspected.",
+      "series": null,
+      "seriesOrder": null,
+      "publishedAt": "2026-08-08",
+      "updatedAt": null,
+      "status": "draft",
+      "tags": [
+        "Quantitative Finance"
+      ],
+      "readingTimeMinutes": 11,
+      "path": "/2026/a-backtest-is-a-measurement-system"
+    },
+    {
+      "id": "historical-claims-need-a-chain-of-custody",
+      "title": "Historical Claims Need a Chain of Custody",
+      "description": "A methodological note on turning archival traces into precise historical claims without losing provenance, transcription choices, or uncertainty.",
+      "summary": "Historical interpretation begins before the quotation: a claim remains only as strong as its provenance, version history, transcription policy, context, and statement of uncertainty.",
+      "series": null,
+      "seriesOrder": null,
+      "publishedAt": "2026-08-08",
+      "updatedAt": null,
+      "status": "draft",
+      "tags": [
+        "History"
+      ],
+      "readingTimeMinutes": 10,
+      "path": "/2026/historical-claims-need-a-chain-of-custody"
+    },
+    {
+      "id": "mri-reconstruction-is-an-inverse-problem",
+      "title": "MRI Reconstruction Is an Inverse Problem Before It Is a Model",
+      "description": "A methodological note on accelerated MRI that separates acquisition physics, reconstruction priors, validation, and clinical claims.",
+      "summary": "A reconstruction model is only one term in an MRI measurement system; the acquisition, forward operator, validation target, and uncertainty statement are equally part of the result.",
+      "series": null,
+      "seriesOrder": null,
+      "publishedAt": "2026-08-08",
+      "updatedAt": null,
+      "status": "draft",
+      "tags": [
+        "MRI"
+      ],
+      "readingTimeMinutes": 12,
+      "path": "/2026/mri-reconstruction-is-an-inverse-problem"
+    },
+    {
       "id": "release-with-evidence",
       "title": "Release With Evidence, Not Optimism",
       "description": "Use validation, a reproducible artifact, and public verification to turn deployment into a controlled release process.",

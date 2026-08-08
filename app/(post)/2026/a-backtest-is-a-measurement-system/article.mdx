@@ -1,0 +1,310 @@
+export const metadata = {
+  "title": "A Backtest Is a Measurement System, Not a Forecast",
+  "description": "A research note on treating quantitative backtests as auditable measurements with explicit data, costs, trials, and failure modes.",
+  "publishedAt": "2026-08-08",
+  "id": "a-backtest-is-a-measurement-system",
+  "status": "draft",
+  "tags": [
+    "Quantitative Finance"
+  ],
+  "readingTimeMinutes": 11,
+  "summary": "The useful output of a backtest is not an impressive equity curve; it is a reproducible measurement whose data horizon, execution assumptions, selection process, and uncertainty can be inspected."
+};
+
+An equity curve is the last stage of a chain of assumptions. It is produced only after an author chooses a universe, a timestamp convention, a data vendor, a signal, a portfolio construction rule, a rebalancing schedule, transaction-cost model, benchmark, and selection procedure. A backtest is therefore best treated as a measurement system. Its result is conditional on a protocol, not a forecast of future returns.
+
+The figures and values in this note are synthetic. They exist to exercise the reporting components and to show the difference between a legible research record and a persuasive-looking chart. This is not investment research or an investment recommendation.
+
+<Callout type="caution" title="No investment recommendation">
+  Every number, strategy name, return path, and ranking below is a fabricated fixture. Real research must document data licences, corporate-action treatment, timestamp availability, capacity, costs, and the multiple-testing process that led to the rule.
+</Callout>
+
+## Begin with the thing being measured
+
+<Figure id="fig-measurement-loop" wide>
+  <Image src="/images/research/quant-research-loop.svg" alt="A four-stage research measurement loop: define data, state the rule, simulate execution, and audit sensitivity, with findings feeding back into the data contract" />
+  <Caption>Figure 1. A backtest is an iterative measurement protocol: failure analysis should revise the original data and execution assumptions, rather than merely selecting a more attractive result.</Caption>
+</Figure>
+
+The main discipline is to keep the observation process separate from the trading rule. A factor return, for example, is a historical construction with specified portfolios and definitions; it is not a free variable that can be silently re-created until it confirms a preferred story.<Citation refId="fama-french-1993" label="[1]" /> Data libraries are valuable partly because their definitions and historical revisions can be inspected rather than reconstructed from memory.<Citation refId="ken-french-library" label="[2]" />
+
+<KeyValueList>
+  <KeyValueItem label="Target population" value="The securities, dates, currencies, and eligibility rules that define the study universe." />
+  <KeyValueItem label="Information set" value="Only observations available at the decision timestamp, with a stated clock and revision policy." />
+  <KeyValueItem label="Decision rule" value="A deterministic map from information to target positions, including ties and missing values." />
+  <KeyValueItem label="Economic result" value="Net performance after execution delay, trading costs, borrowing, financing, and constraints." />
+</KeyValueList>
+
+<Compare
+  leftTitle="A chart-first workflow"
+  rightTitle="A measurement-first workflow"
+  left="Choose a promising curve, then search for a story and a parameter setting that keeps it attractive."
+  right="Freeze the data contract and hypothesis first; treat every later choice as part of the estimand."
+/>
+
+<Diff
+  beforeTitle="Ambiguous rule"
+  afterTitle="Auditable rule"
+  before="Buy the strongest assets each month."
+  after="At each month-end close, rank the eligible universe by the prior 12-month total return excluding the most recent month; enter equal-weight targets at the next tradable open, subject to stated costs and liquidity filters."
+/>
+
+The edited version is longer because it exposes choices that materially change a result. That is not verbosity for its own sake. It turns a slogan into an object another researcher can implement and challenge.
+
+## Write a protocol that can fail
+
+<Steps title="Minimum viable backtest protocol">
+  <Step title="Specify the data contract">
+    Record vendor, universe construction, fields, timezone, corporate actions, point-in-time availability, and missing-data policy.
+  </Step>
+  <Step title="Pre-register the decision rule">
+    Fix formation, holding, weighting, limits, rebalance timing, and benchmark before inspecting the final curve.
+  </Step>
+  <Step title="Simulate implementability">
+    Apply delay, spreads, commissions, market impact assumptions, financing, turnover limits, and liquidity filters.
+  </Step>
+  <Step title="Audit fragility">
+    Inspect subperiods, costs, parameter neighborhoods, alternative data treatments, and the full family of attempted variants.
+  </Step>
+</Steps>
+
+The package should make the inputs, pre-analysis commitments, and sensitivity results immediately identifiable:
+
+<FileTree
+  rootLabel="research"
+  paths={[
+    "data/manifest.json",
+    "data/checksums.txt",
+    "protocol/preanalysis.md",
+    "strategy/rule.py",
+    "strategy/costs.py",
+    "results/base-run.json",
+    "results/stress-tests.json",
+    "report/methods.md",
+    "report/limitations.md"
+  ]}
+/>
+
+<TerminalBlock
+  title="An audit trail, not a magic command"
+  caption="Command output should name the data and protocol it consumed."
+  lines={[
+    "$ pnpm research:run --manifest data/manifest.json --protocol protocol/preanalysis.md",
+    { text: "Validated 12,481 point-in-time records", tone: "success" },
+    { text: "Applied next-open execution and 25 bps one-way cost fixture", tone: "info" },
+    { text: "Saved results/base-run.json with input checksums", tone: "success" },
+    { text: "Synthetic fixture only — no investable result", tone: "warning" }
+  ]}
+/>
+
+```python
+def rebalance(signal, eligible, next_open_prices, cost_rate):
+    target = equal_weight(select_top_decile(signal, eligible))
+    orders = target - current_weights()
+    return execute_at_next_open(orders, next_open_prices, cost_rate)
+```
+
+<Snippet caption="The code block should expose timing and cost arguments; names such as `backtest()` conceal too much.">
+  <code className="language-yaml">{`assumptions:
+  signal_lag: 21 trading days
+  execution: next tradable open
+  costs: 25 bps one way
+  currency: USD
+  delisting_return: included when available`}</code>
+</Snippet>
+
+## Report dispersion and selection, not just the winner
+
+<Stats>
+  <Stat value="25 bps" label="One-way cost fixture" trend="Specified before the synthetic run" />
+  <Stat value="12" label="Stress scenarios" trend="Shown even when they weaken the story" />
+  <Stat value="0" label="Forecast claims" trend="A backtest is historical measurement" />
+  <Stat value="1" label="Frozen protocol" trend="Every selected result points back to it" />
+</Stats>
+
+The Sharpe ratio is a useful descriptive summary, but its sampling distribution depends on the return process and the path used to compute it; it should not be read as a self-validating score.<Citation refId="lo-2002" label="[3]" /> If an author tested many related rules before choosing one, the selection process changes the meaning of the selected statistic. Deflated-Sharpe-style adjustments are attempts to make that choice visible, not a licence to search until a threshold is met.<Citation refId="bailey-2014" label="[4]" />
+
+<BacktestChart
+  title="Synthetic net-value paths"
+  caption="Illustrative monthly paths, normalised to 100. The drawdown strip prevents a smooth ending from hiding a difficult path."
+  labels={["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"]}
+  equity={[100, 103, 101, 106, 104, 110, 108, 113]}
+  benchmark={[100, 101, 102, 103, 105, 106, 107, 109]}
+  strategyLabel="Rule fixture"
+  benchmarkLabel="Benchmark fixture"
+/>
+
+<Chart
+  title="Synthetic cost sensitivity"
+  description="A cost curve should be visible because costs can reverse an apparent edge."
+  xLabels={["0 bps", "10 bps", "25 bps", "50 bps"]}
+  yFormat="percent"
+  series={[
+    {
+      label: "Annualised return fixture",
+      data: [0.16, 0.12, 0.08, 0.01],
+      type: "bar",
+      color: "#2563eb",
+      interval: {
+        label: "synthetic resampling interval",
+        display: "bars",
+        lower: [0.11, 0.07, 0.02, -0.08],
+        upper: [0.21, 0.17, 0.14, 0.10],
+      },
+    },
+  ]}
+  caption="The magnitudes are fabricated. The intended test is whether labels, scale, and downside are readable."
+/>
+
+<Chart
+  title="Synthetic return decomposition"
+  description="Stacked bars are appropriate only when components add to an interpretable total."
+  xLabels={["Base", "25 bps cost", "Stress cost"]}
+  yFormat="percent"
+  barMode="stacked"
+  series={[
+    { label: "Gross return", type: "bar", data: [0.16, 0.16, 0.16], color: "#2563eb" },
+    { label: "Trading costs", type: "bar", data: [-0.04, -0.08, -0.12], color: "#ea580c" },
+    { label: "Financing and borrow", type: "bar", data: [-0.01, -0.01, -0.02], color: "#7c3aed" },
+  ]}
+  caption="Synthetic decomposition. Components must share the same unit, horizon, and sign convention before a stacked display is meaningful."
+/>
+
+<BoxPlot
+  id="fig-return-distribution"
+  title="Synthetic monthly return distributions"
+  description="A box plot gives the median, interquartile range, and whiskers without suggesting that one average return describes all outcomes."
+  yLabel="Monthly net return"
+  yFormat="percent"
+  items={[
+    { label: "Trend", lowerWhisker: -0.14, q1: -0.03, median: 0.01, q3: 0.05, upperWhisker: 0.16, color: "#2563eb" },
+    { label: "Value", lowerWhisker: -0.12, q1: -0.02, median: 0.008, q3: 0.04, upperWhisker: 0.13, color: "#0f766e" },
+    { label: "Control", lowerWhisker: -0.09, q1: -0.025, median: 0.002, q3: 0.028, upperWhisker: 0.08, color: "#64748b" },
+  ]}
+  caption="Synthetic summaries only. Define the whisker convention, observation frequency, and whether values are gross or net."
+/>
+
+<LeaderboardTable
+  title="Candidate-rule ranking is a disclosure, not a recommendation"
+  caption="Synthetic scores demonstrate that a ranking can preserve rejected candidates and their downside."
+  scoreLabel="Synthetic Sharpe"
+  deltaLabel="Δ under 25 bps"
+  higherIsBetter
+  entries={[
+    { label: "Trend / 12–1", score: 0.81, delta: -0.34, tag: "selected fixture", secondary: "Chosen only after the protocol was frozen" },
+    { label: "Trend / 9–1", score: 0.79, delta: -0.39, secondary: "Nearby parameter" },
+    { label: "Trend / 6–1", score: 0.66, delta: -0.28, secondary: "Nearby parameter" },
+    { label: "Randomised control", score: 0.05, delta: -0.02, secondary: "Sanity-check fixture" }
+  ]}
+/>
+
+<RegressionTable
+  id="table-factor-estimates"
+  label="Table 1"
+  title="Illustrative factor-regression disclosure"
+  models={[
+    { key: "market", label: "Market model", detail: "Excess return" },
+    { key: "three-factor", label: "Three-factor model", detail: "Excess return" },
+  ]}
+  panels={[
+    {
+      title: "Panel A. Estimated exposures",
+      rows: [
+        {
+          label: "Market excess return",
+          values: {
+            market: { value: 1.02, standardError: 0.06, annotation: "†" },
+            "three-factor": { value: 0.96, standardError: 0.07, annotation: "†" },
+          },
+        },
+        {
+          label: "Size factor",
+          values: {
+            market: null,
+            "three-factor": { value: 0.21, standardError: 0.08, interval: [0.05, 0.37] },
+          },
+        },
+        {
+          label: "Value factor",
+          values: {
+            market: null,
+            "three-factor": { value: -0.14, standardError: 0.09, interval: [-0.32, 0.04] },
+          },
+        },
+      ],
+    },
+    {
+      title: "Panel B. Model statistics",
+      rows: [
+        { label: "Observations", kind: "statistic", values: { market: 240, "three-factor": 240 } },
+        { label: "Adjusted R²", kind: "statistic", values: { market: 0.18, "three-factor": 0.24 } },
+        { label: "Month fixed effects", kind: "statistic", values: { market: "Yes", "three-factor": "Yes" } },
+      ],
+    },
+  ]}
+  caption="Synthetic estimates demonstrate the reporting structure only; they are not an empirical asset-pricing result."
+  source="Synthetic fixture generated for this article."
+  notes="Parentheses contain synthetic standard errors. Bracketed values are explicitly supplied intervals. † is an author-supplied marker, not a significance decision made by the component."
+/>
+
+<Table
+  id="table-backtest-contract"
+  label="Table 2"
+  title="Minimum disclosure for a backtest"
+  caption="A backtest is not auditable until each row has a concrete, reproducible answer."
+  notes="The rows describe a reporting contract, not a sufficient test of investment performance."
+>
+  <THead><TR><TH>Question</TH><TH>Required answer</TH><TH>Failure if absent</TH></TR></THead>
+  <TBody>
+    <TR><TD>When was the signal known?</TD><TD>Timestamp and lag policy</TD><TD>Look-ahead bias cannot be ruled out</TD></TR>
+    <TR><TD>How were trades filled?</TD><TD>Execution clock, costs, and constraints</TD><TD>Gross performance masquerades as implementable</TD></TR>
+    <TR><TD>How many rules were tried?</TD><TD>Search log and selection rule</TD><TD>Winner's curse is invisible</TD></TR>
+  </TBody>
+</Table>
+
+<Tabs caption="Each tab answers a distinct interpretation question; it is not a place to hide inconvenient results.">
+  <Tab title="Gross result">
+    Gross returns answer a narrow modelling question. They do not describe an executable portfolio.
+  </Tab>
+  <Tab title="Net result">
+    Net returns incorporate stated trading and financing assumptions. Their credibility depends on whether those assumptions are conservative and testable.
+  </Tab>
+  <Tab title="Sensitivity">
+    A sensitivity report shows whether a conclusion changes across plausible delays, costs, universes, and parameter neighbourhoods.
+  </Tab>
+</Tabs>
+
+<Accordion>
+  <AccordionItem title="Why is a benchmark not enough?" open>
+    A benchmark gives context for a realised path. It does not repair data leakage, selection bias, execution assumptions, or an unclear estimand.
+  </AccordionItem>
+  <AccordionItem title="Why retain failed variants?">
+    They reveal the scope of the search and help a reader distinguish a robust mechanism from a fragile selected configuration.
+  </AccordionItem>
+</Accordion>
+
+## Keep evidence separate from platform noise
+
+<Tweet id="1374492662061953034" caption="An external social-media embed is deliberately shown as a volatile object. If the platform removes it, the article renders a quiet unavailable state; it should never be the sole evidence for a quantitative claim." />
+
+<PullQuote author="Research standard">
+  The result to trust is not the most attractive curve. It is the one whose data, decisions, and disappointments can all be reconstructed.
+</PullQuote>
+
+<PaperCard
+  title="The Cross-Section of Expected Stock Returns"
+  authors={["Eugene F. Fama", "Kenneth R. French"]}
+  venue="Journal of Finance"
+  year={1992}
+  status="Background reading"
+  tags={["asset pricing", "cross-sectional returns"]}
+  summary="A classic empirical reference whose value for a research workflow is its explicit portfolio construction and stated empirical setting."
+  links={[{ label: "Publisher", href: "https://doi.org/10.1111/j.1540-6261.1992.tb04398.x" }]}
+/>
+
+<Bibliography note="These references support the methodological distinctions in the text. They do not validate the synthetic examples. ">
+  <BibliographyItem id="fama-french-1993" label="[1]" title="Common Risk Factors in the Returns on Stocks and Bonds" authors={["E. F. Fama", "K. R. French"]} venue="Journal of Financial Economics" year={1993} links={[{ label: "Working paper", href: "https://www.aea.ru/data/pdf/fama1993.pdf" }]} />
+  <BibliographyItem id="ken-french-library" label="[2]" title="Kenneth R. French Data Library" authors="Kenneth R. French" venue="Dartmouth College" links={[{ label: "Data library", href: "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html" }]} />
+  <BibliographyItem id="lo-2002" label="[3]" title="The Statistics of Sharpe Ratios" authors="Andrew W. Lo" venue="Financial Analysts Journal" year={2002} links={[{ label: "Publication record", href: "https://alo.mit.edu/publications/page/18/" }]} />
+  <BibliographyItem id="bailey-2014" label="[4]" title="The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting and Non-Normality" authors={["David H. Bailey", "Marcos López de Prado"]} venue="Journal of Portfolio Management" year={2014} links={[{ label: "Preprint", href: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551" }]} />
+</Bibliography>

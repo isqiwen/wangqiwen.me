@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic k-space schematic</title>
+  <desc id="desc">A dark coordinate field whose center is densely sampled and whose outer region contains sparse blue points.</desc>
+  <rect width="1200" height="720" fill="#061525"/>
+  <g stroke="#29445d" stroke-width="1">
+    <path d="M100 120H1100M100 220H1100M100 320H1100M100 420H1100M100 520H1100M100 620H1100"/>
+    <path d="M100 80V640M260 80V640M420 80V640M580 80V640M740 80V640M900 80V640M1060 80V640"/>
+  </g>
+  <g fill="#d5ecff">
+    <circle cx="600" cy="360" r="9"/><circle cx="560" cy="360" r="7"/><circle cx="640" cy="360" r="7"/><circle cx="600" cy="320" r="7"/><circle cx="600" cy="400" r="7"/>
+    <circle cx="530" cy="330" r="5"/><circle cx="670" cy="390" r="5"/><circle cx="530" cy="390" r="5"/><circle cx="670" cy="330" r="5"/>
+    <circle cx="490" cy="360" r="4"/><circle cx="710" cy="360" r="4"/><circle cx="600" cy="250" r="4"/><circle cx="600" cy="470" r="4"/>
+  </g>
+  <g fill="#4a83ff">
+    <circle cx="250" cy="180" r="5"/><circle cx="340" cy="560" r="5"/><circle cx="890" cy="190" r="5"/><circle cx="960" cy="480" r="5"/><circle cx="180" cy="430" r="4"/><circle cx="1030" cy="300" r="4"/>
+    <circle cx="390" cy="150" r="4"/><circle cx="800" cy="560" r="4"/><circle cx="760" cy="160" r="4"/><circle cx="410" cy="520" r="4"/>
+  </g>
+  <g fill="#8da9c4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">
+    <text x="100" y="55">SYNTHETIC K-SPACE SAMPLING</text><text x="1070" y="685">kₓ</text><text x="50" y="105">kᵧ</text>
+  </g>
+</svg>

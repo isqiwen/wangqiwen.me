@@ -107,7 +107,7 @@ export async function syncPostsMetadata(
 
       posts.push({
         id: slug,
-        title: normalizeString(metadata.title) || toTitle(slug),
+        title: normalizeString(metadata.title),
         description: normalizeString(metadata.description),
         summary: normalizeString(metadata.summary),
         series: normalizeString(metadata.series) || null,
@@ -231,11 +231,7 @@ function normalizeDate(value: unknown): string | null {
 }
 
 function normalizeTags(value: unknown): string[] {
-  const tags = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-    ? value.split(",")
-    : [];
+  const tags = Array.isArray(value) ? value : [];
 
   return Array.from(
     new Set(
@@ -247,9 +243,8 @@ function normalizeTags(value: unknown): string[] {
 }
 
 function normalizePositiveInteger(value: unknown): number {
-  const number = typeof value === "string" ? Number(value) : value;
-  return typeof number === "number" && Number.isFinite(number) && number > 0
-    ? Math.round(number)
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
     : 0;
 }
 
@@ -269,11 +264,4 @@ function estimateReadingTimeMinutes(source: string): number {
     1,
     Math.ceil((latinWords.length + cjkCharacters.length) / 220)
   );
-}
-
-function toTitle(slug: string): string {
-  return slug
-    .split("-")
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }

@@ -11,7 +11,7 @@ export const metadata = {
   "readingTimeMinutes": 10
 };
 
-import { Demo, Demos } from './demo'
+import { Demo, Demos } from "./demo";
 
 I recently redesigned and implemented a new version of [VideoPress](https://videopress.com), the [WordPress](https://wordpress.com) video platform.
 
@@ -23,7 +23,7 @@ In the short term, as I’ll show, the communication between the programmer and 
 
 And if I’m allowed to extrapolate, a clear path is now laid out towards a future where the steps to go from sketch to design to implementation are greatly more accessible to everyone with an idea.
 
-***
+---
 
 A lot has been written about the merits of React as a library. Today I’m compelled to write about the benefits of a [programming model](https://en.wikipedia.org/wiki/Adobe_Flash) it enables and its implications to the design and creation workflow.
 
@@ -61,14 +61,14 @@ With this model in place, the programmer is thus relieved from the burden of spe
 of the UI over time. No need to specify how to go from **A** to **B**: just describe what **A** looks like and what **B** looks
 like, in a discrete way.
 
-***
+---
 
 UI designers have been intuitively “programming” in this way for some time now, arguably in a more direct way.
 
 While design specifications were usually drawn out on a single canvas,
 the rise of mobile has forced the industry to think about varying screen sizes (responsiveness).
 
-**Artboards** have become the de-facto standard <Ref id="2" /> to convey how a certain UI is supposed to be rendered for
+**Artboards** have become the de-facto standard <Citation refId="artboards" label="[2]" /> to convey how a certain UI is supposed to be rendered for
 each configuration in graphics software. They allow the creator to shape
 and position each canvas where elements are placed.
 
@@ -106,7 +106,7 @@ We can now think of this as the base function being the `<button>`, and its para
 `class="btn-sm"` or `disabled`. The button produces different outputs depending on the supplied parameters,
 which can be combined: `<button class="btn-sm btn-outline">`, `<button disabled class="btn-outline">`, and so on.
 
-***
+---
 
 With this paradigm in mind, I set out to realize the different main states of the video player with my design tool.
 
@@ -127,7 +127,7 @@ The main issue, however, is that underestimating the size of the state space is 
 
 It’s easy because the experience we’re discussing fundamentally revolves around just watching video. Every other state can be seen as exceptional in the same way errors are. Without careful consideration, it could be wrongly reduced to “just `<video>` and a few extra divs”.
 
-Through this lens, one can hazard an explanation for the age-old problem of poor software development estimates. When the *magnitude* of the undertaking is not clear for the developer or designer, let alone for the people removed from the creation process, it’s simply impossible to make any accurate predictions.
+Through this lens, one can hazard an explanation for the age-old problem of poor software development estimates. When the _magnitude_ of the undertaking is not clear for the developer or designer, let alone for the people removed from the creation process, it’s simply impossible to make any accurate predictions.
 
 Unlike other projects I’d worked on in the past, the next step of the implementation almost perfectly matched the design workflow. I broke down the initial design into even smaller functions that would be rendered into HTML artboards.
 
@@ -181,7 +181,7 @@ As an example, it wasn’t enough just to consider a state where there’s a too
 
 In many cases, it’s necessary to go back to the design tool and represent these new states adequately. For the tips, I had to split the triangle in half if they approach the boundaries of the player. I added a state to display when the image grid is not loaded yet. And so on. The tooltip alone expanded into the 6 representations seen above.
 
-***
+---
 
 This allows us to make a distinction of two very distinct (yet frequently interleaved) phases of the creation process: **design** and **discovery**.
 
@@ -209,9 +209,9 @@ When a parameter is recognized as an image, an extra link is added to retrieve a
 
 ![Exploring the design](/images/pure-ui/KK_maFpl8V.gif)
 
-Another way in which discovery occurs, usually more painstakingly, is in the *implementation* process itself.
+Another way in which discovery occurs, usually more painstakingly, is in the _implementation_ process itself.
 
-In the case of video streaming, something that can be easily overlooked (which falls under the category of “errors”) is that the download of the video can stall completely. When this happens, the MediaElement API emits a *stalled* event.
+In the case of video streaming, something that can be easily overlooked (which falls under the category of “errors”) is that the download of the video can stall completely. When this happens, the MediaElement API emits a _stalled_ event.
 
 Both designer and developer can be oblivious to details like that initially. But under this model, the communication between the designer and developer now consists of a very clear **protocol**.
 
@@ -240,7 +240,7 @@ This, in practice, can actually be quite convoluted. Applications must handle di
 
 In addition, getting to the particular payment form in this example could be the result of more branching. You must first be logged in, maybe under a certain type of user, of a certain role and specific privileges, with some pre-existing data in their profile.
 
-***
+---
 
 The ideas outlined in this article can hopefully lead to the implementation of a workflow that maximizes productivity, efficiency, correctness and completeness.
 
@@ -254,11 +254,37 @@ The techniques described allow for this process to be significantly smoother, by
 
 As we continue to refine our understanding of the entire process, our tools will follow.
 
-*Lorem Ipsum* has had a good run. Let’s replace it with data.
+_Lorem Ipsum_ has had a good run. Let’s replace it with data.
 
-<FootNotes>
-  <FootNote id="1">In general, comparing libraries or frameworks in terms of features seems inferior to examining the model it imposes on the programmer. The latter will inform you about how well the code will fare over time as the product matures and the team grows, but the former won’t. It will also empower you to foresee what the evolutionary path of the technology looks like.</FootNote>
-  <FootNote id="2">Artboards were initially introduced by Illustrator as a way of grouping related designs together, such as a [company's business stationary](https://helpx.adobe.com/illustrator/how-to/work-with-artboards.html).  [Sketch](https://www.sketchapp.com/) popularized its usage to represent designs targing varying devices and screen sizes, and Photoshop is now incorporating the feature.</FootNote>
-</FootNotes>
+<Bibliography>
+  <BibliographyItem
+    id="programming-models"
+    label="[1]"
+    title="Evaluating programming models"
+  >
+    In general, comparing libraries or frameworks in terms of features seems
+    inferior to examining the model it imposes on the programmer. The latter
+    will inform you about how well the code will fare over time as the product
+    matures and the team grows, but the former won’t. It will also empower you
+    to foresee what the evolutionary path of the technology looks like.
+  </BibliographyItem>
+  <BibliographyItem
+    id="artboards"
+    label="[2]"
+    title="Artboards in design tools"
+    links={[
+      {
+        label: "Illustrator",
+        href: "https://helpx.adobe.com/illustrator/how-to/work-with-artboards.html",
+      },
+      { label: "Sketch", href: "https://www.sketchapp.com/" },
+    ]}
+  >
+    Artboards were initially introduced by Illustrator as a way of grouping
+    related designs together. Sketch popularized their use to represent designs
+    targeting varying devices and screen sizes, and Photoshop later incorporated
+    the feature.
+  </BibliographyItem>
+</Bibliography>
 
 <Demos />

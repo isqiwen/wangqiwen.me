@@ -3,9 +3,7 @@ import { RawImage } from "./raw-image";
 import {
   clampCount,
   mdxEmptyStateClass,
-  mdxInsetClass,
   mdxMutedTextClass,
-  mdxPanelClass,
 } from "./surface";
 
 type GalleryItem = {
@@ -17,9 +15,7 @@ type GalleryItem = {
 export function Gallery({ images, columns = 3 }: { images: GalleryItem[]; columns?: number }) {
   if (images.length === 0) {
     return (
-      <div className={mdxPanelClass}>
-        <div className={mdxEmptyStateClass}>No gallery images were provided.</div>
-      </div>
+      <div className={mdxEmptyStateClass}>No gallery images were provided.</div>
     );
   }
 
@@ -30,18 +26,18 @@ export function Gallery({ images, columns = 3 }: { images: GalleryItem[]; column
 
   return (
     <div
-      className={`${mdxPanelClass} grid grid-cols-1 gap-4 md:[grid-template-columns:repeat(var(--gallery-columns),minmax(0,1fr))]`}
+      className="my-10 grid grid-cols-1 gap-x-5 gap-y-7 md:[grid-template-columns:repeat(var(--gallery-columns),minmax(0,1fr))]"
       style={gridStyle}
     >
       {images.map((image, idx) => (
-        <figure key={`${image.src}-${idx}`} className={`${mdxInsetClass} overflow-hidden p-0 shadow-sm`}>
+        <figure key={`${image.src}-${idx}`}>
           <RawImage
             src={image.src}
             alt={image.alt ?? `Gallery image ${idx + 1}`}
-            className="aspect-[4/3] h-full w-full object-cover"
+            className="aspect-[4/3] w-full border border-slate-200/80 object-cover dark:border-white/10"
           />
           {image.caption && (
-            <figcaption className={`px-3 py-2 ${mdxMutedTextClass}`}>{image.caption}</figcaption>
+            <figcaption className={`mt-3 ${mdxMutedTextClass}`}>{image.caption}</figcaption>
           )}
         </figure>
       ))}

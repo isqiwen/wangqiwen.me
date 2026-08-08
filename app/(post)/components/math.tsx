@@ -1,10 +1,5 @@
 import { renderToString } from "katex";
-import {
-  mdxInsetClass,
-  mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
-} from "./surface";
+import { mdxMutedTextClass } from "./surface";
 
 type InlineMathProps = {
   tex: string;
@@ -18,12 +13,6 @@ type MathBlockProps = {
   caption?: string;
   className?: string;
   numbering?: "global" | "manual";
-};
-
-type EquationRefProps = {
-  target: string;
-  label?: string;
-  className?: string;
 };
 
 export function renderMathMarkup(tex: string, displayMode: boolean) {
@@ -70,11 +59,11 @@ export function MathBlock({
       data-equation-id={id || undefined}
       data-equation-numbering={numbering}
       data-equation-label={displayLabel || undefined}
-      className={`${mdxPanelClass} scroll-mt-24 ${className}`.trim()}
+      className={`my-8 scroll-mt-24 ${className}`.trim()}
       aria-label={caption || label || "Displayed equation"}
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className={`${mdxInsetClass} min-w-0 flex-1 px-4 py-5 sm:px-6`}>
+      <div className="relative border-y border-slate-200 py-4 dark:border-white/10">
+        <div className="min-w-0 pr-12">
           <div
             className="mdx-math-block text-slate-950 dark:text-white"
             dangerouslySetInnerHTML={{ __html: renderMathMarkup(tex, true) }}
@@ -82,33 +71,16 @@ export function MathBlock({
         </div>
 
         {showLabelSlot ? (
-          <div
+          <span
             data-equation-label-slot
-            className={`${mdxSubtleTextClass} self-start whitespace-nowrap px-1`}
+            className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-sm text-slate-500 dark:text-slate-400"
           >
             {displayLabel}
-          </div>
+          </span>
         ) : null}
       </div>
 
-      {caption ? <p className={`mt-4 ${mdxMutedTextClass}`}>{caption}</p> : null}
+      {caption ? <p className={`mt-3 ${mdxMutedTextClass}`}>{caption}</p> : null}
     </section>
-  );
-}
-
-export function EquationRef({
-  target,
-  label,
-  className = "",
-}: EquationRefProps) {
-  const text = label?.trim() || `(${target})`;
-
-  return (
-    <a
-      href={`#${target}`}
-      className={`font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition hover:decoration-slate-600 dark:text-slate-100 dark:decoration-slate-600 dark:hover:decoration-slate-300 ${className}`.trim()}
-    >
-      {text}
-    </a>
   );
 }

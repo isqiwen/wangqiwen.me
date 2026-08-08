@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  mdxInsetClass,
-  mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
-} from "./surface";
+import { mdxMutedTextClass } from "./surface";
 
 type PaperLink = {
   label: string;
@@ -47,67 +42,49 @@ export function PaperCard({
   const body = children ?? summary;
 
   return (
-    <section className={mdxPanelClass}>
+    <aside className="my-8 border-l-2 border-slate-300 pl-5 dark:border-slate-600">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <p className={mdxSubtleTextClass}>Paper Reference</p>
-          <div>
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-            <p className={`mt-2 ${mdxMutedTextClass}`}>
-              {authorList.length ? authorList.join(", ") : "Add authors"}
-              {venue || year ? " · " : ""}
-              {venue ? venue : null}
-              {venue && year ? ", " : null}
-              {year ? year : null}
-            </p>
-          </div>
+        <div>
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
+          <p className={`mt-2 ${mdxMutedTextClass}`}>
+            {authorList.length ? authorList.join(", ") : "Add authors"}
+            {venue || year ? " · " : ""}
+            {venue ? venue : null}
+            {venue && year ? ", " : null}
+            {year ? year : null}
+          </p>
         </div>
 
         {status ? (
-          <div className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white dark:bg-white dark:text-slate-950">
-            {status}
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{status}</p>
         ) : null}
       </div>
 
       {body ? (
-        <div className={`${mdxInsetClass} mt-5 px-4 py-4 sm:px-5`}>
-          <div className={`text-sm leading-7 text-slate-700 dark:text-slate-200`}>
-            {body}
-          </div>
-        </div>
+        <div className="mt-4 text-sm leading-7 text-slate-700 dark:text-slate-200">{body}</div>
       ) : null}
 
       {tagList.length ? (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {tagList.map(tag => (
-            <span
-              key={tag}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        <p className="mt-5 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          Topics: {tagList.join(" · ")}
+        </p>
       ) : null}
 
       {links.length ? (
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2">
           {links.map(link => (
             <a
               key={`${link.label}-${link.href}`}
               href={link.href}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-white/20 dark:hover:text-white"
+              className="text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950 dark:text-slate-200 dark:decoration-slate-600 dark:hover:text-white"
             >
               {link.label}
             </a>
           ))}
         </div>
       ) : null}
-    </section>
+    </aside>
   );
 }

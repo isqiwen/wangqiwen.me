@@ -30,7 +30,6 @@ async function collectPosts() {
         path: articlePath,
         source,
         metadata: parseMetadata(source),
-        frontmatter: parseFrontmatter(source),
       });
     }
   }
@@ -39,33 +38,15 @@ async function collectPosts() {
 }
 
 function buildNormalizedMetadata(data, defaults) {
-  const title =
-    normalizeOptionalString(data.metadata.title) ||
-    normalizeOptionalString(data.frontmatter.title) ||
-    toTitle(defaults.id);
+  const title = normalizeOptionalString(data.metadata.title);
 
-  const description = getDescription(data);
-  const summary =
-    normalizeOptionalString(data.metadata.summary) ||
-    normalizeOptionalString(data.frontmatter.summary) ||
-    "";
-  const series =
-    normalizeOptionalString(data.metadata.series) ||
-    normalizeOptionalString(data.frontmatter.series) ||
-    "";
-  const seriesOrder =
-    normalizePositiveInteger(data.metadata.seriesOrder) ||
-    normalizePositiveInteger(data.frontmatter.seriesOrder) ||
-    0;
-  const updatedAt = normalizeDateString(
-    data.metadata.updatedAt || data.frontmatter.updatedAt
-  );
-  const tags = normalizeTags(data.metadata.tags ?? data.frontmatter.tags);
-  const status = normalizeStatus(
-    data.metadata.status ?? data.frontmatter.status,
-    data.metadata.draft ?? data.frontmatter.draft,
-    data.metadata.archived ?? data.frontmatter.archived
-  );
+  const description = normalizeOptionalString(data.metadata.description);
+  const summary = normalizeOptionalString(data.metadata.summary);
+  const series = normalizeOptionalString(data.metadata.series);
+  const seriesOrder = normalizePositiveInteger(data.metadata.seriesOrder) || 0;
+  const updatedAt = normalizeDateString(data.metadata.updatedAt);
+  const tags = normalizeTags(data.metadata.tags);
+  const status = data.metadata.status;
   const readingTimeMinutes =
     normalizePositiveInteger(data.metadata.readingTimeMinutes) ||
     estimateReadingTimeMinutes(getBodySource(data.source));
@@ -75,7 +56,7 @@ function buildNormalizedMetadata(data, defaults) {
     description,
     publishedAt: defaults.publishedAt,
     id: defaults.postId,
-    status,
+    ...(typeof status === "string" ? { status } : {}),
     tags,
     readingTimeMinutes,
   };
@@ -148,37 +129,6 @@ function parseMetadata(source) {
   }
 }
 
-function parseFrontmatter(source) {
-  const match = source.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
-
-  const [, body] = match;
-  const data = {};
-  const lines = body.split(/\r?\n/);
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    const separatorIndex = trimmed.indexOf(":");
-    if (separatorIndex === -1) continue;
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    let value = trimmed.slice(separatorIndex + 1).trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    data[key] = value;
-  }
-
-  return data;
-}
-
 function extractObjectLiteral(source, exportIndex) {
   const braceStart = source.indexOf("{", exportIndex);
   if (braceStart === -1) {
@@ -227,18 +177,6 @@ function extractObjectLiteral(source, exportIndex) {
   return null;
 }
 
-function getDescription(data) {
-  return (
-    normalizeOptionalString(data.metadata.description) ||
-    normalizeOptionalString(data.metadata.summary) ||
-    normalizeOptionalString(data.metadata.excerpt) ||
-    normalizeOptionalString(data.frontmatter.description) ||
-    normalizeOptionalString(data.frontmatter.summary) ||
-    normalizeOptionalString(data.frontmatter.excerpt) ||
-    ""
-  );
-}
-
 function normalizeOptionalString(value) {
   if (typeof value !== "string") {
     return "";
@@ -256,48 +194,8 @@ function normalizeDateString(value) {
   return Number.isNaN(new Date(normalized).getTime()) ? "" : normalized;
 }
 
-function normalizeBoolean(value) {
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
-  }
-
-  return false;
-}
-
-function normalizeStatus(value, legacyDraft, legacyArchived) {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (
-      normalized === "draft" ||
-      normalized === "published" ||
-      normalized === "archived"
-    ) {
-      return normalized;
-    }
-  }
-
-  if (normalizeBoolean(legacyArchived)) {
-    return "archived";
-  }
-
-  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
-    return "draft";
-  }
-
-  return "published";
-}
-
 function normalizeTags(value) {
-  const source = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-    ? value.split(",")
-    : [];
+  const source = Array.isArray(value) ? value : [];
 
   return Array.from(
     new Set(
@@ -309,27 +207,16 @@ function normalizeTags(value) {
 }
 
 function normalizePositiveInteger(value) {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-    return Math.round(value);
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.round(parsed);
-    }
-  }
-
-  return 0;
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : 0;
 }
 
 function getBodySource(source) {
-  let output = source.replace(/^---\n[\s\S]*?\n---\s*/u, "");
-  output = output.replace(
+  return source.replace(
     /export const metadata\s*=\s*\{[\s\S]*?\}\s*;?\s*/u,
     ""
   );
-  return output;
 }
 
 function estimateReadingTimeMinutes(source) {
@@ -381,13 +268,6 @@ async function readFileSafe(path) {
   }
 }
 
-function toTitle(slug) {
-  return slug
-    .split("-")
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 module.exports = {
   POSTS_ROOT,
   POSTS_MANIFEST_PATH,
@@ -396,9 +276,6 @@ module.exports = {
   replaceMetadataBlock,
   writeManifest,
   parseMetadata,
-  parseFrontmatter,
   normalizeTags,
-  normalizeBoolean,
   normalizePositiveInteger,
-  normalizeStatus,
 };

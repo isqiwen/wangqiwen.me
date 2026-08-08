@@ -44,18 +44,10 @@ In addition to integration tests, I want to now make the case that modern
 deployment workflows in combination with serverless testing solutions can
 now fully revert the conventional testing pyramid:
 
-<Image alt={
-  <span>
-    Martin Fowler's conventional{" "}
-    <a
-      href="https://martinfowler.com/articles/practical-test-pyramid.html#TheTestPyramid"
-      target="_blank"
-    >
-      testing pyramid
-    </a>
-    . What if 🐢 and 💲 went away?
-  </span>
-} src="/images/develop-preview-test/pyramid.jpg" />
+<Image
+  alt="Martin Fowler's conventional testing pyramid. What if latency and cost constraints went away?"
+  src="/images/develop-preview-test/pyramid.jpg"
+/>
 
 As it turns out,
 [focusing on the customer first](https://blog.aboutamazon.com/company-news/2016-letter-to-shareholders)
@@ -93,17 +85,10 @@ effectively by focusing on incremental computation, where the underlying
 static files and serverless functions used to power a deployment are
 mostly re-used from deploy to deploy.
 
-<Image alt={
-  <span>
-    An example of a PR automatically deployed{" "}
-    <a
-      target="_blank"
-      href="https://github.com/rauchg/blog/pull/35#issuecomment-570270061"
-    >
-      for this very blog
-    </a>
-  </span>
-} src="/images/develop-preview-test/github-comment.jpg" />
+<Image
+  alt="An example of a pull request automatically deployed for this blog"
+  src="/images/develop-preview-test/github-comment.jpg"
+/>
 
 Just like GitHub is capable of keeping the history of your code forever,
 so can Vercel. Because deploys are

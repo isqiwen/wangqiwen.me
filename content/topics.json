@@ -8,12 +8,24 @@
     "slug": "frontend"
   },
   {
+    "name": "History",
+    "slug": "history"
+  },
+  {
     "name": "JavaScript",
     "slug": "javascript"
   },
   {
+    "name": "MRI",
+    "slug": "mri"
+  },
+  {
     "name": "Product",
     "slug": "product"
+  },
+  {
+    "name": "Quantitative Finance",
+    "slug": "quantitative-finance"
   },
   {
     "name": "Retrospective",

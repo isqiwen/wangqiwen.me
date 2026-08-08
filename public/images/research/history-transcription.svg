@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Diplomatic and reading transcription comparison</title>
+  <desc id="desc">Two columns show a source-oriented transcription and a normalised reading version, with editorial intervention marked.</desc>
+  <rect width="1200" height="720" fill="#fbfaf7"/>
+  <g fill="#fffdf8" stroke="#d6d3d1" stroke-width="3"><rect x="70" y="110" width="490" height="520" rx="8"/><rect x="640" y="110" width="490" height="520" rx="8"/></g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="110" y="165" fill="#57534e" font-size="22">DIPLOMATIC TRANSCRIPTION</text><text x="680" y="165" fill="#57534e" font-size="22">READING TRANSCRIPTION</text><text x="110" y="250" fill="#292524" font-size="30">the [illeg.] commttee</text><text x="110" y="300" fill="#292524" font-size="30">met at 3 o'Clocke</text><text x="110" y="350" fill="#292524" font-size="30">&amp; agreed to defer</text><text x="110" y="400" fill="#292524" font-size="30">the question.</text><text x="680" y="250" fill="#292524" font-size="30">The [illegible] committee</text><text x="680" y="300" fill="#292524" font-size="30">met at 3 o'clock</text><text x="680" y="350" fill="#292524" font-size="30">and agreed to defer</text><text x="680" y="400" fill="#292524" font-size="30">the question.</text></g>
+  <path d="M700 468h345" stroke="#a16207" stroke-width="5"/><text x="680" y="510" fill="#a16207" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20">normalisation is recorded, not concealed</text>
+</svg>

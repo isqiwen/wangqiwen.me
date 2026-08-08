@@ -1,17 +1,35 @@
 ﻿"use client";
 
 import NextImage from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ClipboardEvent, DragEvent, ReactNode } from "react";
+import { Highlight, themes } from "prism-react-renderer";
+import type { Language } from "prism-react-renderer";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type {
+  ClipboardEvent,
+  DragEvent,
+  KeyboardEvent,
+  ReactNode,
+  RefObject,
+} from "react";
 import {
   componentsPalette,
   getComponentCategories,
   getComponentDefaultValues,
+  isCoreComponent,
   renderComponentInsert,
   type ComponentSnippet,
   type ComponentSnippetField,
+  type ComponentSnippetFormValue,
   type ComponentSnippetFormValues,
   type ComponentSnippetInsert,
+  type ComponentSnippetRepeatableRow,
 } from "./snippets";
 import {
   parsePendingEditorSnippet,
@@ -21,7 +39,8 @@ import {
   parseExportedMetadata,
   stripExportedMetadata,
 } from "@/utils/shared/post-metadata";
-import { TOPIC_DEFINITIONS } from "@/utils/topics";
+import { validateContentQuality } from "@/utils/shared/content-quality";
+import { getUnknownTopics, TOPIC_DEFINITIONS } from "@/utils/topics";
 import { SERIES_DEFINITIONS, isKnownSeries } from "@/utils/series";
 
 type EditorFileOption = {
@@ -54,7 +73,45 @@ type EditorConfirmation = {
   description: string;
   confirmLabel: string;
   tone?: "default" | "danger";
+  checks?: PublishReadinessCheck[];
 };
+
+type PublishReadinessStatus = "pass" | "warning" | "fail";
+
+type PublishReadinessCheck = {
+  label: string;
+  detail: string;
+  status: PublishReadinessStatus;
+};
+
+type EditorOutlineHeading = {
+  level: 2 | 3;
+  line: number;
+  position: number;
+  text: string;
+};
+
+type MdxFormattingAction =
+  | "bold"
+  | "link"
+  | "inlineCode"
+  | "codeBlock"
+  | "quote"
+  | "bulletList"
+  | "orderedList"
+  | "heading";
+
+type EditorChangeSet = {
+  available: boolean;
+  diff: string;
+};
+
+type EditorChanges = {
+  saved: EditorChangeSet;
+  git: EditorChangeSet;
+};
+
+type ChangesView = "saved" | "git";
 
 type EditorDocumentState = {
   title: string;
@@ -76,12 +133,27 @@ type EditorWorkspaceSnapshot = EditorDocumentState & {
 };
 
 type EditorLocalAutosave = EditorWorkspaceSnapshot & {
-  version: 1;
+  version: 2;
   savedAt: number;
 };
 
-const LOCAL_AUTOSAVE_KEY = "mdx-editor.local-autosave.v1";
-const LOCAL_AUTOSAVE_VERSION = 1;
+const MDX_FORMATTING_ACTIONS: Array<{
+  action: MdxFormattingAction;
+  label: string;
+  shortcut?: string;
+}> = [
+  { action: "bold", label: "Bold", shortcut: "⌘/Ctrl+B" },
+  { action: "link", label: "Link", shortcut: "⌘/Ctrl+K" },
+  { action: "inlineCode", label: "Inline code" },
+  { action: "codeBlock", label: "Code block" },
+  { action: "quote", label: "Quote" },
+  { action: "bulletList", label: "Bullet list" },
+  { action: "orderedList", label: "Numbered list" },
+  { action: "heading", label: "Heading 2" },
+];
+
+const LOCAL_AUTOSAVE_KEY = "mdx-editor.local-autosave.v2";
+const LOCAL_AUTOSAVE_VERSION = 2;
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -207,51 +279,17 @@ function parseMetadataObject(content: string) {
       updatedAt: string;
       id: string;
       status: EditorStatus;
-      draft: boolean;
-      archived: boolean;
-      tags: string[] | string;
+      tags: string[];
     }>
   >(content);
 }
 
-function normalizeStatus(
-  value: unknown,
-  legacyDraft?: unknown,
-  legacyArchived?: unknown
-): EditorStatus {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (
-      normalized === "draft" ||
-      normalized === "published" ||
-      normalized === "archived"
-    ) {
-      return normalized;
-    }
-  }
-
-  if (normalizeBoolean(legacyArchived)) {
-    return "archived";
-  }
-
-  if (normalizeBoolean(value) || normalizeBoolean(legacyDraft)) {
-    return "draft";
-  }
-
-  return "published";
-}
-
-function normalizeBoolean(value: unknown): boolean {
-  if (typeof value === "boolean") {
+function normalizeStatus(value: unknown): EditorStatus {
+  if (value === "draft" || value === "published" || value === "archived") {
     return value;
   }
 
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
-  }
-
-  return false;
+  return "draft";
 }
 
 function parseEditorDocument(
@@ -275,16 +313,8 @@ function parseEditorDocument(
     publishedAt: metadata?.publishedAt || today(),
     updatedAt: metadata?.updatedAt || "",
     id: metadata?.id || slugFallback,
-    status: normalizeStatus(
-      metadata?.status,
-      metadata?.draft,
-      metadata?.archived
-    ),
-    tagsInput: Array.isArray(metadataTags)
-      ? metadataTags.join(", ")
-      : typeof metadataTags === "string"
-      ? metadataTags
-      : "",
+    status: normalizeStatus(metadata?.status),
+    tagsInput: Array.isArray(metadataTags) ? metadataTags.join(", ") : "",
     body,
   };
 }
@@ -297,10 +327,7 @@ function parseLocalAutosave(
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Partial<EditorLocalAutosave> & {
-      isDraft?: boolean;
-      isArchived?: boolean;
-    };
+    const parsed = JSON.parse(rawValue) as Partial<EditorLocalAutosave>;
     if (parsed?.version !== LOCAL_AUTOSAVE_VERSION) {
       return null;
     }
@@ -332,7 +359,7 @@ function parseLocalAutosave(
       publishedAt: parsed.publishedAt,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : "",
       id: parsed.id,
-      status: normalizeStatus(parsed.status, parsed.isDraft, parsed.isArchived),
+      status: normalizeStatus(parsed.status),
       tagsInput: parsed.tagsInput,
       body: parsed.body,
       savedAt: parsed.savedAt,
@@ -369,6 +396,10 @@ function EditorWorkspace() {
   const [confirmation, setConfirmation] = useState<EditorConfirmation | null>(
     null
   );
+  const [showChanges, setShowChanges] = useState(false);
+  const [changes, setChanges] = useState<EditorChanges | null>(null);
+  const [changesView, setChangesView] = useState<ChangesView>("saved");
+  const [isChangesLoading, setIsChangesLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [assets, setAssets] = useState<EditorAsset[]>([]);
   const [isAssetsLoading, setIsAssetsLoading] = useState(false);
@@ -377,6 +408,7 @@ function EditorWorkspace() {
   );
   const [localAutosaveAt, setLocalAutosaveAt] = useState<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const highlightedEditorRef = useRef<HTMLPreElement | null>(null);
   const assetInputRef = useRef<HTMLInputElement | null>(null);
   const restoredDraftRef = useRef(false);
   const pendingAutosaveRef = useRef<EditorLocalAutosave | null>(null);
@@ -385,7 +417,12 @@ function EditorWorkspace() {
     null
   );
   const [cursorPos, setCursorPos] = useState<number>(body.length);
+  const [selectionRange, setSelectionRange] = useState({
+    start: body.length,
+    end: body.length,
+  });
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const deferredHighlightedBody = useDeferredValue(body);
 
   const workspaceSnapshot = useMemo(
     () =>
@@ -458,6 +495,41 @@ function EditorWorkspace() {
   const selectedTopics = useMemo(
     () => new Set(parseTagsInput(tagsInput)),
     [tagsInput]
+  );
+  const outlineHeadings = useMemo(() => extractOutlineHeadings(body), [body]);
+  const headingIssues = useMemo(
+    () =>
+      getContentQualityIssues(body, new Set()).filter(issue =>
+        issue.includes("heading")
+      ),
+    [body]
+  );
+  const publishReadiness = useMemo(
+    () =>
+      buildPublishReadiness({
+        title,
+        description,
+        series,
+        seriesOrder,
+        publishedAt,
+        id,
+        tags: parseTagsInput(tagsInput),
+        body,
+        readingTimeEstimate,
+        fileOptions,
+      }),
+    [
+      title,
+      description,
+      series,
+      seriesOrder,
+      publishedAt,
+      id,
+      tagsInput,
+      body,
+      readingTimeEstimate,
+      fileOptions,
+    ]
   );
 
   const showFeedback = useCallback(
@@ -557,6 +629,10 @@ function EditorWorkspace() {
       setTagsInput(nextState.tagsInput);
       setBody(nextState.body);
       setCursorPos(nextState.body.length);
+      setSelectionRange({
+        start: nextState.body.length,
+        end: nextState.body.length,
+      });
       setActivePath(nextActivePath);
 
       if (nextActivePath) {
@@ -891,11 +967,54 @@ function EditorWorkspace() {
     }
   }
 
+  async function openChanges() {
+    if (!activePath) {
+      showFeedback("Save this document once before comparing changes.", "info");
+      return;
+    }
+
+    setShowChanges(true);
+    setChanges(null);
+    setChangesView("saved");
+    setIsChangesLoading(true);
+
+    try {
+      const res = await fetch("/api/editor/changes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: activePath, content: mdxContent }),
+      });
+
+      if (!res.ok) {
+        throw new Error(
+          await readResponseError(res, "Failed to compare post changes.")
+        );
+      }
+
+      const data = (await res.json()) as Partial<EditorChanges>;
+      if (!isEditorChanges(data)) {
+        throw new Error("The change comparison returned an invalid response.");
+      }
+
+      setChanges(data);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to compare post changes.";
+      setShowChanges(false);
+      showFeedback(message, "error");
+    } finally {
+      setIsChangesLoading(false);
+    }
+  }
+
   async function publishPost() {
     const confirmed = await requestConfirmation({
       title: "Publish Post",
       description: `Mark "${title}" as published for the next deployment? It remains local until you commit and deploy.`,
       confirmLabel: "Publish",
+      checks: publishReadiness,
     });
 
     if (!confirmed) {
@@ -1174,6 +1293,72 @@ function EditorWorkspace() {
     [body, cursorPos, isReadOnly]
   );
 
+  const applyMdxFormatting = useCallback(
+    (action: MdxFormattingAction) => {
+      if (isReadOnly) {
+        return;
+      }
+
+      const textarea = editorRef.current;
+      const start = textarea?.selectionStart ?? selectionRange.start;
+      const end = textarea?.selectionEnd ?? selectionRange.end;
+      const next = formatMdxSelection(
+        textarea?.value ?? body,
+        start,
+        end,
+        action
+      );
+
+      setBody(next.source);
+      setCursorPos(next.selectionEnd);
+      setSelectionRange({
+        start: next.selectionStart,
+        end: next.selectionEnd,
+      });
+
+      requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) {
+          return;
+        }
+
+        editor.focus();
+        editor.setSelectionRange(next.selectionStart, next.selectionEnd);
+      });
+    },
+    [body, isReadOnly, selectionRange]
+  );
+
+  const jumpToOutlineHeading = useCallback((heading: EditorOutlineHeading) => {
+    const textarea = editorRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(heading.position, heading.position);
+    textarea.scrollTop = Math.max(0, (heading.line - 3) * 24);
+    setCursorPos(heading.position);
+    setSelectionRange({ start: heading.position, end: heading.position });
+  }, []);
+
+  function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (isReadOnly || (!event.metaKey && !event.ctrlKey) || event.altKey) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    if (key === "b") {
+      event.preventDefault();
+      event.stopPropagation();
+      applyMdxFormatting("bold");
+    } else if (key === "k") {
+      event.preventDefault();
+      event.stopPropagation();
+      applyMdxFormatting("link");
+    }
+  }
+
   const consumePendingEditorSnippet = useCallback(
     (rawValue: string | null, options: { removeAfterRead?: boolean } = {}) => {
       const pendingSnippet = parsePendingEditorSnippet(rawValue);
@@ -1435,6 +1620,19 @@ function EditorWorkspace() {
               {currentStatus === "published" ? "Open Post" : "Open Preview"}
             </a>
           ) : null}
+          <button
+            type="button"
+            onClick={() => void openChanges()}
+            disabled={!activePath}
+            title={
+              activePath
+                ? "Compare editor, saved, and Git versions"
+                : "Save this document once before comparing changes"
+            }
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+          >
+            Changes
+          </button>
           {currentStatus !== "archived" ? (
             <button
               onClick={() => void saveFile()}
@@ -1704,41 +1902,146 @@ function EditorWorkspace() {
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="editor-body"
-              className="text-xs font-semibold text-slate-600"
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="editor-body"
+                className="text-xs font-semibold text-slate-600"
+              >
+                Body (MDX)
+              </label>
+              {isUploading ? (
+                <span className="text-xs text-slate-400">
+                  Uploading image...
+                </span>
+              ) : null}
+            </div>
+            <div
+              className="flex flex-wrap gap-1.5"
+              role="toolbar"
+              aria-label="MDX formatting"
             >
-              Body (MDX)
-            </label>
-            {isUploading ? (
-              <span className="text-xs text-slate-400">Uploading image...</span>
-            ) : null}
+              {MDX_FORMATTING_ACTIONS.map(formattingAction => (
+                <button
+                  key={formattingAction.action}
+                  type="button"
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() => applyMdxFormatting(formattingAction.action)}
+                  disabled={isReadOnly}
+                  title={formattingAction.shortcut}
+                  className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+                >
+                  {formattingAction.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <textarea
-            id="editor-body"
-            ref={editorRef}
-            value={body}
-            onChange={event => {
-              setBody(event.target.value);
-              setCursorPos(
-                event.target.selectionStart ?? event.target.value.length
-              );
-            }}
-            onSelect={event => {
-              const target = event.target as HTMLTextAreaElement;
-              setCursorPos(target.selectionStart ?? 0);
-            }}
-            onDrop={handleDrop}
-            onDragOver={event => event.preventDefault()}
-            onPaste={handlePaste}
-            className="min-h-[800px] w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm"
-            spellCheck={false}
-            disabled={isReadOnly}
-          />
+          <div className="grid min-h-[800px] overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+            <MdxSyntaxHighlight
+              source={deferredHighlightedBody}
+              scrollRef={highlightedEditorRef}
+            />
+            <textarea
+              id="editor-body"
+              ref={editorRef}
+              value={body}
+              onChange={event => {
+                setBody(event.target.value);
+                setCursorPos(
+                  event.target.selectionStart ?? event.target.value.length
+                );
+                setSelectionRange({
+                  start:
+                    event.target.selectionStart ?? event.target.value.length,
+                  end: event.target.selectionEnd ?? event.target.value.length,
+                });
+              }}
+              onSelect={event => {
+                const target = event.target as HTMLTextAreaElement;
+                setCursorPos(target.selectionStart ?? 0);
+                setSelectionRange({
+                  start: target.selectionStart ?? 0,
+                  end: target.selectionEnd ?? 0,
+                });
+              }}
+              onScroll={event => {
+                const highlightedEditor = highlightedEditorRef.current;
+                if (highlightedEditor) {
+                  highlightedEditor.scrollTop = event.currentTarget.scrollTop;
+                  highlightedEditor.scrollLeft = event.currentTarget.scrollLeft;
+                }
+              }}
+              onKeyDown={handleEditorKeyDown}
+              onDrop={handleDrop}
+              onDragOver={event => event.preventDefault()}
+              onPaste={handlePaste}
+              className="col-start-1 row-start-1 min-h-[800px] w-full resize-y rounded-md bg-transparent px-3 py-2 font-mono text-sm leading-6 text-transparent caret-slate-900 outline-none selection:bg-sky-200/80 selection:text-transparent disabled:cursor-not-allowed disabled:bg-slate-100"
+              spellCheck={false}
+              disabled={isReadOnly}
+            />
+          </div>
         </div>
 
         <div className="space-y-4">
+          <aside
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            aria-labelledby="article-outline-heading"
+          >
+            <div>
+              <h2
+                id="article-outline-heading"
+                className="text-sm font-semibold text-slate-700"
+              >
+                Article Outline
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Built from <code>##</code> and <code>###</code> headings. Select
+                one to move the editor cursor there.
+              </p>
+            </div>
+
+            {outlineHeadings.length > 0 ? (
+              <nav className="mt-3" aria-label="Article outline">
+                <ol className="space-y-1">
+                  {outlineHeadings.map(heading => (
+                    <li key={`${heading.line}-${heading.text}`}>
+                      <button
+                        type="button"
+                        onClick={() => jumpToOutlineHeading(heading)}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 ${
+                          heading.level === 3 ? "pl-6" : ""
+                        }`}
+                      >
+                        <span className="font-mono text-[10px] text-slate-400">
+                          H{heading.level}
+                        </span>
+                        <span className="min-w-0 truncate">{heading.text}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            ) : (
+              <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
+                Add a <code>##</code> heading to start an outline.
+              </p>
+            )}
+
+            {headingIssues.length > 0 ? (
+              <div
+                className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800"
+                role="alert"
+              >
+                <p className="font-semibold">Fix heading hierarchy</p>
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  {headingIssues.map(issue => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </aside>
+
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -2062,6 +2365,16 @@ function EditorWorkspace() {
         />
       ) : null}
 
+      {showChanges ? (
+        <ChangesDialog
+          changes={changes}
+          view={changesView}
+          isLoading={isChangesLoading}
+          onClose={() => setShowChanges(false)}
+          onViewChange={setChangesView}
+        />
+      ) : null}
+
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 shadow-sm">
         <div className="font-semibold text-slate-700">
           Current Metadata Preview
@@ -2117,6 +2430,281 @@ function buildMdxContent({
     null,
     2
   )};\n\n${body.trim()}\n`;
+}
+
+function extractOutlineHeadings(source: string): EditorOutlineHeading[] {
+  const headings: EditorOutlineHeading[] = [];
+  let inCodeFence = false;
+  let position = 0;
+
+  for (const [index, line] of source.split("\n").entries()) {
+    if (/^\s*```/.test(line)) {
+      inCodeFence = !inCodeFence;
+    } else if (!inCodeFence) {
+      const match = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
+      if (match) {
+        const text = match[2].trim();
+        if (text) {
+          headings.push({
+            level: match[1].length as 2 | 3,
+            line: index + 1,
+            position,
+            text,
+          });
+        }
+      }
+    }
+
+    position += line.length + 1;
+  }
+
+  return headings;
+}
+
+function getContentQualityIssues(source: string, articlePaths: Set<string>) {
+  return validateContentQuality(source, { articlePaths }) as string[];
+}
+
+function buildPublishReadiness({
+  title,
+  description,
+  series,
+  seriesOrder,
+  publishedAt,
+  id,
+  tags,
+  body,
+  readingTimeEstimate,
+  fileOptions,
+}: {
+  title: string;
+  description: string;
+  series: string;
+  seriesOrder: string;
+  publishedAt: string;
+  id: string;
+  tags: string[];
+  body: string;
+  readingTimeEstimate: number;
+  fileOptions: EditorFileOption[];
+}): PublishReadinessCheck[] {
+  const targetError = validateEditorTarget(publishedAt, id);
+  const seriesError = validateEditorSeries(series, seriesOrder);
+  const unknownTopics = getUnknownTopics(tags);
+  const articlePaths = new Set(
+    fileOptions
+      .filter(file => file.status === "published")
+      .flatMap(file => {
+        const routePath = getRoutePathFromPostFile(file.path);
+        return routePath ? [routePath] : [];
+      })
+  );
+
+  if (!targetError) {
+    articlePaths.add(`/${publishedAt.slice(0, 4)}/${id}`);
+  }
+
+  const contentIssues = getContentQualityIssues(body, articlePaths);
+  const imageIssues = contentIssues.filter(issue =>
+    issue.includes("image is missing alt text")
+  );
+  const headingIssues = contentIssues.filter(issue =>
+    issue.includes("heading")
+  );
+  const linkIssues = contentIssues.filter(issue =>
+    issue.includes("internal article link")
+  );
+
+  return [
+    createPublishReadinessCheck(
+      "Article ID and published date",
+      targetError ?? `Will publish at /${publishedAt.slice(0, 4)}/${id}`,
+      targetError ? "fail" : "pass"
+    ),
+    createPublishReadinessCheck(
+      "Title",
+      title.trim() ? "Title is set." : "A title is required.",
+      title.trim() ? "pass" : "fail"
+    ),
+    createPublishReadinessCheck(
+      "Description",
+      description.trim()
+        ? "Search and sharing description is set."
+        : "A search and sharing description is required.",
+      description.trim() ? "pass" : "fail"
+    ),
+    createPublishReadinessCheck(
+      "Topics",
+      unknownTopics.length > 0
+        ? `Unknown topics: ${unknownTopics.join(", ")}.`
+        : tags.length > 0
+        ? `${tags.length} topic${tags.length === 1 ? "" : "s"} selected.`
+        : "No topic selected. Topics are recommended but optional.",
+      unknownTopics.length > 0 ? "fail" : tags.length > 0 ? "pass" : "warning"
+    ),
+    createPublishReadinessCheck(
+      "Series position",
+      seriesError ??
+        (series
+          ? `Part ${seriesOrder} in ${series}.`
+          : "Not part of a series."),
+      seriesError ? "fail" : "pass"
+    ),
+    createPublishReadinessCheck(
+      "Image alt text",
+      imageIssues.length > 0
+        ? imageIssues.join(" ")
+        : "All images have alt text.",
+      imageIssues.length > 0 ? "fail" : "pass"
+    ),
+    createPublishReadinessCheck(
+      "Heading hierarchy",
+      headingIssues.length > 0
+        ? headingIssues.join(" ")
+        : "Heading levels are valid.",
+      headingIssues.length > 0 ? "fail" : "pass"
+    ),
+    createPublishReadinessCheck(
+      "Internal article links",
+      linkIssues.length > 0
+        ? linkIssues.join(" ")
+        : "All internal article links resolve.",
+      linkIssues.length > 0 ? "fail" : "pass"
+    ),
+    createPublishReadinessCheck(
+      "Estimated reading time",
+      `${readingTimeEstimate} min read.`,
+      "pass"
+    ),
+  ];
+}
+
+function createPublishReadinessCheck(
+  label: string,
+  detail: string,
+  status: PublishReadinessStatus
+): PublishReadinessCheck {
+  return { label, detail, status };
+}
+
+function getRoutePathFromPostFile(filePath: string) {
+  const match = filePath.match(
+    /^app\/\(post\)\/(\d{4})\/([a-z0-9]+(?:-[a-z0-9]+)*)\/article\.mdx$/
+  );
+  return match ? `/${match[1]}/${match[2]}` : null;
+}
+
+function formatMdxSelection(
+  source: string,
+  selectionStart: number,
+  selectionEnd: number,
+  action: MdxFormattingAction
+) {
+  const start = Math.max(0, Math.min(selectionStart, source.length));
+  const end = Math.max(start, Math.min(selectionEnd, source.length));
+  const selected = source.slice(start, end);
+
+  if (action === "bold") {
+    const value = selected || "bold text";
+    return replaceMdxRange(
+      source,
+      start,
+      end,
+      `**${value}**`,
+      2,
+      2 + value.length
+    );
+  }
+
+  if (action === "link") {
+    const label = selected || "link text";
+    const href = "https://";
+    return replaceMdxRange(
+      source,
+      start,
+      end,
+      `[${label}](${href})`,
+      label.length + 3,
+      label.length + 3 + href.length
+    );
+  }
+
+  if (action === "inlineCode") {
+    const value = selected || "code";
+    return replaceMdxRange(
+      source,
+      start,
+      end,
+      `\`${value}\``,
+      1,
+      1 + value.length
+    );
+  }
+
+  if (action === "codeBlock") {
+    const value = selected || "code";
+    return replaceMdxRange(
+      source,
+      start,
+      end,
+      `\`\`\`\n${value}\n\`\`\``,
+      4,
+      4 + value.length
+    );
+  }
+
+  if (action === "heading") {
+    const lineStart = source.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+    const nextLineBreak = source.indexOf("\n", end);
+    const lineEnd = nextLineBreak === -1 ? source.length : nextLineBreak;
+    const rangeStart = selected ? start : lineStart;
+    const rangeEnd = selected ? end : lineEnd;
+    const value =
+      (selected || source.slice(lineStart, lineEnd))
+        .replace(/^\s*#{1,6}\s+/, "")
+        .trim() || "Section title";
+
+    return replaceMdxRange(
+      source,
+      rangeStart,
+      rangeEnd,
+      `## ${value}`,
+      3,
+      3 + value.length
+    );
+  }
+
+  const value = selected || (action === "quote" ? "Quote" : "List item");
+  const prefix =
+    action === "quote" ? "> " : action === "bulletList" ? "- " : "1. ";
+  const formatted = value
+    .split("\n")
+    .map(line => `${prefix}${line}`)
+    .join("\n");
+
+  return replaceMdxRange(
+    source,
+    start,
+    end,
+    formatted,
+    prefix.length,
+    formatted.length
+  );
+}
+
+function replaceMdxRange(
+  source: string,
+  start: number,
+  end: number,
+  replacement: string,
+  selectionStartOffset: number,
+  selectionEndOffset: number
+) {
+  return {
+    source: `${source.slice(0, start)}${replacement}${source.slice(end)}`,
+    selectionStart: start + selectionStartOffset,
+    selectionEnd: start + selectionEndOffset,
+  };
 }
 
 function buildMetadataObject({
@@ -2302,6 +2890,218 @@ function formatUpdatedAt(value: number) {
   }).format(date);
 }
 
+function isEditorChanges(
+  value: Partial<EditorChanges>
+): value is EditorChanges {
+  return isEditorChangeSet(value.saved) && isEditorChangeSet(value.git);
+}
+
+function isEditorChangeSet(value: unknown): value is EditorChangeSet {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<EditorChangeSet>;
+  return (
+    typeof candidate.available === "boolean" &&
+    typeof candidate.diff === "string"
+  );
+}
+
+function ChangesDialog({
+  changes,
+  view,
+  isLoading,
+  onClose,
+  onViewChange,
+}: {
+  changes: EditorChanges | null;
+  view: ChangesView;
+  isLoading: boolean;
+  onClose: () => void;
+  onViewChange: (view: ChangesView) => void;
+}) {
+  const changeSet = changes?.[view];
+  const description =
+    view === "saved"
+      ? "Current editor content compared with the MDX file saved on disk."
+      : "The MDX file saved on disk compared with Git HEAD.";
+  const emptyMessage =
+    view === "saved"
+      ? "No unsaved changes."
+      : "The saved MDX file matches Git HEAD.";
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 px-4 py-8">
+      <section
+        aria-labelledby="editor-changes-heading"
+        aria-modal="true"
+        role="dialog"
+        className="flex max-h-full w-full max-w-5xl flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="font-mono text-xs uppercase tracking-[0.25em] text-slate-500">
+              Version comparison
+            </p>
+            <h3
+              id="editor-changes-heading"
+              className="text-xl font-semibold text-slate-900"
+            >
+              Changes
+            </h3>
+            <p className="text-sm leading-6 text-slate-600">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+        </div>
+
+        <div
+          className="mt-5 flex flex-wrap gap-2"
+          role="group"
+          aria-label="Comparison baseline"
+        >
+          <button
+            type="button"
+            onClick={() => onViewChange("saved")}
+            aria-pressed={view === "saved"}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              view === "saved"
+                ? "bg-slate-900 text-white"
+                : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Current editor vs saved file
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewChange("git")}
+            aria-pressed={view === "git"}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              view === "git"
+                ? "bg-slate-900 text-white"
+                : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Saved file vs Git HEAD
+          </button>
+        </div>
+
+        <div className="mt-4 min-h-40 overflow-auto rounded-xl border border-slate-200 bg-slate-950 p-4">
+          {isLoading ? (
+            <p className="text-sm text-slate-300">Loading changes…</p>
+          ) : !changeSet?.available ? (
+            <p className="text-sm text-slate-300">
+              Save this document once before comparing changes.
+            </p>
+          ) : changeSet.diff ? (
+            <DiffOutput diff={changeSet.diff} />
+          ) : (
+            <p className="text-sm text-slate-300">{emptyMessage}</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DiffOutput({ diff }: { diff: string }) {
+  const lines = diff.split("\n");
+
+  return (
+    <pre
+      aria-label="MDX diff"
+      className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-slate-100"
+    >
+      {lines.map((line, index) => (
+        <span key={`${index}-${line}`} className={getDiffLineClassName(line)}>
+          {line || " "}
+        </span>
+      ))}
+    </pre>
+  );
+}
+
+function MdxSyntaxHighlight({
+  source,
+  scrollRef,
+}: {
+  source: string;
+  scrollRef: RefObject<HTMLPreElement | null>;
+}) {
+  return (
+    <Highlight
+      theme={themes.github}
+      code={source}
+      language={"markdown" as Language}
+    >
+      {({ style, tokens, getLineProps, getTokenProps }) => (
+        <pre
+          ref={scrollRef}
+          aria-hidden="true"
+          data-testid="mdx-syntax-highlight"
+          className="pointer-events-none col-start-1 row-start-1 m-0 min-h-[800px] overflow-hidden whitespace-pre-wrap break-words bg-transparent px-3 py-2 font-mono text-sm leading-6"
+          style={{ ...style, backgroundColor: "transparent" }}
+        >
+          {tokens.map((line, lineIndex) => {
+            const lineProps = getLineProps({ line });
+
+            return (
+              <div
+                key={lineIndex}
+                {...lineProps}
+                className={`${lineProps.className ?? ""} min-h-6`}
+              >
+                {line.map((token, tokenIndex) => {
+                  const tokenProps = getTokenProps({ token });
+                  return <span key={tokenIndex} {...tokenProps} />;
+                })}
+              </div>
+            );
+          })}
+        </pre>
+      )}
+    </Highlight>
+  );
+}
+
+function getDiffLineClassName(line: string) {
+  if (line.startsWith("+++")) {
+    return "block bg-emerald-950/70 px-2 text-emerald-200";
+  }
+
+  if (line.startsWith("---")) {
+    return "block bg-rose-950/70 px-2 text-rose-200";
+  }
+
+  if (line.startsWith("@@")) {
+    return "block bg-sky-950/70 px-2 text-sky-200";
+  }
+
+  if (line.startsWith("+")) {
+    return "block bg-emerald-950/40 px-2 text-emerald-100";
+  }
+
+  if (line.startsWith("-")) {
+    return "block bg-rose-950/40 px-2 text-rose-100";
+  }
+
+  if (
+    line.startsWith("diff ") ||
+    line.startsWith("index ") ||
+    line.startsWith("new file ")
+  ) {
+    return "block px-2 text-slate-400";
+  }
+
+  return "block px-2 text-slate-200";
+}
+
 function ConfirmationDialog({
   confirmation,
   onCancel,
@@ -2311,14 +3111,26 @@ function ConfirmationDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const hasBlockingCheck = confirmation.checks?.some(
+    check => check.status === "fail"
+  );
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 px-4">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4">
+      <section
+        aria-labelledby="editor-confirmation-heading"
+        aria-modal="true"
+        role="dialog"
+        className="my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+      >
         <div className="space-y-2">
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-slate-500">
             Confirm Action
           </p>
-          <h3 className="text-xl font-semibold text-slate-900">
+          <h3
+            id="editor-confirmation-heading"
+            className="text-xl font-semibold text-slate-900"
+          >
             {confirmation.title}
           </h3>
           <p className="text-sm leading-6 text-slate-600">
@@ -2326,7 +3138,61 @@ function ConfirmationDialog({
           </p>
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+        {confirmation.checks ? (
+          <div className="mt-5 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-slate-800">
+                Publish readiness
+              </h4>
+              <span className="text-xs text-slate-500">
+                {hasBlockingCheck
+                  ? "Resolve required items before publishing."
+                  : "Ready to publish."}
+              </span>
+            </div>
+            <ul className="mt-3 space-y-2">
+              {confirmation.checks.map(check => (
+                <li
+                  key={check.label}
+                  className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-xs"
+                >
+                  <span
+                    aria-label={
+                      check.status === "pass"
+                        ? "Passed"
+                        : check.status === "warning"
+                        ? "Recommended"
+                        : "Needs attention"
+                    }
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                      check.status === "pass"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : check.status === "warning"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {check.status === "pass"
+                      ? "✓"
+                      : check.status === "warning"
+                      ? "!"
+                      : "×"}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-700">
+                      {check.label}
+                    </p>
+                    <p className="mt-0.5 leading-5 text-slate-500">
+                      {check.detail}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex shrink-0 flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
@@ -2337,16 +3203,17 @@ function ConfirmationDialog({
           <button
             type="button"
             onClick={onConfirm}
+            disabled={hasBlockingCheck}
             className={`rounded-full px-4 py-2 text-sm font-semibold text-white shadow ${
               confirmation.tone === "danger"
                 ? "bg-rose-600 hover:bg-rose-500"
                 : "bg-slate-900 hover:bg-slate-700"
-            }`}
+            } disabled:cursor-not-allowed disabled:bg-slate-300`}
           >
             {confirmation.confirmLabel}
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -2407,10 +3274,7 @@ function Field({
         spanFull ? "md:col-span-2 lg:col-span-4" : ""
       }`}
     >
-      <label
-        htmlFor={htmlFor}
-        className="text-xs font-semibold text-slate-600"
-      >
+      <label htmlFor={htmlFor} className="text-xs font-semibold text-slate-600">
         {label}
       </label>
       {children}
@@ -2425,19 +3289,36 @@ function ComponentPalette({
   onInsert: (snippet: string | ComponentSnippetInsert) => void;
   disabled?: boolean;
 }) {
-  const categories = useMemo(() => ["All", ...getComponentCategories()], []);
   const [query, setQuery] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
     null
   );
   const [formValues, setFormValues] = useState<ComponentSnippetFormValues>({});
 
-  const filteredEntries = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase();
+  const isSearching = normalizedQuery.length > 0;
+  const coreEntries = useMemo(
+    () => componentsPalette.filter(isCoreComponent),
+    []
+  );
+  const visibleEntries =
+    showAdvanced || isSearching ? componentsPalette : coreEntries;
+  const categories = useMemo(
+    () => ["All", ...getComponentCategories(visibleEntries)],
+    [visibleEntries]
+  );
+  const effectiveActiveCategory = categories.includes(activeCategory)
+    ? activeCategory
+    : "All";
 
-    return componentsPalette.filter(entry => {
-      if (activeCategory !== "All" && entry.category !== activeCategory) {
+  const filteredEntries = useMemo(() => {
+    return visibleEntries.filter(entry => {
+      if (
+        effectiveActiveCategory !== "All" &&
+        entry.category !== effectiveActiveCategory
+      ) {
         return false;
       }
 
@@ -2455,7 +3336,7 @@ function ComponentPalette({
         .toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [activeCategory, query]);
+  }, [effectiveActiveCategory, normalizedQuery, visibleEntries]);
   const grouped = useMemo(
     () => groupComponentSnippets(filteredEntries),
     [filteredEntries]
@@ -2482,7 +3363,7 @@ function ComponentPalette({
     onInsert(renderComponentInsert(entry));
   }
 
-  function updateFormValue(fieldId: string, value: string | boolean) {
+  function updateFormValue(fieldId: string, value: ComponentSnippetFormValue) {
     setFormValues(current => ({
       ...current,
       [fieldId]: value,
@@ -2497,8 +3378,8 @@ function ComponentPalette({
             Insert component
           </div>
           <div className="text-[11px] text-slate-500">
-            Search by name, filter by category, or configure supported props
-            before inserting.
+            Start with the writing essentials. Search includes the full catalog,
+            and advanced components stay available when you need them.
           </div>
         </div>
         <a
@@ -2512,16 +3393,36 @@ function ComponentPalette({
       </div>
 
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {showAdvanced || isSearching
+              ? `${componentsPalette.length} components available`
+              : `${coreEntries.length} writing essentials`}
+          </div>
+          <button
+            type="button"
+            data-testid="advanced-components-toggle"
+            aria-pressed={showAdvanced}
+            onClick={() => setShowAdvanced(current => !current)}
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            {showAdvanced
+              ? "Show writing essentials"
+              : `Show ${
+                  componentsPalette.length - coreEntries.length
+                } advanced components`}
+          </button>
+        </div>
         <input
           type="search"
           value={query}
           onChange={event => setQuery(event.target.value)}
-          placeholder="Search components, patterns, or props"
+          placeholder="Search all components, patterns, or props"
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400"
         />
         <div className="flex flex-wrap gap-2">
           {categories.map(category => {
-            const isActive = category === activeCategory;
+            const isActive = category === effectiveActiveCategory;
             return (
               <button
                 key={category}
@@ -2540,7 +3441,11 @@ function ComponentPalette({
         </div>
         <div className="text-[11px] text-slate-500">
           {filteredEntries.length} component
-          {filteredEntries.length === 1 ? "" : "s"} match the current filters.
+          {filteredEntries.length === 1 ? "" : "s"} match the current filters
+          {isSearching && !showAdvanced
+            ? ", including advanced components"
+            : ""}
+          .
         </div>
       </div>
 
@@ -2657,11 +3562,6 @@ function ComponentPalette({
                           {item.hint}
                         </div>
                       </div>
-                      {hasConfigurator ? (
-                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
-                          Form
-                        </span>
-                      ) : null}
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -2713,9 +3613,9 @@ function ComponentConfiguratorField({
   onChange,
 }: {
   field: ComponentSnippetField;
-  value: string | boolean | undefined;
+  value: ComponentSnippetFormValue | undefined;
   disabled?: boolean;
-  onChange: (value: string | boolean) => void;
+  onChange: (value: ComponentSnippetFormValue) => void;
 }) {
   const baseInputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400";
@@ -2726,7 +3626,14 @@ function ComponentConfiguratorField({
         {field.label}
       </label>
 
-      {field.type === "textarea" ? (
+      {field.type === "repeatable" ? (
+        <RepeatableConfiguratorField
+          field={field}
+          value={Array.isArray(value) ? value : []}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      ) : field.type === "textarea" ? (
         <textarea
           value={typeof value === "string" ? value : ""}
           onChange={event => onChange(event.target.value)}
@@ -2773,6 +3680,129 @@ function ComponentConfiguratorField({
       {field.help ? (
         <p className="text-[11px] text-slate-500">{field.help}</p>
       ) : null}
+    </div>
+  );
+}
+
+function RepeatableConfiguratorField({
+  field,
+  value,
+  disabled,
+  onChange,
+}: {
+  field: ComponentSnippetField;
+  value: ComponentSnippetRepeatableRow[];
+  disabled?: boolean;
+  onChange: (value: ComponentSnippetRepeatableRow[]) => void;
+}) {
+  const itemFields = field.itemFields ?? [];
+  const minItems = field.minItems ?? 0;
+  const baseInputClass =
+    "w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-700 shadow-sm placeholder:text-slate-400";
+
+  function createRow(): ComponentSnippetRepeatableRow {
+    return itemFields.reduce<ComponentSnippetRepeatableRow>(
+      (row, itemField) => {
+        row[itemField.id] = itemField.defaultValue ?? "";
+        return row;
+      },
+      {}
+    );
+  }
+
+  function updateRow(index: number, fieldId: string, nextValue: string) {
+    onChange(
+      value.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [fieldId]: nextValue } : row
+      )
+    );
+  }
+
+  function moveRow(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= value.length) {
+      return;
+    }
+
+    const next = [...value];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    onChange(next);
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      {value.map((row, index) => (
+        <div
+          key={`${field.id}-${index}`}
+          className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-600">
+              {field.itemLabel ?? "Item"} {index + 1}
+            </span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => moveRow(index, -1)}
+                disabled={disabled || index === 0}
+                aria-label={`Move ${field.itemLabel ?? "item"} ${index + 1} up`}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => moveRow(index, 1)}
+                disabled={disabled || index === value.length - 1}
+                aria-label={`Move ${field.itemLabel ?? "item"} ${
+                  index + 1
+                } down`}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(value.filter((_, rowIndex) => rowIndex !== index))
+                }
+                disabled={disabled || value.length <= minItems}
+                aria-label={`Remove ${field.itemLabel ?? "item"} ${index + 1}`}
+                className="rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_minmax(0,0.8fr)]">
+            {itemFields.map(itemField => (
+              <label key={itemField.id} className="space-y-1">
+                <span className="text-[11px] font-semibold text-slate-500">
+                  {itemField.label}
+                </span>
+                <input
+                  type="text"
+                  value={row[itemField.id] ?? ""}
+                  onChange={event =>
+                    updateRow(index, itemField.id, event.target.value)
+                  }
+                  placeholder={itemField.placeholder}
+                  disabled={disabled}
+                  className={baseInputClass}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...value, createRow()])}
+        disabled={disabled}
+        className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+      >
+        {field.addLabel ?? "Add item"}
+      </button>
     </div>
   );
 }

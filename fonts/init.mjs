@@ -1,5 +1,6 @@
 // This script runs on postinstall and copies the required font files from
-// node_modules into the public directory used by the app.
+// node_modules into the public directory. The app uses variable WOFF2 fonts;
+// Next's Open Graph renderer requires the WOFF faces listed below.
 
 import fs from "fs";
 import path from "path";
@@ -9,16 +10,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 
 const fontPaths = [
-  "node_modules/@fontsource/inter/files/inter-latin-300-normal.woff2",
-  "node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2",
-  "node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2",
-  "node_modules/@fontsource/roboto-mono/files/roboto-mono-latin-400-normal.woff2",
+  "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  "node_modules/@fontsource-variable/roboto-mono/files/roboto-mono-latin-wght-normal.woff2",
   "node_modules/@fontsource/inter/files/inter-latin-300-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-500-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-600-normal.woff",
   "node_modules/@fontsource/roboto-mono/files/roboto-mono-latin-400-normal.woff",
-  "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
-  "node_modules/@fontsource-variable/roboto-mono/files/roboto-mono-latin-wght-normal.woff2",
 ];
 
 const missingFonts = [];
@@ -45,10 +42,6 @@ fontPaths.forEach(relativePath => {
 
   ensureDirectoryExistence(destDirectory);
 
-  if (fs.existsSync(dest)) {
-    return;
-  }
-
   fs.copyFileSync(src, dest);
   console.log(`Copied ${src} to ${dest}`);
 });
@@ -61,6 +54,6 @@ if (missingFonts.length > 0) {
       "paths in fonts/init.mjs accordingly.",
       "Missing files:",
       ...missingFonts.map(fontPath => ` - ${fontPath}`),
-    ].join("\n"),
+    ].join("\n")
   );
 }

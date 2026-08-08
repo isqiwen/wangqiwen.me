@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic reconstruction comparison</title>
+  <desc id="desc">Three abstract reconstruction fields that illustrate aliasing, regularized recovery, and residual inspection without using patient data.</desc>
+  <rect width="1200" height="720" fill="#f7fafc"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" fill="#475569"><text x="85" y="80">ZERO-FILL</text><text x="475" y="80">REGULARIZED</text><text x="860" y="80">RESIDUAL</text></g>
+  <g transform="translate(70 120)"><rect width="300" height="480" rx="6" fill="#dce6ee"/><ellipse cx="150" cy="240" rx="100" ry="160" fill="#6f8291"/><path d="M-20 80L320 410M-20 150L320 480M20 0L320 300" stroke="#fff" stroke-width="20" opacity=".5"/></g>
+  <g transform="translate(450 120)"><rect width="300" height="480" rx="6" fill="#dce6ee"/><ellipse cx="150" cy="240" rx="100" ry="160" fill="#617886"/><ellipse cx="120" cy="225" rx="32" ry="50" fill="#e6edf2"/><ellipse cx="180" cy="225" rx="32" ry="50" fill="#e6edf2"/><path d="M85 350Q150 390 215 350" fill="none" stroke="#e6edf2" stroke-width="10"/></g>
+  <g transform="translate(830 120)"><rect width="300" height="480" rx="6" fill="#0b1725"/><ellipse cx="150" cy="240" rx="100" ry="160" fill="none" stroke="#6c8eaa" stroke-width="4"/><path d="M80 155Q150 95 220 155M70 355Q150 405 230 355" fill="none" stroke="#fc6d5d" stroke-width="9"/><circle cx="220" cy="245" r="16" fill="#f6bf4c"/></g>
+  <text x="70" y="675" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="21">SYNTHETIC SCHEMATIC · DOES NOT REPRESENT CLINICAL IMAGE QUALITY</text>
+</svg>

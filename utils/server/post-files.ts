@@ -42,6 +42,7 @@ type PostMetadata = {
   tags?: unknown;
   series?: unknown;
   seriesOrder?: unknown;
+  readingTimeMinutes?: unknown;
 };
 
 const globalForPostMutations = globalThis as typeof globalThis & {
@@ -144,6 +145,14 @@ export function validatePostContent(
     throw new PostFileValidationError("updatedAt must be a valid date");
   }
 
+  if (
+    metadata.tags != null &&
+    (!Array.isArray(metadata.tags) ||
+      metadata.tags.some(tag => typeof tag !== "string"))
+  ) {
+    throw new PostFileValidationError("tags must be an array of strings");
+  }
+
   const unknownTopics = getUnknownTopics(normalizeTags(metadata.tags));
   if (unknownTopics.length > 0) {
     throw new PostFileValidationError(
@@ -155,6 +164,36 @@ export function validatePostContent(
 
   if (metadata.series != null && typeof metadata.series !== "string") {
     throw new PostFileValidationError("series must be a string");
+  }
+
+  if (
+    metadata.seriesOrder != null &&
+    (typeof metadata.seriesOrder !== "number" ||
+      !Number.isInteger(metadata.seriesOrder) ||
+      metadata.seriesOrder < 1)
+  ) {
+    throw new PostFileValidationError(
+      "seriesOrder must be a positive integer when series is set"
+    );
+  }
+
+  if (
+    metadata.readingTimeMinutes != null &&
+    (typeof metadata.readingTimeMinutes !== "number" ||
+      !Number.isInteger(metadata.readingTimeMinutes) ||
+      metadata.readingTimeMinutes < 1)
+  ) {
+    throw new PostFileValidationError(
+      "readingTimeMinutes must be a positive integer"
+    );
+  }
+
+  for (const retiredField of ["draft", "archived", "excerpt"]) {
+    if (Object.hasOwn(metadata, retiredField)) {
+      throw new PostFileValidationError(
+        `retired metadata field: ${retiredField}`
+      );
+    }
   }
 
   const series = normalizeOptionalString(metadata.series);
@@ -173,7 +212,7 @@ export function validatePostContent(
         "seriesOrder must be a positive integer when series is set"
       );
     }
-  } else if (metadata.seriesOrder != null && metadata.seriesOrder !== "") {
+  } else if (metadata.seriesOrder != null) {
     throw new PostFileValidationError("seriesOrder requires a series");
   }
 
@@ -232,11 +271,7 @@ function isIsoDate(value: string): boolean {
 }
 
 function normalizeTags(value: unknown): string[] {
-  const rawTags = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-    ? value.split(",")
-    : [];
+  const rawTags = Array.isArray(value) ? value : [];
 
   return Array.from(
     new Set(
@@ -252,8 +287,7 @@ function normalizeOptionalString(value: unknown): string {
 }
 
 function normalizePositiveInteger(value: unknown): number {
-  const number = typeof value === "string" ? Number(value) : value;
-  return typeof number === "number" && Number.isInteger(number) && number > 0
-    ? number
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
     : 0;
 }

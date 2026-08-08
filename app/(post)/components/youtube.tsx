@@ -1,10 +1,20 @@
 "use client";
+import type { ComponentProps } from "react";
 import YT from "react-youtube";
 
-export function YouTube(props: any) {
+type YouTubeProps = ComponentProps<typeof YT> & {
+  videoId: string;
+};
+
+export function YouTube({ videoId, ...props }: YouTubeProps) {
   return (
     <span className="block my-5">
-      <YT width="100%" {...props} />
+      <YT
+        {...props}
+        videoId={videoId}
+        className={`w-full ${props.className ?? ""}`.trim()}
+        iframeClassName={`aspect-video w-full ${props.iframeClassName ?? ""}`.trim()}
+      />
     </span>
   );
 }

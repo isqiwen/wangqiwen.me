@@ -6,7 +6,10 @@ import { canPreviewDrafts } from "@/utils/server/local-editor";
 import { getArticleComponent } from "../../post-registry";
 
 export const revalidate = 60;
-export const dynamicParams = false;
+// Published routes are still pre-rendered by generateStaticParams. Allowing
+// known draft routes through locally makes the editor previewable without
+// publishing a temporary article; production returns 404 for those drafts.
+export const dynamicParams = true;
 
 type ArticlePageProps = {
   params: Promise<{
@@ -16,7 +19,10 @@ type ArticlePageProps = {
 };
 
 export async function generateStaticParams() {
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts({
+    includeDrafts: canPreviewDrafts(),
+    includeViews: false,
+  });
 
   return posts.map(post => ({
     year: post.publishedAt.slice(0, 4),
@@ -28,7 +34,10 @@ export async function generateMetadata({
   params,
 }: ArticlePageProps): Promise<Metadata> {
   const { year, slug } = await params;
-  const post = await getPostByRoute(year, slug, { includeViews: false });
+  const post = await getPostByRoute(year, slug, {
+    includeDrafts: canPreviewDrafts(),
+    includeViews: false,
+  });
 
   if (!post) {
     return {};

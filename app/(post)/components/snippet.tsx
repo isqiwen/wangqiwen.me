@@ -11,6 +11,9 @@ type SnippetProps = {
   scroll?: boolean;
   caption?: ReactNode;
   className?: string;
+  label?: ReactNode;
+  language?: Language;
+  lineNumbers?: boolean;
 };
 
 type ElementWithChildren = { className?: string; children?: ReactNode };
@@ -24,33 +27,58 @@ export const Snippet: SnippetComponent = ({
   scroll = true,
   caption = null,
   className,
+  label = null,
+  language: languageOverride,
+  lineNumbers = false,
 }) => {
   const { code: rawCode, className: contentClassName } = extractContent(children);
   const code = trimEmptyLines(rawCode);
-  const language = getLanguage(contentClassName);
-  const containerClass = className ?? "my-4";
+  const language = languageOverride ?? getLanguage(contentClassName);
+  const containerClass = className ?? "my-6";
 
   return (
     <div className={containerClass}>
+      {label != null ? (
+        <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          {label}
+        </p>
+      ) : null}
       <Highlight theme={themes.nightOwl} code={code} language={language}>
         {({ className: highlightClass, style, tokens, getLineProps, getTokenProps }) => (
           <pre
-            className={`overflow-x-auto rounded-2xl p-4 text-sm bg-gray-800 text-white dark:bg-[#222] dark:text-gray-300 ${
+            className={`overflow-x-auto rounded-xl border border-slate-700/70 bg-gray-800 p-0 text-sm text-white dark:bg-[#222] dark:text-gray-300 ${
               scroll ? "overflow-y-hidden" : "whitespace-pre-wrap break-words overflow-hidden"
             } ${highlightClass}`}
             style={style}
           >
-            {tokens.map((line, lineIndex) => {
-              const lineProps = getLineProps({ line });
-              return (
-                <div key={lineIndex} {...lineProps}>
-                  {line.map((token, tokenIndex) => {
-                    const tokenProps = getTokenProps({ token });
-                    return <span key={tokenIndex} {...tokenProps} />;
-                  })}
-                </div>
-              );
-            })}
+            <code className={`block py-3 ${scroll ? "min-w-max" : "min-w-0"}`}>
+              {tokens.map((line, lineIndex) => {
+                const { className: lineClassName, ...lineProps } = getLineProps({ line });
+
+                return (
+                  <span
+                    key={lineIndex}
+                    {...lineProps}
+                    className={`${lineNumbers ? "flex" : "block"} min-h-5 px-4 ${lineClassName}`}
+                  >
+                    {lineNumbers ? (
+                      <span
+                        aria-hidden="true"
+                        className="mr-4 w-8 shrink-0 select-none text-right text-slate-500"
+                      >
+                        {lineIndex + 1}
+                      </span>
+                    ) : null}
+                    <span className={lineNumbers ? "min-w-0 grow" : undefined}>
+                      {line.map((token, tokenIndex) => {
+                        const tokenProps = getTokenProps({ token });
+                        return <span key={tokenIndex} {...tokenProps} />;
+                      })}
+                    </span>
+                  </span>
+                );
+              })}
+            </code>
           </pre>
         )}
       </Highlight>

@@ -35,10 +35,12 @@ export function Tabs({
   children,
   defaultIndex = 0,
   caption,
+  lineNumbers = false,
 }: {
   children: ReactNode;
   defaultIndex?: number;
   caption?: ReactNode;
+  lineNumbers?: boolean;
 }) {
   const tabs = Children.toArray(children) as ReactElement<TabProps>[];
   const [active, setActive] = useState(defaultIndex);
@@ -70,13 +72,13 @@ export function Tabs({
 
     return {
       content: (
-        <Snippet scroll caption={caption} className="my-0">
+        <Snippet scroll caption={caption} className="my-0" lineNumbers={lineNumbers}>
           <code className={`language-${language}`}>{code}</code>
         </Snippet>
       ),
       isSnippet: true,
     };
-  }, [activeTab, caption]);
+  }, [activeTab, caption, lineNumbers]);
 
   return (
     <div className={`${mdxPanelClass} w-full space-y-3`}>

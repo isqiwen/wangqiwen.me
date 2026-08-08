@@ -3,7 +3,6 @@
 const {
   collectPosts,
   normalizePositiveInteger,
-  normalizeStatus,
   normalizeTags,
 } = require("./lib/posts");
 const { TOPICS, getUnknownTopics } = require("./lib/topics");
@@ -17,39 +16,23 @@ async function main() {
   const seriesPositions = new Map();
   const articlePaths = new Set(
     Array.from(entries.values())
-      .filter(entry => {
-        const { metadata, frontmatter } = entry;
-        return (
-          normalizeStatus(
-            metadata.status ?? frontmatter.status,
-            metadata.draft ?? frontmatter.draft,
-            metadata.archived ?? frontmatter.archived
-          ) === "published"
-        );
-      })
+      .filter(entry => entry.metadata.status === "published")
       .map(entry => `/${entry.year}/${entry.id}`)
   );
 
   for (const [key, entry] of entries) {
     const [pathYear, pathId] = key.split("/");
-    const { metadata, frontmatter } = entry;
-    const title = metadata.title || frontmatter.title;
-    const id = metadata.id || frontmatter.id;
-    const publishedAt = metadata.publishedAt || frontmatter.publishedAt;
-    const description =
-      metadata.description ||
-      metadata.summary ||
-      metadata.excerpt ||
-      frontmatter.description ||
-      frontmatter.summary ||
-      frontmatter.excerpt ||
-      "";
-    const summary = metadata.summary || frontmatter.summary || "";
-    const series = metadata.series || frontmatter.series || "";
-    const seriesOrder = metadata.seriesOrder ?? frontmatter.seriesOrder;
-    const updatedAt = metadata.updatedAt || frontmatter.updatedAt || "";
-    const statusValue = metadata.status ?? frontmatter.status;
-    const rawTags = metadata.tags ?? frontmatter.tags;
+    const { metadata } = entry;
+    const title = metadata.title;
+    const id = metadata.id;
+    const publishedAt = metadata.publishedAt;
+    const description = metadata.description || "";
+    const summary = metadata.summary || "";
+    const series = metadata.series || "";
+    const seriesOrder = metadata.seriesOrder;
+    const updatedAt = metadata.updatedAt || "";
+    const statusValue = metadata.status;
+    const rawTags = metadata.tags;
     const tags = normalizeTags(rawTags);
     const readingTimeMinutes = metadata.readingTimeMinutes;
 
@@ -77,22 +60,29 @@ async function main() {
       errors.push(`${key} metadata id must match its directory`);
     }
 
+    for (const retiredField of ["draft", "archived", "excerpt"]) {
+      if (Object.hasOwn(metadata, retiredField)) {
+        errors.push(
+          `${key} uses retired metadata field "${retiredField}"; use status and description instead`
+        );
+      }
+    }
+
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathId)) {
       errors.push(`${key} has an invalid directory slug`);
     }
 
     if (
-      statusValue != null &&
-      (typeof statusValue !== "string" ||
-        !["draft", "published", "archived"].includes(
-          statusValue.trim().toLowerCase()
-        ))
+      typeof statusValue !== "string" ||
+      !["draft", "published", "archived"].includes(statusValue)
     ) {
-      errors.push(`${key} has an invalid status value`);
+      errors.push(
+        `${key} has an invalid or missing status value; use draft, published, or archived`
+      );
     }
 
     if (typeof description !== "string" || !description.trim()) {
-      errors.push(`${key} is missing description or summary`);
+      errors.push(`${key} is missing description`);
     }
 
     if (summary && typeof summary !== "string") {
@@ -121,11 +111,7 @@ async function main() {
       errors.push(`${key} seriesOrder requires a series`);
     }
 
-    if (
-      series &&
-      normalizedSeriesOrder > 0 &&
-      normalizeStatus(statusValue) !== "archived"
-    ) {
+    if (series && normalizedSeriesOrder > 0 && statusValue !== "archived") {
       const seriesPosition = `${series}:${normalizedSeriesOrder}`;
       const existing = seriesPositions.get(seriesPosition);
       if (existing) {
@@ -145,9 +131,14 @@ async function main() {
       errors.push(`${key} has an invalid updatedAt value`);
     }
 
-    const hasNonEmptyRawTags =
-      (Array.isArray(rawTags) && rawTags.length > 0) ||
-      (typeof rawTags === "string" && rawTags.trim().length > 0);
+    if (
+      rawTags != null &&
+      (!Array.isArray(rawTags) || rawTags.some(tag => typeof tag !== "string"))
+    ) {
+      errors.push(`${key} tags must be an array of strings`);
+    }
+
+    const hasNonEmptyRawTags = Array.isArray(rawTags) && rawTags.length > 0;
 
     if (hasNonEmptyRawTags && tags.length === 0) {
       errors.push(`${key} has tags but none could be parsed`);

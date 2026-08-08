@@ -5,8 +5,138 @@ function validateContentQuality(source, { articlePaths }) {
   validateImageAltText(inspectedSource, issues);
   validateHeadingOrder(inspectedSource, issues);
   validateArticleLinks(inspectedSource, articlePaths, issues);
+  validateCitations(inspectedSource, issues);
+  validateCrossReferences(inspectedSource, issues);
+  validateSourceExcerpts(inspectedSource, issues);
 
   return issues;
+}
+
+function validateSourceExcerpts(source, issues) {
+  const sourceExcerpt = /<SourceExcerpt\b([\s\S]*?)\/>/g;
+  let match;
+
+  while ((match = sourceExcerpt.exec(source))) {
+    const attributes = match[1];
+    if (!getStringAttribute(attributes, "source")) {
+      issues.push(
+        issueAt(source, match.index, "source excerpt is missing a source identity")
+      );
+    }
+
+    const facsimile = attributes.match(/\bfacsimile\s*=\s*\{\{([\s\S]*?)\}\}/);
+    if (!facsimile) continue;
+
+    const alt = facsimile[1].match(/\balt\s*:\s*(?:"([^"]*)"|'([^']*)')/);
+    if (!alt || !(alt[1] ?? alt[2] ?? "").trim()) {
+      issues.push(
+        issueAt(source, match.index, "source excerpt facsimile is missing alt text")
+      );
+    }
+  }
+}
+
+function validateCrossReferences(source, issues) {
+  const targets = collectReferenceTargets(source, issues);
+  const crossReference = /<CrossReference\b([\s\S]*?)\/>/g;
+  let match;
+
+  while ((match = crossReference.exec(source))) {
+    const attributes = match[1];
+    const rawTarget = getStringAttribute(attributes, "target");
+    const label = getStringAttribute(attributes, "label");
+    const target = rawTarget.replace(/^#/, "");
+
+    if (!target) {
+      issues.push(
+        issueAt(source, match.index, "cross reference is missing a target")
+      );
+      continue;
+    }
+
+    if (!label) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `cross reference "${target}" is missing a label`
+        )
+      );
+    }
+
+    if (!targets.has(target)) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `cross reference target "${target}" does not exist in this article`
+        )
+      );
+    }
+  }
+}
+
+function collectReferenceTargets(source, issues) {
+  const targets = new Map();
+  const referenceableComponent =
+    /<(Definition|TheoremBlock|Algorithm|MathBlock|Figure|Table|Chart|RegressionTable|SourceExcerpt|ScatterPlot|Histogram|BoxPlot)\b([\s\S]*?)(?:\/>|>)/g;
+  const equationGroup = /<EquationGroup\b([\s\S]*?)\/>/g;
+  const manualHeading = /^#{1,6}\s+.*?\s+\[#([^\]]+)\]\s*$/gm;
+  const definition = /<Definition\b([\s\S]*?)(?:\/>|>)/g;
+  let match;
+
+  while ((match = referenceableComponent.exec(source))) {
+    addReferenceTarget(
+      targets,
+      getStringAttribute(match[2], "id"),
+      match.index,
+      source,
+      issues
+    );
+  }
+
+  while ((match = equationGroup.exec(source))) {
+    const idAttribute = /\bid\s*(?:=|:)\s*(["'])(.*?)\1/g;
+    let idMatch;
+
+    while ((idMatch = idAttribute.exec(match[1]))) {
+      addReferenceTarget(
+        targets,
+        idMatch[2],
+        match.index + idMatch.index,
+        source,
+        issues
+      );
+    }
+  }
+
+  while ((match = manualHeading.exec(source))) {
+    addReferenceTarget(targets, match[1], match.index, source, issues);
+  }
+
+  while ((match = definition.exec(source))) {
+    if (!getStringAttribute(match[1], "id")) {
+      issues.push(
+        issueAt(source, match.index, "definition is missing a stable id")
+      );
+    }
+  }
+
+  return targets;
+}
+
+function addReferenceTarget(targets, rawId, index, source, issues) {
+  const id = rawId.trim();
+  if (!id) return;
+
+  if (targets.has(id)) {
+    issues.push(
+      issueAt(source, index, `reference target "${id}" is duplicated`)
+    );
+    return;
+  }
+
+  targets.set(id, index);
 }
 
 function validateImageAltText(source, issues) {
@@ -83,6 +213,89 @@ function validateArticleLinks(source, articlePaths, issues) {
       );
     }
   }
+}
+
+function validateCitations(source, issues) {
+  const bibliographyItems = new Map();
+  const bibliographyItem = /<BibliographyItem\b([\s\S]*?)(?:\/>|>)/g;
+  let match;
+
+  while ((match = bibliographyItem.exec(source))) {
+    const attributes = match[1];
+    const id = getStringAttribute(attributes, "id");
+    const label = getStringAttribute(attributes, "label");
+
+    if (!id) {
+      issues.push(
+        issueAt(source, match.index, "bibliography item is missing an id")
+      );
+      continue;
+    }
+
+    if (!label) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `bibliography item "${id}" is missing a label`
+        )
+      );
+      continue;
+    }
+
+    if (bibliographyItems.has(id)) {
+      issues.push(
+        issueAt(source, match.index, `bibliography item "${id}" is duplicated`)
+      );
+      continue;
+    }
+
+    bibliographyItems.set(id, label);
+  }
+
+  const citation = /<Citation\b([\s\S]*?)\/>/g;
+  while ((match = citation.exec(source))) {
+    const attributes = match[1];
+    const refId = getStringAttribute(attributes, "refId");
+    const label = getStringAttribute(attributes, "label");
+
+    if (!refId) {
+      issues.push(issueAt(source, match.index, "citation is missing a refId"));
+      continue;
+    }
+
+    if (!label) {
+      issues.push(
+        issueAt(source, match.index, `citation "${refId}" is missing a label`)
+      );
+      continue;
+    }
+
+    const bibliographyLabel = bibliographyItems.get(refId);
+    if (!bibliographyLabel) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `citation "${refId}" does not match a bibliography item`
+        )
+      );
+    } else if (bibliographyLabel !== label) {
+      issues.push(
+        issueAt(
+          source,
+          match.index,
+          `citation "${refId}" label "${label}" does not match bibliography label "${bibliographyLabel}"`
+        )
+      );
+    }
+  }
+}
+
+function getStringAttribute(attributes, name) {
+  const pattern = new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`);
+  const match = attributes.match(pattern);
+  return match?.[2]?.trim() || "";
 }
 
 function isEmptyAltValue(match) {

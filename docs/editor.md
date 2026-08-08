@@ -67,7 +67,91 @@ created.
 
 Editor saves update the MDX file and synchronize `posts/manifest.json` automatically. A title, description, predefined topics, valid heading hierarchy, image alt text, and internal article links are checked before the file is written. Browser autosave helps recover unsaved input, but it does not replace saving the post to disk.
 
+After the first save, select **Changes** to compare the current editor content
+with the MDX file on disk, or the saved MDX file with Git `HEAD`. These are
+separate baselines: `published` is only an article status, not a saved version,
+Git commit, or VPS deployment.
+
+## Writing Assistance
+
+The editor builds an **Article Outline** from `##` and `###` headings. Select a
+heading to move the cursor to it; hierarchy errors are shown immediately.
+
+The MDX editor highlights Markdown syntax while keeping the same native text
+editing behavior. Use its toolbar for bold, links, inline or block code,
+quotes, lists, and `##` headings. It writes ordinary MDX. **⌘/Ctrl+B** formats
+bold text and **⌘/Ctrl+K** inserts a link around the current selection.
+
+Selecting **Publish Post** opens a readiness checklist for the title,
+description, topics, series position, image alt text, heading hierarchy,
+internal links, and reading time. Failures block publishing; an empty topic
+selection is shown as a recommendation because topics remain optional.
+
 Topics are a controlled catalog. Select them from the editor; to introduce a new one, add its canonical name and slug to `content/topics.json` before using it in an article. `pnpm check`, `pnpm new:post`, and editor saves reject undefined topics.
+
+## MDX Components
+
+The editor starts with a small set of writing essentials: Markdown, callouts,
+code, tables, steps, tabs, figures, mathematics, Mermaid diagrams,
+citations, and video. Select **Show advanced components** only for
+specialized research, data, media, or interactive blocks. Searching always
+includes the full component catalog; this display choice never changes how an
+existing MDX article renders.
+
+Use **Algorithm** for reproducible pseudocode, not a prose checklist. Its
+configurator supports adding, removing, reordering, indenting, and annotating
+steps; the result remains plain MDX that can also be edited by hand. Use
+**Emphasized steps** only to point to a rendered line that the surrounding prose
+discusses directly; it is not syntax highlighting.
+
+For formal results, use `Table` with an explicit label, title, caption, source,
+and notes. Use `RegressionTable` only for empirical estimates with model
+columns, supplied standard errors or confidence intervals, and disclosed sample
+statistics. It never calculates p-values or significance markers: every
+annotation must be supplied and justified by the author. `Chart` supports an
+explicit interval per series and grouped or stacked bars; label the interval
+and state how it was produced. Stack bars only when their components add to an
+interpretable total.
+
+Use `ScatterPlot` for calibration, agreement, correlation, or dispersion, and
+state what each point represents. Use `Histogram` with author-specified bins;
+the component deliberately does not choose a binning rule from raw data. Use
+`BoxPlot` with a supplied five-number summary and state the whisker convention.
+These three components are for distributions and relationships; do not replace
+them with pie charts when readers need accurate comparison.
+
+For historical evidence, use `SourceExcerpt` when readers need to examine a
+facsimile alongside a diplomatic transcription, reading text, or translation.
+Record the repository and locator with the excerpt, and state every
+normalisation, transcription, translation, or derivative choice that affects
+the evidence. Use its default `compact` layout for a short witness; select
+`reading` for longer transcription or translation, which puts the facsimile
+above the text columns. Do not use it as decoration for an ordinary quotation.
+
+Use **Citation + Bibliography** for every external source. Each inline
+`Citation` must use the same stable `refId` and label as exactly one
+`BibliographyItem` at the end of the article. The content checks reject missing
+or mismatched references. Do not use the retired footnote components.
+
+For images, `alt` describes the visual content for readers who cannot see it;
+it is not a visible caption. Use `Caption` for explanatory text, and wrap an
+important, referenceable image in `Figure` with an ID.
+
+## Formal Definitions and Cross-References
+
+Use `Definition` for a concept that will be referred to later. Its `id` is a
+stable, article-local anchor; keep it unchanged after publishing. Use
+`CrossReference` with that ID and an explicit reader-facing label such as
+`Definition 1`, `Figure 2`, or `Equation (3)`.
+
+`pnpm check` rejects a missing target, duplicate target, missing definition ID,
+or a cross-reference without a label. Referenceable targets are `Definition`,
+`TheoremBlock`, `Algorithm`, `MathBlock`, equations inside `EquationGroup`,
+`Figure`, `Table`, `RegressionTable`, `Chart`, `SourceExcerpt`, and headings
+with an explicit `[#id]` suffix. `ScatterPlot`, `Histogram`, and `BoxPlot` are
+also referenceable figure targets.
+Cross-references stay inside one article; use a normal Markdown link for other
+articles and external sources.
 
 ## Write a Series
 

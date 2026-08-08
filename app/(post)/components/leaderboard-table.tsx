@@ -1,7 +1,7 @@
 import {
+  mdxDataTableFrameClass,
+  mdxDataTableHeadClass,
   mdxMutedTextClass,
-  mdxPanelClass,
-  mdxSubtleTextClass,
 } from "./surface";
 
 type LeaderboardEntry = {
@@ -37,33 +37,27 @@ export function LeaderboardTable({
   );
 
   return (
-    <section className={mdxPanelClass}>
-      {(title || caption) ? (
-        <div className="space-y-2">
-          {title ? <p className={mdxSubtleTextClass}>Leaderboard</p> : null}
-          {title ? (
-            <h3 className="text-xl font-semibold text-slate-950 dark:text-white">
-              {title}
-            </h3>
-          ) : null}
-          {caption ? <p className={mdxMutedTextClass}>{caption}</p> : null}
+    <figure className="my-10">
+      {title ? (
+        <div className="mb-5">
+          <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
         </div>
       ) : null}
 
-      <div className="mt-5 overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className={mdxDataTableFrameClass}>
         <table className="w-full min-w-[720px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-xs uppercase tracking-[0.24em] text-slate-500 dark:bg-white/5 dark:text-slate-400">
+          <thead className={mdxDataTableHeadClass}>
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
+              <th scope="col" className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
                 Rank
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
+              <th scope="col" className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
                 Entry
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
+              <th scope="col" className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
                 {scoreLabel}
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
+              <th scope="col" className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
                 {deltaLabel}
               </th>
             </tr>
@@ -77,29 +71,17 @@ export function LeaderboardTable({
                   key={`${entry.label}-${rank}`}
                   className="border-t border-slate-200/70 dark:border-white/10"
                 >
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex min-w-[2.25rem] items-center justify-center rounded-full px-3 py-1 text-xs font-semibold ${
-                        rank === 1
-                          ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-                          : rank === 2
-                            ? "bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-slate-200"
-                            : rank === 3
-                              ? "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300"
-                              : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300"
-                      }`}
-                    >
-                      {rank}
-                    </span>
+                  <td className="px-4 py-3 font-mono text-sm tabular-nums text-slate-500 dark:text-slate-400">
+                    {rank}
                   </td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                  <th scope="row" className="px-4 py-3 text-left text-slate-700 dark:text-slate-200">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="font-semibold text-slate-950 dark:text-white">
                         {entry.label}
                       </div>
                       {entry.tag ? (
-                        <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white dark:bg-white dark:text-slate-950">
-                          {entry.tag}
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                          ({entry.tag})
                         </span>
                       ) : null}
                     </div>
@@ -113,14 +95,14 @@ export function LeaderboardTable({
                         {entry.note}
                       </div>
                     ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
+                  </th>
+                  <td className={`px-4 py-3 tabular-nums ${rank === 1 ? "font-semibold text-slate-950 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}>
+                    <span>
                       {formatLeaderboardValue(entry.score, scoreFormat)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                    <span className={buildDeltaClassName(entry.delta, higherIsBetter)}>
+                    <span className={buildDeltaClassName(entry.delta)}>
                       {formatDelta(entry.delta, scoreFormat)}
                     </span>
                   </td>
@@ -130,7 +112,8 @@ export function LeaderboardTable({
           </tbody>
         </table>
       </div>
-    </section>
+      {caption ? <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption> : null}
+    </figure>
   );
 }
 
@@ -194,15 +177,10 @@ function formatDelta(
 
 function buildDeltaClassName(
   value: string | number | undefined,
-  higherIsBetter: boolean,
 ) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return "text-slate-500 dark:text-slate-400";
   }
 
-  const improved = higherIsBetter ? value >= 0 : value <= 0;
-
-  return improved
-    ? "font-semibold text-emerald-600 dark:text-emerald-300"
-    : "font-semibold text-rose-600 dark:text-rose-300";
+  return "font-medium tabular-nums text-slate-700 dark:text-slate-200";
 }

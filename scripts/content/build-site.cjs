@@ -20,6 +20,8 @@ async function main() {
   let buildError = null;
 
   try {
+    run(process.execPath, ["scripts/content/lint-posts.cjs"]);
+
     // The registry is a static set of MDX imports. Restrict it before Next
     // compiles so draft and archived articles do not become public routes.
     run(process.execPath, [
