@@ -19,7 +19,6 @@ import { YouTube } from "app/(post)/components/youtube";
 import { Blockquote as blockquote } from "app/(post)/components/blockquote";
 import { Steps, Step } from "app/(post)/components/steps";
 import { Tabs, Tab } from "app/(post)/components/tabs";
-import { PullQuote } from "app/(post)/components/pull-quote";
 import { Gallery } from "app/(post)/components/gallery";
 import { Stats, Stat } from "app/(post)/components/stats";
 import { Table, THead, TBody, TR, TH, TD } from "app/(post)/components/table";
@@ -45,6 +44,8 @@ import { AblationTable } from "app/(post)/components/ablation-table";
 import { TheoremBlock } from "app/(post)/components/theorem-block";
 import { MermaidDiagram } from "app/(post)/components/mermaid-diagram";
 import { ArchitectureDiagram } from "app/(post)/components/architecture-diagram";
+import { DecisionTree } from "app/(post)/components/decision-tree";
+import { EvidenceChain } from "app/(post)/components/evidence-chain";
 import { FileTree } from "app/(post)/components/file-tree";
 import { TerminalBlock } from "app/(post)/components/terminal-block";
 import { BacktestChart } from "app/(post)/components/backtest-chart";
@@ -97,7 +98,6 @@ export function useMDXComponents(components: {
     Step,
     Tabs,
     Tab,
-    PullQuote,
     Gallery,
     Stats,
     Stat,
@@ -125,6 +125,8 @@ export function useMDXComponents(components: {
     TheoremBlock,
     MermaidDiagram,
     ArchitectureDiagram,
+    DecisionTree,
+    EvidenceChain,
     FileTree,
     TerminalBlock,
     BacktestChart,

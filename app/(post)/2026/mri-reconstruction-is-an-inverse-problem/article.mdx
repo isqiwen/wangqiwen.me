@@ -15,7 +15,7 @@ MRI reconstruction is often discussed as a competition between algorithms. That 
 
 This note is a methodological template rather than a clinical study. All visual panels, tables, numerical values, and classifications below are synthetic rendering fixtures. They demonstrate what a complete technical report must expose; they make no claim about diagnostic performance or patient outcomes.
 
-<Callout type="caution" title="Scope and evidence">
+<Callout type="caution">
   The illustrations are not patient images, and the tabulated values are not experimental results. A clinical claim requires a protocol, an independent test set, reader study design where appropriate, and a safety analysis matched to the intended use.
 </Callout>
 
@@ -128,10 +128,10 @@ The visual diagnosis must remain tied to the signal model. <CrossReference targe
   caption="The diagram distinguishes measurement, model, and review rather than treating the network as the whole system."
   direction="LR"
   nodes={[
-    { id: "scan", label: "Multicoil scan", shape: "rounded", tone: "default" },
-    { id: "operator", label: "Forward operator", shape: "rect", tone: "accent" },
-    { id: "model", label: "Reconstruction rule", shape: "rounded", tone: "accent" },
-    { id: "audit", label: "Validation and review", shape: "rounded", tone: "success" }
+    { id: "scan", label: "Multicoil scan", group: "Acquisition", tone: "default" },
+    { id: "operator", label: "Forward operator", group: "Model", tone: "accent" },
+    { id: "model", label: "Reconstruction rule", group: "Reconstruction", tone: "accent" },
+    { id: "audit", label: "Validation and review", group: "Review", tone: "success" }
   ]}
   edges={[
     { from: "scan", to: "operator", label: "measurements" },
@@ -140,16 +140,14 @@ The visual diagnosis must remain tied to the signal model. <CrossReference targe
   ]}
 />
 
-<MermaidDiagram
+<DecisionTree
   title="Failure analysis must feed back into the protocol"
   caption="A report is incomplete if validation only produces a scalar score and cannot change the next acquisition or analysis decision."
-  chart={`flowchart TD
-  A[Pre-register target use] --> B[Acquire and reconstruct]
-  B --> C[Evaluate held-out cases]
-  C --> D{Failure mode found?}
-  D -->|Yes| E[Revise protocol or model]
-  E --> A
-  D -->|No| F[Document scope and release evidence]`}
+  question="Consequential failure mode?"
+  branches={[
+    { label: "Yes", outcome: "Revise protocol or model", detail: "Re-register and repeat evaluation", tone: "caution" },
+    { label: "No", outcome: "Release scoped evidence", detail: "Document residual uncertainty", tone: "success" },
+  ]}
 />
 
 ## Evaluate the decision, not only the image
@@ -311,9 +309,9 @@ The visual diagnosis must remain tied to the signal model. <CrossReference targe
 
 ## What the article refuses to claim
 
-<PullQuote author="Methodological principle">
+<Callout type="important">
   A low residual is evidence that a candidate image matches the acquired data under a model. It is not evidence that every visible structure is clinically faithful.
-</PullQuote>
+</Callout>
 
 The most useful model card is therefore not a marketing summary. It records the acquisition domain, exclusions, optimisation objective, reference definition, primary endpoint, known failure modes, and who should decide when the system is uncertain. Public datasets such as fastMRI make reproducible reconstruction benchmarks possible, but a benchmark remains a bounded evaluation setting rather than universal evidence.<Citation refId="fastmri-2019" label="[3]" />
 

@@ -15,10 +15,19 @@ type TimelineItemProps = {
 export function Timeline({ children }: TimelineProps) {
   const items = Children.toArray(children);
   return (
-    <ol className="my-8 space-y-8 border-l border-slate-200 pl-7 dark:border-white/15">
+    <ol className="my-8 space-y-8 pl-[1.8125rem]">
       {items.map((child, index) => (
         <li key={index} className="relative">
-          <span className="absolute -left-[2.03rem] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-slate-800 dark:border-slate-950 dark:bg-slate-200" />
+          {index < items.length - 1 ? (
+            <span
+              aria-hidden="true"
+              className="absolute left-[-1.78125rem] top-2 bottom-[-2.5rem] w-px -translate-x-1/2 bg-slate-200 dark:bg-white/15"
+            />
+          ) : null}
+          <span
+            aria-hidden="true"
+            className="absolute -left-[2.15625rem] top-0.5 z-10 h-3 w-3 rounded-full border-2 border-white bg-slate-800 dark:border-slate-950 dark:bg-slate-200"
+          />
           {child}
         </li>
       ))}

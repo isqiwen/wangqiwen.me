@@ -15,7 +15,7 @@ Historical writing often becomes least reliable at the moment it becomes most re
 
 This note proposes a simple rule: provenance is not a footnote after the argument. It is one of the argument's premises. The diagrams and text examples below are synthetic; no real collection, record, or transcription is being represented.
 
-<Callout type="note" title="A source is not self-interpreting">
+<Callout type="note">
   Primary sources are records from the period under study, but their usefulness depends on questions of creator, purpose, context, preservation, and access. Those questions belong in the method, not merely in a bibliography.<Citation refId="tna-working-records" label="[1]" />
 </Callout>
 
@@ -50,10 +50,10 @@ This note proposes a simple rule: provenance is not a footnote after the argumen
   caption="The arrows are not guarantees of truth; they are the transformations a reader must be able to inspect."
   direction="LR"
   nodes={[
-    { id: "object", label: "Source object", shape: "rounded", tone: "default" },
-    { id: "catalogue", label: "Catalogue record", shape: "rect", tone: "muted" },
-    { id: "derivative", label: "Scan / transcription", shape: "rounded", tone: "accent" },
-    { id: "claim", label: "Scoped historical claim", shape: "rounded", tone: "success" }
+    { id: "object", label: "Source object", group: "Record", tone: "default" },
+    { id: "catalogue", label: "Catalogue record", group: "Metadata", tone: "muted" },
+    { id: "derivative", label: "Scan / transcription", group: "Derivative", tone: "accent" },
+    { id: "claim", label: "Scoped historical claim", group: "Claim", tone: "success" }
   ]}
   edges={[
     { from: "object", to: "catalogue", label: "description" },
@@ -62,18 +62,15 @@ This note proposes a simple rule: provenance is not a footnote after the argumen
   ]}
 />
 
-<MermaidDiagram
+<EvidenceChain
   title="A disciplined route from query to claim"
-  caption="The loop makes disconfirming evidence an explicit part of research rather than an embarrassment to be hidden."
-  chart={`flowchart TD
-  A[Formulate a bounded question] --> B[Locate and cite records]
-  B --> C[Describe provenance and version]
-  C --> D[Transcribe or inspect]
-  D --> E[Compare with independent context]
-  E --> F{Claim still supported?}
-  F -->|No| G[Revise scope or suspend claim]
-  F -->|Yes| H[Publish claim with uncertainty]
-  G --> A`}
+  caption="Each transformation must stay inspectable; disconfirming evidence can narrow the claim or return the research to its question."
+  items={[
+    { stage: "Question", title: "Bound the question", tone: "muted" },
+    { stage: "Records", title: "Locate and cite sources", tone: "default" },
+    { stage: "Method", title: "Inspect provenance and derivative", tone: "accent" },
+    { stage: "Claim", title: "Publish with uncertainty", tone: "success" },
+  ]}
 />
 
 The insistence on traceability does not make interpretation mechanical. It identifies where interpretation begins. The National Archives' guidance on historical evidence explicitly directs readers to consider perspective, bias, limitations, reliability, and context rather than treating a document as transparent speech from the past.<Citation refId="nara-raw" label="[3]" />
@@ -143,7 +140,7 @@ The second column may be appropriate for a general reader, but it has editorial 
   Moving images require the same discipline as paper records: identify the specific copy, its condition, its derivative, and the timestamps or frames on which an interpretation rests.
 </VideoPlayer>
 
-<Callout type="caution" title="Embed availability is not preservation">
+<Callout type="caution">
   The audio and video widgets render media supplied by third parties. A durable citation must point to the catalogue record and identify the specific derivative; an embed is only a convenience for a current reader.
 </Callout>
 
@@ -171,9 +168,9 @@ The second column may be appropriate for a general reader, but it has editorial 
 
 ## Publish a claim with its limits intact
 
-<PullQuote author="Historical method">
+<Callout type="important">
   A precise citation lets a reader find the artefact. A precise method lets that reader understand the distance between the artefact and the argument.
-</PullQuote>
+</Callout>
 
 <Tabs caption="The same artefact can support several forms of writing, provided the transformation is explicit.">
   <Tab title="Catalogue note">

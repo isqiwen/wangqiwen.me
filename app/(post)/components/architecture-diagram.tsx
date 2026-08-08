@@ -1,17 +1,9 @@
-import { MermaidDiagram } from "./mermaid-diagram";
+import { mdxMutedTextClass } from "./surface";
 
 type ArchitectureNode = {
   id: string;
   label: string;
   group?: string;
-  shape?:
-    | "rect"
-    | "rounded"
-    | "stadium"
-    | "subroutine"
-    | "cylinder"
-    | "diamond"
-    | "circle";
   tone?: "default" | "accent" | "muted" | "success";
 };
 
@@ -19,7 +11,6 @@ type ArchitectureEdge = {
   from: string;
   to: string;
   label?: string;
-  style?: "solid" | "dashed" | "thick";
 };
 
 type ArchitectureDiagramProps = {
@@ -30,21 +21,11 @@ type ArchitectureDiagramProps = {
   edges: ArchitectureEdge[];
 };
 
-const shapeByKind: Record<NonNullable<ArchitectureNode["shape"]>, [string, string]> = {
-  rect: ["[\"", "\"]"],
-  rounded: ["(\"", "\")"],
-  stadium: ["([\"", "\"])"],
-  subroutine: ["[[\"", "\"]]"],
-  cylinder: ["[(\"", "\")]"],
-  diamond: ["{\"", "\"}"],
-  circle: ["((\"", "\"))"],
-};
-
-const classByTone: Record<NonNullable<ArchitectureNode["tone"]>, string> = {
-  default: "node-default",
-  accent: "node-accent",
-  muted: "node-muted",
-  success: "node-success",
+const tones: Record<NonNullable<ArchitectureNode["tone"]>, string> = {
+  default: "border-slate-400",
+  accent: "border-sky-600",
+  muted: "border-slate-300 dark:border-slate-600",
+  success: "border-emerald-600",
 };
 
 export function ArchitectureDiagram({
@@ -54,87 +35,67 @@ export function ArchitectureDiagram({
   nodes,
   edges,
 }: ArchitectureDiagramProps) {
-  const chart = buildArchitectureChart(direction, nodes, edges);
+  const orderedNodes = direction === "RL" || direction === "BT" ? [...nodes].reverse() : nodes;
+  const horizontal = direction === "LR" || direction === "RL";
 
-  return <MermaidDiagram chart={chart} title={title} caption={caption} />;
-}
+  return (
+    <figure className="my-10">
+      {title ? (
+        <p className="font-semibold text-slate-950 dark:text-white">{title}</p>
+      ) : null}
+      <div className="mt-5 border-y border-slate-200/80 py-6 dark:border-white/10">
+        <ol
+          className={
+            horizontal
+              ? "grid gap-y-7 md:grid-flow-col md:auto-cols-fr md:gap-x-7"
+              : "grid gap-y-7"
+          }
+        >
+          {orderedNodes.map((node, index) => {
+            const outgoing = edges.find(edge => edge.from === node.id);
+            const incoming = edges.find(edge => edge.to === node.id);
+            const isLast = index === orderedNodes.length - 1;
 
-function buildArchitectureChart(
-  direction: ArchitectureDiagramProps["direction"],
-  nodes: ArchitectureNode[],
-  edges: ArchitectureEdge[],
-) {
-  const lines = [`flowchart ${direction}`];
-  const groups = new Map<string, ArchitectureNode[]>();
-  const ungrouped: ArchitectureNode[] = [];
-  const classEntries: Array<{ id: string; className: string }> = [];
-
-  for (const node of nodes) {
-    const tone = classByTone[node.tone ?? "default"];
-    classEntries.push({ id: node.id, className: tone });
-
-    if (node.group) {
-      const list = groups.get(node.group) ?? [];
-      list.push(node);
-      groups.set(node.group, list);
-      continue;
-    }
-
-    ungrouped.push(node);
-  }
-
-  for (const node of ungrouped) {
-    lines.push(`  ${formatNode(node)}`);
-  }
-
-  for (const [group, groupNodes] of groups) {
-    lines.push(`  subgraph ${escapeLabel(group)}`);
-    for (const node of groupNodes) {
-      lines.push(`    ${formatNode(node)}`);
-    }
-    lines.push("  end");
-  }
-
-  for (const edge of edges) {
-    lines.push(`  ${formatEdge(edge)}`);
-  }
-
-  lines.push(
-    "  classDef node-default fill:#ffffff,stroke:#475569,color:#0f172a,stroke-width:1.2px",
+            return (
+              <li
+                key={node.id}
+                className={`relative border-l-2 pl-4 md:border-l-0 md:border-t-2 md:pl-0 md:pt-4 ${
+                  tones[node.tone ?? "default"]
+                }`}
+              >
+                {!isLast && horizontal ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-[-1.85rem] top-[-0.45rem] z-10 hidden items-center text-slate-400 dark:text-slate-500 md:flex"
+                  >
+                    <span className="h-px w-5 bg-current" />
+                    <span className="ml-[-1px] text-xs leading-none">▶</span>
+                  </span>
+                ) : null}
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  {String(index + 1).padStart(2, "0")}
+                  {node.group ? ` · ${node.group}` : null}
+                </p>
+                <p className="mt-2 text-base font-semibold leading-6 text-slate-950 dark:text-white">
+                  {node.label}
+                </p>
+                {incoming?.label ? (
+                  <p className={`mt-2 text-sm ${mdxMutedTextClass}`}>
+                    Receives {incoming.label}.
+                  </p>
+                ) : outgoing?.label ? (
+                  <p className={`mt-2 text-sm ${mdxMutedTextClass}`}>
+                    Produces {outgoing.label}.
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      {caption ? (
+        <figcaption className={`mt-4 ${mdxMutedTextClass}`}>{caption}</figcaption>
+      ) : null}
+    </figure>
   );
-  lines.push(
-    "  classDef node-accent fill:#f8fafc,stroke:#0f172a,color:#0f172a,stroke-width:1.4px",
-  );
-  lines.push(
-    "  classDef node-muted fill:#f8fafc,stroke:#94a3b8,color:#334155,stroke-width:1.1px",
-  );
-  lines.push(
-    "  classDef node-success fill:#f8fafc,stroke:#0f172a,color:#0f172a,stroke-width:1.4px",
-  );
-
-  for (const entry of classEntries) {
-    lines.push(`  class ${entry.id} ${entry.className}`);
-  }
-
-  return lines.join("\n");
-}
-
-function formatNode(node: ArchitectureNode) {
-  const [open, close] = shapeByKind[node.shape ?? "rounded"];
-  return `${node.id}${open}${escapeLabel(node.label)}${close}`;
-}
-
-function formatEdge(edge: ArchitectureEdge) {
-  const connector =
-    edge.style === "dashed" ? "-.->" : edge.style === "thick" ? "==>" : "-->";
-
-  if (edge.label) {
-    return `${edge.from} ${connector}|${escapeLabel(edge.label)}| ${edge.to}`;
-  }
-
-  return `${edge.from} ${connector} ${edge.to}`;
-}
-
-function escapeLabel(value: string) {
-  return value.replace(/"/g, "&quot;");
 }

@@ -68,8 +68,6 @@ const DEFAULT_AUDIO_SRC =
 const DEFAULT_YOUTUBE_ID = "dQw4w9WgXcQ";
 const DEFAULT_CALLOUT_BODY =
   "State the condition readers need to keep in mind when interpreting the argument.";
-const DEFAULT_PULL_QUOTE =
-  "Writing gets easier when the structure helps instead of fights you.";
 const DEFAULT_COMPARE_LEFT = "A fast summary of the first option.";
 const DEFAULT_DIFF_BEFORE = 'console.log("before");';
 const DEFAULT_VIDEO_TITLE = "Release walkthrough";
@@ -367,11 +365,9 @@ ${steps}
 
 function buildCalloutInsert(values: ComponentSnippetFormValues) {
   const type = asString(values, "type", "note");
-  const title = asString(values, "title", "Methodological note");
   const body = asString(values, "body", DEFAULT_CALLOUT_BODY);
-  const titleProp = hasText(title) ? ` title="${escapeAttribute(title)}"` : "";
 
-  return `<Callout type="${escapeAttribute(type)}"${titleProp}>
+  return `<Callout type="${escapeAttribute(type)}">
   ${withDefaultSelection(body, DEFAULT_CALLOUT_BODY)}
 </Callout>`;
 }
@@ -388,15 +384,6 @@ function buildFigureInsert(values: ComponentSnippetFormValues) {
     alt
   )}" width={null} height={null} />
 </Figure>`;
-}
-
-function buildPullQuoteInsert(values: ComponentSnippetFormValues) {
-  const author = asString(values, "author", "Author name");
-  const quote = asString(values, "quote", DEFAULT_PULL_QUOTE);
-
-  return `<PullQuote author="${escapeAttribute(author)}">
-  ${withDefaultSelection(quote, DEFAULT_PULL_QUOTE)}
-</PullQuote>`;
 }
 
 function buildCompareInsert(values: ComponentSnippetFormValues) {
@@ -1138,14 +1125,14 @@ function buildArchitectureDiagramInsert(values: ComponentSnippetFormValues) {
   caption="${escapeAttribute(caption)}"
   direction="${escapeAttribute(direction)}"
   nodes={[
-    { id: "scanner", label: "Scanner data", group: "Acquisition", shape: "rounded", tone: "accent" },
-    { id: "loader", label: "Dataset loader", group: "Acquisition", shape: "rect", tone: "default" },
-    { id: "model", label: "VarNet", group: "Model", shape: "subroutine", tone: "success" },
-    { id: "metrics", label: "Metrics", group: "Evaluation", shape: "diamond", tone: "muted" },
+    { id: "scanner", label: "Scanner data", group: "Acquisition", tone: "accent" },
+    { id: "loader", label: "Dataset loader", group: "Acquisition", tone: "default" },
+    { id: "model", label: "VarNet", group: "Model", tone: "success" },
+    { id: "metrics", label: "Metrics", group: "Evaluation", tone: "muted" },
   ]}
   edges={[
     { from: "scanner", to: "loader", label: "shards" },
-    { from: "loader", to: "model", label: "mini-batches", style: "thick" },
+    { from: "loader", to: "model", label: "mini-batches" },
     { from: "model", to: "metrics", label: "reconstructions" },
   ]}
 />`;
@@ -1835,7 +1822,7 @@ Write a paragraph with inline code like \`const ready = true;\`.
     label: "Callout",
     hint: "Methodological note, caution, or important boundary",
     searchTerms: ["note", "caution", "important", "limitation", "warning"],
-    snippet: `<Callout type="note" title="Methodological note">
+    snippet: `<Callout type="note">
   State the condition readers need to keep in mind when interpreting the argument.
 </Callout>`,
     fields: [
@@ -1850,13 +1837,6 @@ Write a paragraph with inline code like \`const ready = true;\`.
           { label: "Caution", value: "caution" },
           { label: "Important", value: "important" },
         ],
-      },
-      {
-        id: "title",
-        label: "Title",
-        type: "text",
-        defaultValue: "Methodological note",
-        example: "Scope and evidence",
       },
       {
         id: "body",
@@ -2323,35 +2303,6 @@ export function formatViews(value) {
     { src: "${DEFAULT_MUTED_IMAGE}", alt: "Preview two", caption: "Second image" },
   ]}
 />`,
-  },
-  {
-    id: "pull-quote",
-    category: "Visuals",
-    label: "PullQuote",
-    hint: "Large, centered pull quote",
-    searchTerms: ["quote", "pull quote", "testimonial"],
-    snippet: `<PullQuote author="Author name">
-  Writing gets easier when the structure helps instead of fights you.
-</PullQuote>`,
-    fields: [
-      {
-        id: "author",
-        label: "Author",
-        type: "text",
-        defaultValue: "Author name",
-      },
-      {
-        id: "quote",
-        label: "Quote",
-        type: "textarea",
-        required: true,
-        defaultValue: DEFAULT_PULL_QUOTE,
-        example:
-          "The writing workflow improves when the tooling stays out of the way.",
-        rows: 4,
-      },
-    ],
-    buildInsert: buildPullQuoteInsert,
   },
   {
     id: "stats",
@@ -3767,21 +3718,21 @@ export function formatViews(value) {
     id: "architecture-diagram",
     category: "Research & Analysis",
     label: "ArchitectureDiagram",
-    hint: "Structured system diagram with nodes, groups, and labeled edges",
-    searchTerms: ["architecture", "system", "pipeline", "graph", "mermaid"],
+    hint: "Stage-based system flow from inputs to review",
+    searchTerms: ["architecture", "system", "pipeline", "graph"],
     snippet: `<ArchitectureDiagram
   title="MRI training pipeline"
   caption="Summarize the stages, then let the nodes and edges make the system boundary obvious."
   direction="LR"
   nodes={[
-    { id: "scanner", label: "Scanner data", group: "Acquisition", shape: "rounded", tone: "accent" },
-    { id: "loader", label: "Dataset loader", group: "Acquisition", shape: "rect", tone: "default" },
-    { id: "model", label: "VarNet", group: "Model", shape: "subroutine", tone: "success" },
-    { id: "metrics", label: "Metrics", group: "Evaluation", shape: "diamond", tone: "muted" },
+    { id: "scanner", label: "Scanner data", group: "Acquisition", tone: "accent" },
+    { id: "loader", label: "Dataset loader", group: "Acquisition", tone: "default" },
+    { id: "model", label: "VarNet", group: "Model", tone: "success" },
+    { id: "metrics", label: "Metrics", group: "Evaluation", tone: "muted" },
   ]}
   edges={[
     { from: "scanner", to: "loader", label: "shards" },
-    { from: "loader", to: "model", label: "mini-batches", style: "thick" },
+    { from: "loader", to: "model", label: "mini-batches" },
     { from: "model", to: "metrics", label: "reconstructions" },
   ]}
 />`,
@@ -3814,6 +3765,58 @@ export function formatViews(value) {
       },
     ],
     buildInsert: buildArchitectureDiagramInsert,
+  },
+  {
+    id: "decision-tree",
+    category: "Research & Analysis",
+    label: "DecisionTree",
+    hint: "Question with explicit methodological outcomes",
+    searchTerms: ["decision", "validation", "branch", "yes", "no", "gate"],
+    snippet: `<DecisionTree
+  title="Validation decision"
+  caption="Show the question, the possible outcomes, and the obligation each outcome creates."
+  question="Does validation support the claim?"
+  branches={[
+    { label: "No", outcome: "Revise the claim or protocol", tone: "caution" },
+    { label: "Yes", outcome: "Report scope and residual uncertainty", tone: "success" },
+  ]}
+/>`,
+    template: `<DecisionTree
+  title="[[Validation decision]]"
+  caption="Show the question, the possible outcomes, and the obligation each outcome creates."
+  question="Does validation support the claim?"
+  branches={[
+    { label: "No", outcome: "Revise the claim or protocol", tone: "caution" },
+    { label: "Yes", outcome: "Report scope and residual uncertainty", tone: "success" },
+  ]}
+/>`,
+  },
+  {
+    id: "evidence-chain",
+    category: "Research & Analysis",
+    label: "EvidenceChain",
+    hint: "Inspectable path from source material to claim",
+    searchTerms: ["evidence", "provenance", "source", "claim", "traceability"],
+    snippet: `<EvidenceChain
+  title="From record to claim"
+  caption="Show each transformation a reader must be able to inspect."
+  items={[
+    { stage: "Source", title: "Named record", tone: "default" },
+    { stage: "Version", title: "Identified derivative", tone: "muted" },
+    { stage: "Method", title: "Documented transformation", tone: "accent" },
+    { stage: "Claim", title: "Scoped conclusion", tone: "success" },
+  ]}
+/>`,
+    template: `<EvidenceChain
+  title="[[From record to claim]]"
+  caption="Show each transformation a reader must be able to inspect."
+  items={[
+    { stage: "Source", title: "Named record", tone: "default" },
+    { stage: "Version", title: "Identified derivative", tone: "muted" },
+    { stage: "Method", title: "Documented transformation", tone: "accent" },
+    { stage: "Claim", title: "Scoped conclusion", tone: "success" },
+  ]}
+/>`,
   },
   {
     id: "task-spec-card",
@@ -4660,7 +4663,6 @@ const coreComponentIds = new Set<ComponentSnippet["id"]>([
   "figure-image",
   "inline-math",
   "math-block",
-  "mermaid-diagram",
   "citation-bibliography",
   "youtube",
   "video-player",

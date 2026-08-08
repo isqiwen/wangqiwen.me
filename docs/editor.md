@@ -92,9 +92,11 @@ Topics are a controlled catalog. Select them from the editor; to introduce a new
 ## MDX Components
 
 The editor starts with a small set of writing essentials: Markdown, callouts,
-code, tables, steps, tabs, figures, mathematics, Mermaid diagrams,
-citations, and video. Select **Show advanced components** only for
-specialized research, data, media, or interactive blocks. Searching always
+code, tables, steps, tabs, figures, mathematics, citations, and video. Select
+**Show advanced components** only for specialized research, data, media, or
+interactive blocks. `ArchitectureDiagram`, `DecisionTree`, and `EvidenceChain`
+are native, reading-column diagrams: use the one whose structure matches the
+argument instead of forcing it into a generic diagram. Searching always
 includes the full component catalog; this display choice never changes how an
 existing MDX article renders.
 

@@ -17,8 +17,10 @@ import { Chart } from "@/app/(post)/components/chart";
 import { Compare } from "@/app/(post)/components/compare";
 import { Diff } from "@/app/(post)/components/diff";
 import { DerivationBlock } from "@/app/(post)/components/derivation-block";
+import { DecisionTree } from "@/app/(post)/components/decision-tree";
 import { CrossReference } from "@/app/(post)/components/cross-reference";
 import { Definition } from "@/app/(post)/components/definition";
+import { EvidenceChain } from "@/app/(post)/components/evidence-chain";
 import { EquationGroup } from "@/app/(post)/components/equation-group";
 import { EquationNumbering } from "@/app/(post)/components/equation-numbering";
 import { ExperimentSetup } from "@/app/(post)/components/experiment-setup";
@@ -30,7 +32,6 @@ import { InlineMath, MathBlock } from "@/app/(post)/components/math";
 import { MermaidDiagram } from "@/app/(post)/components/mermaid-diagram";
 import { PaperCard } from "@/app/(post)/components/paper-card";
 import { ProofBlock } from "@/app/(post)/components/proof-block";
-import { PullQuote } from "@/app/(post)/components/pull-quote";
 import { RawImage } from "@/app/(post)/components/raw-image";
 import { Snippet } from "@/app/(post)/components/snippet";
 import { Stat, Stats } from "@/app/(post)/components/stats";
@@ -109,8 +110,6 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
     "Use this for a single important image that deserves breathing room, caption support, or a more editorial presentation.",
   gallery:
     "Use this when a post needs several images with equal weight and the reader benefits from browsing them together.",
-  "pull-quote":
-    "Use this to spotlight one memorable sentence or thesis line without turning it into a full testimonial card.",
   stats:
     "Use this sparingly for a few reported quantities; use a table or chart when comparison, uncertainty, or variation matters.",
   "key-value-list":
@@ -155,7 +154,11 @@ const componentUsageById: Partial<Record<ComponentSnippet["id"], string>> = {
   "mermaid-diagram":
     "Use this when a quick flowchart, state machine, or sequence diagram explains the relationship between steps better than paragraphs can.",
   "architecture-diagram":
-    "Use this when you want a cleaner systems view than raw Mermaid source, especially for data pipelines, agent stacks, or training loops.",
+    "Use this for systems, data pipelines, or training loops when readers need to inspect named stages and arrows without a hand-drawn figure.",
+  "decision-tree":
+    "Use this when one methodological question has a small set of explicit outcomes, such as a validation gate or claim decision.",
+  "evidence-chain":
+    "Use this to show how an observation becomes a claim through named transformations, especially for provenance and reproducibility.",
   "task-spec-card":
     "Use this for embodied tasks, control benchmarks, or robotics setups where observations, actions, rewards, and success conditions must be explicit.",
   "experiment-setup":
@@ -560,7 +563,7 @@ function renderPreview(id: string) {
       );
     case "callout":
       return (
-        <Callout type="note" title="Methodological note">
+        <Callout type="note">
           State the condition readers need to keep in mind when interpreting the argument.
         </Callout>
       );
@@ -748,12 +751,6 @@ report(metrics, protocol="held-out multicoil validation")`}</code>
             },
           ]}
         />
-      );
-    case "pull-quote":
-      return (
-        <PullQuote author="Author name">
-          Writing gets easier when the structure helps instead of fights you.
-        </PullQuote>
       );
     case "stats":
       return (
@@ -1146,47 +1143,71 @@ report(metrics, protocol="held-out multicoil validation")`}</code>
       return (
         <ArchitectureDiagram
           title="MRI training pipeline"
-          caption="The structured wrapper is easier to maintain than a long raw Mermaid string when the diagram grows."
+          caption="Use stages when the reader should follow a system from measurement to review."
           direction="LR"
           nodes={[
             {
               id: "scanner",
               label: "Scanner data",
               group: "Acquisition",
-              shape: "rounded",
               tone: "accent",
             },
             {
               id: "loader",
               label: "Dataset loader",
               group: "Acquisition",
-              shape: "rect",
               tone: "default",
             },
             {
               id: "model",
               label: "VarNet",
               group: "Model",
-              shape: "subroutine",
               tone: "success",
             },
             {
               id: "metrics",
               label: "Metrics",
               group: "Evaluation",
-              shape: "diamond",
               tone: "muted",
             },
           ]}
           edges={[
             { from: "scanner", to: "loader", label: "shards" },
-            {
-              from: "loader",
-              to: "model",
-              label: "mini-batches",
-              style: "thick",
-            },
+            { from: "loader", to: "model", label: "mini-batches" },
             { from: "model", to: "metrics", label: "reconstructions" },
+          ]}
+        />
+      );
+    case "decision-tree":
+      return (
+        <DecisionTree
+          title="Validation decision"
+          caption="A decision diagram makes the gate and both resulting obligations explicit."
+          question="Does validation support the claim?"
+          branches={[
+            {
+              label: "No",
+              outcome: "Revise the claim or protocol",
+              tone: "caution",
+            },
+            {
+              label: "Yes",
+              outcome: "Report scope and residual uncertainty",
+              tone: "success",
+            },
+          ]}
+        />
+      );
+    case "evidence-chain":
+      return (
+        <EvidenceChain
+          title="From record to claim"
+          caption="The visible chain makes each interpretive transformation available for inspection."
+          items={[
+            { stage: "Source", title: "Named record", tone: "default" },
+            { stage: "Version", title: "Identified derivative", tone: "muted" },
+            { stage: "Method", title: "Documented transformation", tone: "accent" },
+            { stage: "Claim", title: "Scoped conclusion", tone: "success" },
           ]}
         />
       );

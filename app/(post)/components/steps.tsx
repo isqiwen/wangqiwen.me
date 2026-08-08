@@ -13,10 +13,19 @@ export function Steps({
   return (
     <div className="my-8 border-y border-slate-200/80 py-6 dark:border-white/10">
       {title && <p className="font-semibold text-slate-900 dark:text-white">{title}</p>}
-      <ol className="mt-5 space-y-6 border-l border-slate-200/80 pl-7 dark:border-white/10">
+      <ol className="mt-5 space-y-6 pl-[1.8125rem]">
         {items.map((child, index) => (
           <li key={index} className="relative">
-            <span className="absolute -left-[2.03rem] top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-slate-800 font-mono text-[8px] font-semibold text-white dark:border-slate-950 dark:bg-slate-200 dark:text-slate-950">
+            {index < items.length - 1 ? (
+              <span
+                aria-hidden="true"
+                className="absolute left-[-1.78125rem] top-2.5 bottom-[-2.125rem] w-px -translate-x-1/2 bg-slate-200/80 dark:bg-white/10"
+              />
+            ) : null}
+            <span
+              aria-hidden="true"
+              className="absolute -left-[2.28125rem] top-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-slate-800 font-mono text-[8px] font-semibold text-white dark:border-slate-950 dark:bg-slate-200 dark:text-slate-950"
+            >
               {index + 1}
             </span>
             <div className="text-sm text-slate-700 dark:text-slate-200">{child}</div>

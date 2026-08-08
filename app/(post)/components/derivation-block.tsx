@@ -26,13 +26,24 @@ export function DerivationBlock({
         {caption ? <p className={`mt-2 ${mdxMutedTextClass}`}>{caption}</p> : null}
       </div>
 
-      <ol className="mt-5 divide-y divide-slate-200 border-l border-slate-300 dark:divide-white/10 dark:border-white/20">
+      <ol className="mt-5">
         {steps.map((step, index) => (
           <li
             key={`${step.label ?? step.title ?? "step"}-${index}`}
-            className="relative py-5 pl-6 sm:pl-7"
+            className={`relative py-5 pl-6 sm:pl-7 ${
+              index > 0 ? "border-t border-slate-200 dark:border-white/10" : ""
+            }`}
           >
-            <span className="absolute -left-[0.47rem] top-7 h-3 w-3 rounded-full border-2 border-white bg-slate-700 dark:border-slate-950 dark:bg-slate-300" />
+            {index < steps.length - 1 ? (
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-[1.875rem] bottom-[-1.875rem] w-px -translate-x-1/2 bg-slate-300 dark:bg-white/20"
+              />
+            ) : null}
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-6 z-10 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-white bg-slate-700 dark:border-slate-950 dark:bg-slate-300"
+            />
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 {step.label || String(index + 1).padStart(2, "0")}
