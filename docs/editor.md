@@ -100,6 +100,10 @@ argument instead of forcing it into a generic diagram. Searching always
 includes the full component catalog; this display choice never changes how an
 existing MDX article renders.
 
+Use `Compare` for prose or conceptual alternatives. `Diff` is reserved for an
+actual code or configuration revision: it calculates line-level additions and
+removals with old and new line numbers.
+
 Use **Algorithm** for reproducible pseudocode, not a prose checklist. Its
 configurator supports adding, removing, reordering, indenting, and annotating
 steps; the result remains plain MDX that can also be edited by hand. Use

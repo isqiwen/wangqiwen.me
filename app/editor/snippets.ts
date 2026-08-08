@@ -69,7 +69,13 @@ const DEFAULT_YOUTUBE_ID = "dQw4w9WgXcQ";
 const DEFAULT_CALLOUT_BODY =
   "State the condition readers need to keep in mind when interpreting the argument.";
 const DEFAULT_COMPARE_LEFT = "A fast summary of the first option.";
-const DEFAULT_DIFF_BEFORE = 'console.log("before");';
+const DEFAULT_DIFF_BEFORE = `export function normalizeScore(value: number) {
+  return Math.round(value * 100) / 100;
+}`;
+const DEFAULT_DIFF_AFTER = `export function normalizeScore(value: number, decimals = 4) {
+  const scale = 10 ** decimals;
+  return Math.round(value * scale) / scale;
+}`;
 const DEFAULT_VIDEO_TITLE = "Release walkthrough";
 const DEFAULT_AUDIO_TITLE = "Audio sample";
 const DEFAULT_AUDIO_SUBTITLE = "Short supporting context";
@@ -405,14 +411,18 @@ function buildCompareInsert(values: ComponentSnippetFormValues) {
 }
 
 function buildDiffInsert(values: ComponentSnippetFormValues) {
-  const beforeTitle = asString(values, "beforeTitle", "Before");
-  const afterTitle = asString(values, "afterTitle", "After");
+  const beforeTitle = asString(values, "beforeTitle", "normalize.ts");
+  const afterTitle = asString(values, "afterTitle", "normalize.ts");
   const before = asString(values, "before", DEFAULT_DIFF_BEFORE);
-  const after = asString(values, "after", 'console.log("after");');
+  const after = asString(values, "after", DEFAULT_DIFF_AFTER);
+  const language = asString(values, "language", "typescript");
+  const view = asString(values, "view", "split");
 
   return `<Diff
   beforeTitle="${escapeAttribute(beforeTitle)}"
   afterTitle="${escapeAttribute(afterTitle)}"
+  language="${escapeAttribute(language)}"
+  view="${escapeAttribute(view)}"
   before={'${escapeSingleQuoted(
     withDefaultSelection(before, DEFAULT_DIFF_BEFORE)
   )}'}
@@ -2386,13 +2396,15 @@ export function formatViews(value) {
     id: "diff",
     category: "Data",
     label: "Diff",
-    hint: "Before and after code or text",
-    searchTerms: ["diff", "before", "after", "refactor"],
+    hint: "GitLab-style code review with aligned old and new versions",
+    searchTerms: ["diff", "code review", "before", "after", "refactor", "patch"],
     snippet: `<Diff
-  beforeTitle="Before"
-  afterTitle="After"
-  before={'console.log("before");'}
-  after={'console.log("after");'}
+  beforeTitle="normalize.ts"
+  afterTitle="normalize.ts"
+  language="typescript"
+  view="split"
+  before={'export function normalizeScore(value: number) {\n  return Math.round(value * 100) / 100;\n}'}
+  after={'export function normalizeScore(value: number, decimals = 4) {\n  const scale = 10 ** decimals;\n  return Math.round(value * scale) / scale;\n}'}
 />`,
     fields: [
       {
@@ -2400,14 +2412,38 @@ export function formatViews(value) {
         label: "Before title",
         type: "text",
         required: true,
-        defaultValue: "Before",
+        defaultValue: "normalize.ts",
       },
       {
         id: "afterTitle",
         label: "After title",
         type: "text",
         required: true,
-        defaultValue: "After",
+        defaultValue: "normalize.ts",
+      },
+      {
+        id: "language",
+        label: "Language",
+        type: "select",
+        defaultValue: "typescript",
+        options: [
+          { label: "TypeScript", value: "typescript" },
+          { label: "JavaScript", value: "javascript" },
+          { label: "Python", value: "python" },
+          { label: "JSON", value: "json" },
+          { label: "YAML", value: "yaml" },
+          { label: "Plain text", value: "text" },
+        ],
+      },
+      {
+        id: "view",
+        label: "Desktop view",
+        type: "select",
+        defaultValue: "split",
+        options: [
+          { label: "Parallel", value: "split" },
+          { label: "Unified", value: "unified" },
+        ],
       },
       {
         id: "before",
@@ -2415,20 +2451,24 @@ export function formatViews(value) {
         type: "textarea",
         required: true,
         defaultValue: DEFAULT_DIFF_BEFORE,
-        example: "fetch(url).then(res => res.json()).then(handleResult);",
-        rows: 4,
+        example: "const score = Math.round(value * 100) / 100;",
+        rows: 6,
       },
       {
         id: "after",
         label: "After content",
         type: "textarea",
         required: true,
-        defaultValue: 'console.log("after");',
-        example: "const data = await fetchData();\nhandleResult(data);",
-        rows: 4,
+        defaultValue: DEFAULT_DIFF_AFTER,
+        example: "const scale = 10 ** decimals;\nreturn Math.round(value * scale) / scale;",
+        rows: 6,
       },
     ],
     buildInsert: buildDiffInsert,
+    notes: [
+      "Diff is for an actual code or configuration revision. Use Compare for prose or conceptual alternatives.",
+      "Parallel view is the desktop default; narrow screens use unified view automatically. Unchanged context is collapsed automatically.",
+    ],
   },
   {
     id: "inline-math",

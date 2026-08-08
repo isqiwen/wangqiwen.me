@@ -778,10 +778,17 @@ report(metrics, protocol="held-out multicoil validation")`}</code>
     case "diff":
       return (
         <Diff
-          beforeTitle="Before"
-          afterTitle="After"
-          before={'console.log("before");'}
-          after={'console.log("after");'}
+          beforeTitle="normalize.ts"
+          afterTitle="normalize.ts"
+          language="typescript"
+          view="split"
+          before={`export function normalizeScore(value: number) {
+  return Math.round(value * 100) / 100;
+}`}
+          after={`export function normalizeScore(value: number, decimals = 4) {
+  const scale = 10 ** decimals;
+  return Math.round(value * scale) / scale;
+}`}
         />
       );
     case "inline-math":
