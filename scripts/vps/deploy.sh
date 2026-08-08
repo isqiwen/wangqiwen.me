@@ -200,9 +200,6 @@ build_artifact_with_docker() {
   docker run --rm \
     --platform "${DOCKER_PLATFORM}" \
     --volume "${ROOT_DIR}:/workspace" \
-    --volume "/workspace/node_modules" \
-    --volume "/workspace/.next" \
-    --volume "/workspace/.pnpm-store" \
     --volume "${ARTIFACT_DIR}:/artifacts" \
     --workdir /workspace \
     --env ARTIFACT_DIR=/artifacts \
@@ -430,7 +427,6 @@ if [[ "${BUILD_WITH_DOCKER}" == "1" ]]; then
 else
   ARTIFACT_DIR="${ARTIFACT_DIR}" \
   ARTIFACT_NAME="${ARTIFACT_NAME}" \
-  SKIP_INSTALL=1 \
   RUN_LINT_POSTS=0 \
     bash "${ROOT_DIR}/scripts/vps/build-artifact.sh"
 fi

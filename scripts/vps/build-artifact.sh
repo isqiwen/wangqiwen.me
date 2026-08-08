@@ -8,13 +8,11 @@ set -euo pipefail
 # Optional env vars:
 #   ARTIFACT_DIR=dist                 Output directory for generated tarballs
 #   ARTIFACT_NAME=blog-<sha>.tar.gz   Override the artifact file name
-#   SKIP_INSTALL=0                    Skip `pnpm install --frozen-lockfile`
 #   RUN_LINT_POSTS=1                  Run `pnpm lint:posts` before the build
 #   BUILD_WITH_REMOTE_REDIS=0         Use real Upstash Redis during build
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
-SKIP_INSTALL="${SKIP_INSTALL:-0}"
 RUN_LINT_POSTS="${RUN_LINT_POSTS:-1}"
 BUILD_WITH_REMOTE_REDIS="${BUILD_WITH_REMOTE_REDIS:-0}"
 
@@ -92,14 +90,33 @@ else
   exit 1
 fi
 
-cd "${ROOT_DIR}"
+BUILD_TMP_DIR="$(mktemp -d)"
+BUILD_ROOT="${BUILD_TMP_DIR}/workspace"
+BUNDLE_DIR="${BUILD_TMP_DIR}/bundle"
 
-if [[ "${SKIP_INSTALL}" != "1" ]]; then
-  echo "==> Installing dependencies"
-  pnpm install --frozen-lockfile
-fi
+cleanup() {
+  rm -rf "${BUILD_TMP_DIR}"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
-echo "==> Synchronizing post metadata"
+echo "==> Creating isolated build workspace"
+mkdir -p "${BUILD_ROOT}" "${BUNDLE_DIR}"
+tar \
+  --exclude=".git" \
+  --exclude="node_modules" \
+  --exclude=".next*" \
+  --exclude="dist" \
+  --exclude=".pnpm-store" \
+  -C "${ROOT_DIR}" \
+  -cf - . | tar -C "${BUILD_ROOT}" -xf -
+
+cd "${BUILD_ROOT}"
+
+echo "==> Installing dependencies in isolated workspace"
+pnpm install --frozen-lockfile
+
+echo "==> Synchronizing post metadata in isolated workspace"
 pnpm sync:posts -- --silent
 
 if [[ "${RUN_LINT_POSTS}" == "1" ]]; then
@@ -125,22 +142,8 @@ if [[ ! -d ".next/static" ]]; then
   exit 1
 fi
 
-TMP_DIR="$(mktemp -d)"
-BUNDLE_DIR="${TMP_DIR}/bundle"
-PUBLISH_METADATA_SNAPSHOT=0
-mkdir -p "${BUNDLE_DIR}"
-
-cleanup() {
-  if [[ "${PUBLISH_METADATA_SNAPSHOT}" == "1" ]]; then
-    pnpm sync:posts -- --silent >/dev/null 2>&1 || true
-  fi
-  rm -rf "${TMP_DIR}"
-}
-trap cleanup EXIT
-
 echo "==> Preparing published content for the deployment bundle"
 pnpm sync:posts -- --published-only --silent
-PUBLISH_METADATA_SNAPSHOT=1
 
 echo "==> Collecting source files needed at runtime"
 tar \
@@ -154,14 +157,14 @@ tar \
   --exclude=".env.development" \
   --exclude=".env.test" \
   --exclude=".env*.local" \
-  -C "${ROOT_DIR}" \
+  -C "${BUILD_ROOT}" \
   -cf - . | tar -C "${BUNDLE_DIR}" -xf -
 
 echo "==> Overlaying standalone server output"
-tar -C "${ROOT_DIR}/.next/standalone" -cf - . | tar -C "${BUNDLE_DIR}" -xf -
+tar -C "${BUILD_ROOT}/.next/standalone" -cf - . | tar -C "${BUNDLE_DIR}" -xf -
 mkdir -p "${BUNDLE_DIR}/.next"
-cp -R "${ROOT_DIR}/.next/static" "${BUNDLE_DIR}/.next/static"
-cp "${ROOT_DIR}/package.json" "${BUNDLE_DIR}/package.json"
+cp -R "${BUILD_ROOT}/.next/static" "${BUNDLE_DIR}/.next/static"
+cp "${BUILD_ROOT}/package.json" "${BUNDLE_DIR}/package.json"
 
 # Article source is compiled into the standalone output above. Removing the
 # source directories keeps draft and archived MDX out of the VPS bundle.

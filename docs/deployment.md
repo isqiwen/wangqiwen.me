@@ -149,7 +149,7 @@ pnpm deploy:vps
 - requires a clean Git working tree by default
 - runs `pnpm install --frozen-lockfile`, `pnpm test`, and `pnpm check` locally before opening an SSH connection
 - checks that the SSH user has passwordless sudo before build/upload
-- builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh)
+- builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh) in an isolated temporary workspace; the production-only article registry never modifies your checkout
 - uploads the tarball to `/tmp`
 - keeps the existing VPS `.env.local` by default
 - uploads `.env.production` as `/tmp/prod.env` only when `UPLOAD_ENV=1`

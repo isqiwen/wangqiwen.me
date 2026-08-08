@@ -14,7 +14,7 @@ VPS deployment internals:
 
 | Script                   | Run directly? | Purpose                                                                                                                                           |
 | ------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vps/build-artifact.sh`  | Rarely        | Build the standalone Next.js artifact on a Linux machine. It bundles only published articles; `vps/deploy.sh` calls it automatically.             |
+| `vps/build-artifact.sh`  | Rarely        | Build the standalone Next.js artifact in an isolated temporary workspace. It bundles only published articles; `vps/deploy.sh` calls it automatically. |
 | `vps/provision.sh`       | No            | Remote orchestrator used by `vps/deploy.sh`; installs runtime packages when requested, installs the release, and configures Caddy when requested. |
 | `vps/install-runtime.sh` | No            | Install Node.js, pnpm, Caddy, and the `nextjs` service user on Ubuntu.                                                                            |
 | `vps/install-release.sh` | No            | Install one prebuilt artifact under the configured service directory, write systemd, restart the app, check health, and rollback on failure.      |
