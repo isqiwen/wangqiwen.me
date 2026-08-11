@@ -65,13 +65,15 @@ Before the first deployment:
    cp .env.example .env.production
    ```
 
-5. Fill `.env.production` with the production values, then deploy:
+5. Fill `.env.production` with the production values, then deploy. Run this
+   directly on macOS/Linux, or from a WSL2 terminal opened in this repository on Windows:
 
    ```bash
    UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
    ```
 
-After the first deployment, use this for code or content changes:
+After the first deployment, use this for code or content changes. On Windows,
+run it from the same WSL2 terminal:
 
 ```bash
 pnpm deploy:vps
