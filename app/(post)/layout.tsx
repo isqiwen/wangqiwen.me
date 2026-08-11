@@ -31,7 +31,7 @@ export default async function Layout({ children }) {
         <EquationNumbering />
         <Header posts={posts} />
 
-        {children}
+        <div className="post-prose">{children}</div>
         <SeriesNavigation posts={posts} />
         <RelatedPosts posts={posts} />
       </article>

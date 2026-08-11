@@ -12,6 +12,8 @@ const projectRoot = path.join(__dirname, "..");
 const fontPaths = [
   "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   "node_modules/@fontsource-variable/roboto-mono/files/roboto-mono-latin-wght-normal.woff2",
+  "node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-standard-normal.woff2",
+  "node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-standard-italic.woff2",
   "node_modules/@fontsource/inter/files/inter-latin-300-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-500-normal.woff",
   "node_modules/@fontsource/inter/files/inter-latin-600-normal.woff",
