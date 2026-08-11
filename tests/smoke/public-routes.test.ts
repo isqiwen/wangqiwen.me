@@ -74,7 +74,10 @@ test("serves a published article", async () => {
   const renderedBody = stripReactTextMarkers(body);
   assert.match(body, /href="\/topics\//);
   assert.match(body, /Related writing/);
-  assert.match(renderedBody, /Reliable Web Delivery · Part 3 of 3/);
+  assert.match(
+    renderedBody,
+    /Reliable Web Delivery<\/a><span aria-hidden="true"> · <\/span>Part 3 of 3/
+  );
   assert.match(body, /aria-label="Series navigation"/);
   assert.doesNotMatch(body, /data-view-count/);
   assert.match(

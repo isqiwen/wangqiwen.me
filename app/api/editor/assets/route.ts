@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import sizeOf from "image-size";
+import { readImageMetadata } from "@/utils/server/image-metadata";
 import { requireLocalEditor } from "@/utils/server/local-editor";
 import { resolvePathInside } from "@/utils/server/path-safety";
 import {
@@ -107,9 +107,9 @@ async function listAssets(id: string): Promise<EditorAsset[]> {
           let height: number | null = null;
 
           try {
-            const dimensions = sizeOf(absolute);
-            width = dimensions.width ?? null;
-            height = dimensions.height ?? null;
+            const dimensions = await readImageMetadata(absolute);
+            width = dimensions.width;
+            height = dimensions.height;
           } catch {
             width = null;
             height = null;

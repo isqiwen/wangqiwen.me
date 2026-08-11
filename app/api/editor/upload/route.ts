@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import path from "path";
-import sizeOf from "image-size";
+import {
+  readImageMetadata,
+  type SupportedImageFormat,
+} from "@/utils/server/image-metadata";
 import { assertPathInside } from "@/utils/server/path-safety";
 import { requireLocalEditor } from "@/utils/server/local-editor";
 import { logger } from "@/utils/logger";
@@ -19,9 +22,12 @@ const ALLOWED_TYPES = new Set([
   "image/webp",
   "image/gif",
 ]);
-const DETECTED_IMAGE_TYPES: Record<string, { mime: string; extension: string }> = {
+const DETECTED_IMAGE_TYPES: Record<
+  Exclude<SupportedImageFormat, "svg">,
+  { mime: string; extension: string }
+> = {
   png: { mime: "image/png", extension: ".png" },
-  jpg: { mime: "image/jpeg", extension: ".jpg" },
+  jpeg: { mime: "image/jpeg", extension: ".jpg" },
   webp: { mime: "image/webp", extension: ".webp" },
   gif: { mime: "image/gif", extension: ".gif" },
 };
@@ -66,14 +72,15 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
     let dimensions;
     try {
-      dimensions = sizeOf(buffer);
+      dimensions = await readImageMetadata(buffer);
     } catch {
       return NextResponse.json({ error: "invalid image data" }, { status: 415 });
     }
 
-    const detected = dimensions.type
-      ? DETECTED_IMAGE_TYPES[dimensions.type]
-      : undefined;
+    const detected =
+      dimensions.format === "svg"
+        ? undefined
+        : DETECTED_IMAGE_TYPES[dimensions.format];
     const normalizedDeclaredType = file.type === "image/jpg" ? "image/jpeg" : file.type;
     if (!detected || detected.mime !== normalizedDeclaredType) {
       return NextResponse.json(

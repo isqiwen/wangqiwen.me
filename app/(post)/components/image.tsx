@@ -1,8 +1,8 @@
-import sizeOf from "image-size";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import { Caption } from "./caption";
 import NextImage from "next/image";
+import { readImageMetadata } from "@/utils/server/image-metadata";
 import { resolvePathInside } from "@/utils/server/path-safety";
 import type { ReactNode } from "react";
 
@@ -108,15 +108,9 @@ export async function Image({
         );
         imageBuffer = await readFile(localImagePath);
       }
-      const computedSize = sizeOf(imageBuffer);
-      if (
-        computedSize.width === undefined ||
-        computedSize.height === undefined
-      ) {
-        throw new Error("Could not compute image size");
-      }
-      width = computedSize.width;
-      height = computedSize.height;
+      const dimensions = await readImageMetadata(imageBuffer);
+      width = dimensions.width;
+      height = dimensions.height;
     }
 
     return (
