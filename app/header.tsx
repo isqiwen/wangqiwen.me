@@ -45,7 +45,7 @@ export async function Header() {
           rel="noreferrer"
           aria-label={followLabel}
           title={followLabel}
-          className="inline-flex items-center rounded-sm p-2 transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424] md:order-1"
+          className="inline-flex items-center rounded-sm p-2 font-mono text-xs transition-[background-color] hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-[#313131] dark:active:bg-[#242424] md:order-1"
         >
           <TweetIcon className="sm:mr-1" />
           <span className="sr-only sm:not-sr-only">{followLabel}</span>
