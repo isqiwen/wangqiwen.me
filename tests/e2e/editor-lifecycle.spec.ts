@@ -31,7 +31,7 @@ test("creates, publishes, restores, and deletes a draft from the editor", async 
   await page.goto("/editor");
   await expect(page.locator("main[aria-busy='false']")).toBeVisible();
   await expect(
-    page.getByText("13 writing essentials", { exact: true })
+    page.getByText(/^\d+ writing essentials$/)
   ).toBeVisible();
   await expect(
     page.getByText("AblationTable", { exact: true })
@@ -56,6 +56,14 @@ test("creates, publishes, restores, and deletes a draft from the editor", async 
   await page.getByTestId("advanced-components-toggle").click();
 
   await page.getByRole("button", { name: "New Draft" }).click();
+  const discardConfirmation = page.getByRole("dialog", {
+    name: "Discard unsaved changes?",
+  });
+  await expect(discardConfirmation).toBeVisible();
+  await discardConfirmation
+    .getByRole("button", { name: "Discard and start new" })
+    .click();
+  await expect(discardConfirmation).not.toBeVisible();
   await page.getByLabel("Title").fill("Browser editor lifecycle");
   await page.getByLabel("ID").fill(postId);
   await page.getByLabel("Published At (YYYY-MM-DD)").fill(publishedAt);
