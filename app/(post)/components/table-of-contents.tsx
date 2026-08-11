@@ -152,7 +152,7 @@ export function TableOfContents() {
                 <a
                   aria-current={isActive ? "location" : undefined}
                   className={`
-                    relative block py-1.5 pr-2 text-sm leading-5 transition-colors
+                    relative block py-1.5 pr-2 text-sm font-normal leading-5 transition-colors
                     ${item.level === 3 ? "pl-7" : "pl-4"}
                     ${
                       isActive
