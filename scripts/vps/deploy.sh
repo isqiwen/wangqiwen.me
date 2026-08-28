@@ -106,6 +106,11 @@ SSH_CONTROL="${SSH_CONTROL:-1}"
 CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
 
 REMOTE_TMP="${REMOTE_TMP:-/tmp}"
+REMOTE_TMP="${REMOTE_TMP%/}"
+if [[ -z "${REMOTE_TMP}" || "${REMOTE_TMP}" == "/" || "${REMOTE_TMP}" != /* ]]; then
+  echo "REMOTE_TMP must be an absolute directory other than /, got: ${REMOTE_TMP:-/}" >&2
+  exit 1
+fi
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 if [[ "${ARTIFACT_DIR}" != /* ]]; then
   ARTIFACT_DIR="${ROOT_DIR}/${ARTIFACT_DIR}"
@@ -114,9 +119,10 @@ REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date -u +
 STAMP="$(date -u +%Y%m%d%H%M%S)"
 ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}-${STAMP}.tar.gz}"
 ARTIFACT_PATH="${ARTIFACT_DIR}/${ARTIFACT_NAME}"
-REMOTE_ARTIFACT="${REMOTE_TMP}/${ARTIFACT_NAME}"
-REMOTE_ENV="${REMOTE_TMP}/prod.env"
-REMOTE_WORK_DIR="${REMOTE_TMP}/${APP_NAME}-deploy-${REVISION}-${STAMP}"
+REMOTE_WORK_DIR_TEMPLATE="${REMOTE_TMP}/${APP_NAME}-deploy-${REVISION}-${STAMP}.XXXXXX"
+REMOTE_WORK_DIR=""
+REMOTE_ARTIFACT=""
+REMOTE_ENV=""
 REMOTE_INCOMING_ARTIFACT="${SERVICE_HOME}/shared/incoming/${ARTIFACT_NAME}"
 # macOS's per-user TMPDIR is long enough to exceed SSH's Unix-socket limit.
 SSH_CONTROL_PATH="${SSH_CONTROL_PATH:-/tmp/${APP_NAME}-ssh-${REVISION}-${STAMP}.sock}"
@@ -149,7 +155,7 @@ Useful env vars:
   SKIP_REMOTE_PLATFORM_CHECK=1      Skip local/VPS architecture comparison
   SKIP_REMOTE_SUDO_CHECK=1          Skip passwordless sudo preflight
   SSH_CONTROL=0                     Disable SSH connection reuse
-  CLEAN_REMOTE_ON_EXIT=0            Keep uploaded temp files on the VPS
+  CLEAN_REMOTE_ON_EXIT=0            Keep private temp files; avoid with UPLOAD_ENV=1
 EOF
 }
 
@@ -273,10 +279,7 @@ cleanup_remote() {
   fi
 
   local cleanup_cmd
-  cleanup_cmd="rm -rf $(remote_quote "${REMOTE_WORK_DIR}") $(remote_quote "${REMOTE_ARTIFACT}")"
-  if [[ "${UPLOAD_ENV}" == "1" ]]; then
-    cleanup_cmd+=" $(remote_quote "${REMOTE_ENV}")"
-  fi
+  cleanup_cmd="rm -rf $(remote_quote "${REMOTE_WORK_DIR}")"
   if is_root_ssh_user; then
     cleanup_cmd+="; rm -f $(remote_quote "${REMOTE_INCOMING_ARTIFACT}")"
   else
@@ -471,7 +474,19 @@ if [[ ! -f "${ARTIFACT_PATH}" ]]; then
 fi
 
 echo "==> Preparing remote work directory"
-REMOTE_MKDIR_CMD="mkdir -p $(remote_quote "${REMOTE_WORK_DIR}")"
+REMOTE_WORK_DIR="$(
+  ssh_cmd "${DEPLOY_HOST}" "umask 077 && mktemp -d $(remote_quote "${REMOTE_WORK_DIR_TEMPLATE}")" | tr -d '\r'
+)"
+case "${REMOTE_WORK_DIR}" in
+  "${REMOTE_TMP}"/*) ;;
+  *)
+    echo "Remote work directory is outside REMOTE_TMP: ${REMOTE_WORK_DIR:-<empty>}" >&2
+    exit 1
+    ;;
+esac
+REMOTE_ARTIFACT="${REMOTE_WORK_DIR}/${ARTIFACT_NAME}"
+REMOTE_ENV="${REMOTE_WORK_DIR}/prod.env"
+REMOTE_MKDIR_CMD="chmod 700 $(remote_quote "${REMOTE_WORK_DIR}")"
 # shellcheck disable=SC2029
 ssh_cmd "${DEPLOY_HOST}" "${REMOTE_MKDIR_CMD}"
 CLEANUP_ARMED="1"
@@ -489,6 +504,9 @@ scp_cmd "${ARTIFACT_PATH}" "${DEPLOY_HOST}:${REMOTE_ARTIFACT}"
 if [[ "${UPLOAD_ENV}" == "1" ]]; then
   echo "==> Uploading production env"
   scp_cmd "${ENV_FILE}" "${DEPLOY_HOST}:${REMOTE_ENV}"
+  # The work directory is 0700; set the file mode explicitly as well so the
+  # secret remains private even if SCP preserves a broader local source mode.
+  ssh_cmd "${DEPLOY_HOST}" "chmod 600 $(remote_quote "${REMOTE_ENV}")"
 fi
 
 REMOTE_CMD="$(remote_env_prefix)"

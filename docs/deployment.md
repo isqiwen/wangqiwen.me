@@ -110,6 +110,11 @@ UPLOAD_ENV=1 ENV_FILE=.env.staging pnpm deploy:vps
 ```
 
 Do not commit `.env.production` or other production env files; they should stay local.
+Restrict the local source file before its first upload:
+
+```bash
+chmod 600 .env.production
+```
 
 The release installer preserves `.env`, `.env.production`, and `.env.local` when swapping app directories, so `/srv/nextjs/wangqiwen-me/.env.local` does not need to be recreated on every deploy.
 
@@ -181,15 +186,18 @@ pnpm deploy:vps
 - runs `pnpm install --frozen-lockfile`, `pnpm test`, and `pnpm check` locally before opening an SSH connection
 - checks that the SSH user has passwordless sudo before build/upload
 - builds a standalone tarball with [scripts/vps/build-artifact.sh](../scripts/vps/build-artifact.sh) in an isolated temporary workspace; the production-only article registry never modifies your checkout
-- uploads the tarball to `/tmp`
+- creates a unique, `0700` remote work directory under `/tmp`
+- uploads the tarball and deploy scripts only into that private work directory
 - keeps the existing VPS `.env.local` by default
-- uploads `.env.production` as `/tmp/prod.env` only when `UPLOAD_ENV=1`
-- uploads the current deploy scripts to `/tmp`
+- uploads `.env.production` into that private directory only when `UPLOAD_ENV=1`, then sets it to `0600`
 - runs [scripts/vps/provision.sh](../scripts/vps/provision.sh) on the VPS
 - restarts `wangqiwen-me.service`
 - checks `http://127.0.0.1:3000/api/health`
 
 Normal releases do not read, write, reload, restart, install, or enable Caddy.
+Temporary remote files are removed at the end of a deploy. Do not use
+`CLEAN_REMOTE_ON_EXIT=0` together with `UPLOAD_ENV=1` unless you deliberately
+need to retain the protected temporary environment file for debugging.
 
 If the local test suite or project checks fail, the command exits before connecting to, building for, or uploading to the VPS. External link health reporting remains a separate weekly workflow and does not block deployments.
 

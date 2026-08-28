@@ -14,7 +14,7 @@ set -euo pipefail
 #   SERVER_ALIASES="www.example.com"
 #   ARTIFACT_TARBALL=/tmp/nextjs-standalone-xxxx.tar.gz
 #   ARTIFACT_URL=https://example.com/nextjs-standalone-xxxx.tar.gz
-#   ENV_FILE_PATH=/tmp/prod.env
+#   ENV_FILE_PATH=/path/to/private/prod.env
 #
 # Advanced env vars:
 #   NODE_MAJOR=20
