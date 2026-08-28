@@ -15,10 +15,10 @@ VPS deployment internals:
 | Script                   | Run directly? | Purpose                                                                                                                                           |
 | ------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `vps/build-artifact.sh`  | Rarely        | Build the standalone Next.js artifact in an isolated temporary workspace. It bundles only published articles; `vps/deploy.sh` calls it automatically. |
-| `vps/provision.sh`       | No            | Remote orchestrator used by `vps/deploy.sh`; installs runtime packages when requested, installs the release, and configures Caddy when requested. |
-| `vps/install-runtime.sh` | No            | Install Node.js, pnpm, Caddy, and the `nextjs` service user on Ubuntu.                                                                            |
+| `vps/provision.sh`       | No            | Remote orchestrator used by `vps/deploy.sh`; installs runtime packages when requested, installs the release, and safely configures this app's Caddy hosts when requested. |
+| `vps/install-runtime.sh` | No            | Install Node.js, pnpm, and the `nextjs` service user on Ubuntu; installs Caddy if it is absent and otherwise leaves it unchanged.              |
 | `vps/install-release.sh` | No            | Install one prebuilt artifact under the configured service directory, write systemd, restart the app, check health, and rollback on failure.      |
-| `vps/configure-caddy.sh` | No            | Write and reload the Caddy reverse proxy config for the VPS site.                                                                                 |
+| `vps/configure-caddy.sh` | No            | Add missing app Caddy blocks or replace a confirmed conflicting standalone block; it never removes unrelated sites or snippets.                    |
 
 Content maintenance:
 
@@ -44,4 +44,4 @@ First server setup with env upload should use:
 UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-`SETUP_SERVER=1` installs and configures the VPS runtime environment. Normal later releases should use only `pnpm deploy:vps`.
+`SETUP_SERVER=1` installs and configures the VPS runtime environment. It leaves an already-correct Caddy site untouched, appends only missing `wangqiwen.me` / `www.wangqiwen.me` blocks, and asks before replacing a conflicting block. Normal later releases should use only `pnpm deploy:vps`.

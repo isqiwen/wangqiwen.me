@@ -14,6 +14,9 @@ set -euo pipefail
 #   ENV_FILE=.env.production
 #   UPLOAD_ENV=0
 #   SETUP_SERVER=0
+#   INSTALL_CADDY=1  # during SETUP_SERVER=1; use 0 to skip on a fresh host
+#   RUN_SITE_CONFIG=0
+#   CADDY_OVERWRITE=ask
 #   ALLOW_NON_LINUX_BUILD=0
 #   DOCKER_IMAGE=node:20-bookworm-slim
 #   SKIP_REMOTE_PLATFORM_CHECK=0
@@ -43,6 +46,10 @@ load_deploy_config() {
     SERVER_ALIASES
     APP_HOST
     APP_PORT
+    RUN_INSTALL
+    INSTALL_CADDY
+    RUN_SITE_CONFIG
+    CADDY_OVERWRITE
   )
   local override_names=()
   local override_values=()
@@ -88,6 +95,8 @@ UPLOAD_ENV="${UPLOAD_ENV:-0}"
 SETUP_SERVER="${SETUP_SERVER:-0}"
 RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
 RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
+INSTALL_CADDY="${INSTALL_CADDY:-${SETUP_SERVER}}"
+CADDY_OVERWRITE="${CADDY_OVERWRITE:-ask}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-node:20-bookworm-slim}"
@@ -123,14 +132,17 @@ Normal release:
 First setup with env upload:
   UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 
-Caddy-only changes:
-  SETUP_SERVER=1 pnpm deploy:vps
+First setup adds only missing wangqiwen.me Caddy blocks. If a conflicting site
+block exists, the deployment asks before replacing that block.
 
 Useful env vars:
   DEPLOY_CONFIG=deploy.env          Deployment config file
   DEPLOY_HOST=user@example.com      Override the configured SSH target
   ENV_FILE=.env.production          Production env file to upload when UPLOAD_ENV=1
   UPLOAD_ENV=1                      Upload ENV_FILE as the server's .env.local
+  INSTALL_CADDY=0                   Skip Caddy installation on a fresh server
+  RUN_SITE_CONFIG=0                 Leave Caddy configuration untouched
+  CADDY_OVERWRITE=1                 Approve a scoped conflicting-site replacement
   ALLOW_DIRTY=1                     Build from an uncommitted working tree
   DOCKER_IMAGE=node:20-bookworm-slim Linux image for automatic non-Linux builds
   ALLOW_NON_LINUX_BUILD=1           Allow an unsafe local non-Linux build
@@ -265,7 +277,11 @@ cleanup_remote() {
   if [[ "${UPLOAD_ENV}" == "1" ]]; then
     cleanup_cmd+=" $(remote_quote "${REMOTE_ENV}")"
   fi
-  cleanup_cmd+="; sudo rm -f $(remote_quote "${REMOTE_INCOMING_ARTIFACT}")"
+  if is_root_ssh_user; then
+    cleanup_cmd+="; rm -f $(remote_quote "${REMOTE_INCOMING_ARTIFACT}")"
+  else
+    cleanup_cmd+="; sudo rm -f $(remote_quote "${REMOTE_INCOMING_ARTIFACT}")"
+  fi
 
   echo "==> Cleaning remote temporary files"
   # shellcheck disable=SC2029
@@ -280,9 +296,26 @@ remote_ssh_user() {
   fi
 }
 
+is_root_ssh_user() {
+  [[ "$(remote_ssh_user)" == "root" ]]
+}
+
+remote_env_prefix() {
+  if is_root_ssh_user; then
+    printf 'env'
+  else
+    printf 'sudo env'
+  fi
+}
+
 check_remote_sudo() {
   local ssh_user
   ssh_user="$(remote_ssh_user)"
+
+  if [[ "${ssh_user}" == "root" ]]; then
+    echo "==> SSH user is root; no sudo preflight is needed"
+    return
+  fi
 
   echo "==> Checking passwordless sudo on ${DEPLOY_HOST}"
   if ssh_cmd "${DEPLOY_HOST}" "sudo -n true" >/dev/null 2>&1; then
@@ -420,6 +453,7 @@ echo "==> Deploying ${APP_NAME} to ${DEPLOY_HOST}"
 echo "    config: ${DEPLOY_CONFIG}"
 echo "    revision: ${REVISION}"
 echo "    setup server: ${SETUP_SERVER}"
+echo "    install Caddy: ${INSTALL_CADDY}"
 echo "    configure site: ${RUN_SITE_CONFIG}"
 
 if [[ "${BUILD_WITH_DOCKER}" == "1" ]]; then
@@ -457,7 +491,7 @@ if [[ "${UPLOAD_ENV}" == "1" ]]; then
   scp_cmd "${ENV_FILE}" "${DEPLOY_HOST}:${REMOTE_ENV}"
 fi
 
-REMOTE_CMD="sudo env"
+REMOTE_CMD="$(remote_env_prefix)"
 append_remote_env APP_NAME "${APP_NAME}"
 append_remote_env SERVICE_USER "${SERVICE_USER}"
 append_remote_env SERVICE_HOME "${SERVICE_HOME}"
@@ -466,8 +500,10 @@ append_remote_env SERVER_ALIASES "${SERVER_ALIASES}"
 append_remote_env APP_HOST "${APP_HOST}"
 append_remote_env APP_PORT "${APP_PORT}"
 append_remote_env RUN_INSTALL "${RUN_INSTALL}"
+append_remote_env INSTALL_CADDY "${INSTALL_CADDY}"
 REMOTE_CMD="${REMOTE_CMD} RUN_DEPLOY=1"
 append_remote_env RUN_SITE_CONFIG "${RUN_SITE_CONFIG}"
+append_remote_env CADDY_OVERWRITE "${CADDY_OVERWRITE}"
 append_remote_env ARTIFACT_TARBALL "${REMOTE_ARTIFACT}"
 if [[ "${UPLOAD_ENV}" == "1" ]]; then
   append_remote_env ENV_FILE_PATH "${REMOTE_ENV}"
@@ -481,4 +517,8 @@ ssh_cmd "${DEPLOY_HOST}" "${REMOTE_CMD}"
 echo
 echo "==> VPS deploy complete"
 echo "Check: https://${DOMAIN}"
-echo "Logs:  ssh ${DEPLOY_HOST} 'sudo journalctl -u ${APP_NAME} -n 100 --no-pager'"
+if is_root_ssh_user; then
+  echo "Logs:  ssh ${DEPLOY_HOST} 'journalctl -u ${APP_NAME} -n 100 --no-pager'"
+else
+  echo "Logs:  ssh ${DEPLOY_HOST} 'sudo journalctl -u ${APP_NAME} -n 100 --no-pager'"
+fi

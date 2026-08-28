@@ -3,9 +3,9 @@ set -euo pipefail
 
 # VPS provisioning flow for a Next.js standalone app on Ubuntu.
 # It can:
-# - install Node.js, pnpm, Caddy, service user and directories
+# - install Node.js, pnpm, service user and directories
 # - deploy a prebuilt Next.js standalone artifact
-# - create/update the Caddy reverse proxy site
+# - add or update only this app's Caddy site when explicitly requested
 #
 # Common env vars:
 #   APP_NAME=nextjs-app
@@ -24,10 +24,10 @@ set -euo pipefail
 #   OPEN_HTTP3=0
 #   APP_HOST=127.0.0.1
 #   APP_PORT=3000
-#   SITE_NAME=example.com
 #   RUN_INSTALL=1
 #   RUN_DEPLOY=1
-#   RUN_SITE_CONFIG=1
+#   RUN_SITE_CONFIG=0
+#   CADDY_OVERWRITE=ask
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -47,7 +47,9 @@ SYSTEMD_SERVICE_NAME="${SYSTEMD_SERVICE_NAME:-${APP_NAME}}"
 
 RUN_INSTALL="${RUN_INSTALL:-1}"
 RUN_DEPLOY="${RUN_DEPLOY:-1}"
-RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-1}"
+INSTALL_CADDY="${INSTALL_CADDY:-1}"
+RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-0}"
+CADDY_OVERWRITE="${CADDY_OVERWRITE:-ask}"
 
 SUDO_BIN=""
 if [[ "${EUID}" -ne 0 ]]; then
@@ -108,7 +110,7 @@ if [[ "${RUN_INSTALL}" == "1" ]]; then
     SERVICE_HOME="${SERVICE_HOME}" \
     APP_DIR="${APP_DIR}" \
     CREATE_SERVICE_USER="${CREATE_SERVICE_USER:-1}" \
-    INSTALL_CADDY="${INSTALL_CADDY:-1}" \
+    INSTALL_CADDY="${INSTALL_CADDY}" \
     INSTALL_UFW="${INSTALL_UFW:-0}" \
     OPEN_HTTP3="${OPEN_HTTP3:-0}" \
     bash "${ROOT_DIR}/scripts/vps/install-runtime.sh"
@@ -162,7 +164,7 @@ if [[ "${RUN_SITE_CONFIG}" == "1" ]]; then
     APP_PORT="${APP_PORT}" \
     DOMAIN="${DOMAIN}" \
     SERVER_ALIASES="${SERVER_ALIASES}" \
-    SITE_NAME="${SITE_NAME:-}" \
+    CADDY_OVERWRITE="${CADDY_OVERWRITE}" \
     bash "${ROOT_DIR}/scripts/vps/configure-caddy.sh"
 fi
 

@@ -27,7 +27,7 @@ That command reads the tracked, non-secret deployment defaults from
 
 | Setting               | Config value                                                        |
 | --------------------- | ------------------------------------------------------------------- |
-| SSH target            | `qiwen@wangqiwen.me`                                                |
+| SSH target            | `root@wangqiwen.me`                                                 |
 | Domain                | `wangqiwen.me`                                                      |
 | Alias                 | `www.wangqiwen.me`                                                  |
 | App name              | `wangqiwen-me`                                                      |
@@ -35,6 +35,7 @@ That command reads the tracked, non-secret deployment defaults from
 | App directory         | `/srv/nextjs/wangqiwen-me`                                          |
 | App listener          | `127.0.0.1:3000`                                                    |
 | Production env source | VPS `.env.local`; upload `.env.production` only with `UPLOAD_ENV=1` |
+| Caddy ownership       | Shared server config; normal releases do not touch it               |
 
 Edit `deploy.env` when the deployment target changes. Command environment variables take precedence for one-off overrides:
 
@@ -56,10 +57,10 @@ DEPLOY_CONFIG=deploy.staging.env pnpm deploy:vps
 
 `deploy.env` contains no secrets and is committed to Git. Do not put SSH passwords, private keys, sudo passwords, application tokens, or production environment variables in it.
 
-The SSH user must have passwordless sudo because the remote install writes `/srv`, systemd, and Caddy config:
+When the SSH user is not `root`, it needs passwordless sudo because the remote install writes `/srv` and systemd. A first-time setup may also add this app's two narrowly scoped Caddy site blocks:
 
 ```bash
-ssh qiwen@wangqiwen.me 'sudo -n true'
+ssh <deploy-user>@wangqiwen.me 'sudo -n true'
 ```
 
 If that fails, add a sudoers rule on the VPS:
@@ -69,10 +70,12 @@ sudo visudo -f /etc/sudoers.d/wangqiwen-me-deploy
 ```
 
 ```text
-qiwen ALL=(root) NOPASSWD: ALL
+<deploy-user> ALL=(root) NOPASSWD: ALL
 ```
 
 The deploy script reuses one SSH connection by default. With SSH password auth, a single deploy should normally ask for the SSH password once. SSH keys are still the preferred long-term setup.
+
+`DEPLOY_HOST="root@wangqiwen.me"` also works. The deploy script detects it and does not invoke or check `sudo`; root SSH login must be enabled and authorized by key on the VPS. Prefer a dedicated non-root deploy user with narrowly scoped sudo access when practical.
 
 ## Production Env
 
@@ -133,7 +136,35 @@ Then run:
 UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
 ```
 
-`SETUP_SERVER=1` changes the VPS runtime environment. It installs Node.js, pnpm, Caddy, creates the `nextjs` service user, prepares `/srv/nextjs`, deploys the app, and writes the Caddy site config.
+`SETUP_SERVER=1` changes the VPS runtime environment. It installs Node.js and pnpm as needed, creates the `nextjs` service user, prepares `/srv/nextjs`, deploys the app, and handles only this app's Caddy routes.
+
+The Caddy behavior is deliberately narrow:
+
+- If Caddy is absent, first-time setup installs it before configuring this app's routes.
+- If Caddy is already installed, its service state and unrelated configuration are left alone.
+- If `wangqiwen.me` already proxies to `127.0.0.1:3000` and `www.wangqiwen.me` already redirects permanently to the root domain, the deployment does not write or reload Caddy.
+- If either block is missing, it appends only the missing block to `/etc/caddy/Caddyfile`, validates the complete candidate config, then gracefully reloads Caddy.
+- If an existing standalone block for either host does not match, it shows that block and asks whether to replace only that block. It never deletes other sites or Caddy snippets.
+
+The expected site blocks are:
+
+```caddy
+wangqiwen.me {
+    reverse_proxy 127.0.0.1:3000
+}
+
+www.wangqiwen.me {
+    redir https://wangqiwen.me{uri} permanent
+}
+```
+
+For a non-interactive deployment, review the current Caddyfile first, then opt into a scoped replacement explicitly:
+
+```bash
+CADDY_OVERWRITE=1 UPLOAD_ENV=1 SETUP_SERVER=1 pnpm deploy:vps
+```
+
+Use `RUN_SITE_CONFIG=0` to skip all Caddy configuration work during first setup. Use `INSTALL_CADDY=0` to skip Caddy installation on a fresh host.
 
 For normal later releases, leave `SETUP_SERVER` unset:
 
@@ -157,6 +188,8 @@ pnpm deploy:vps
 - runs [scripts/vps/provision.sh](../scripts/vps/provision.sh) on the VPS
 - restarts `wangqiwen-me.service`
 - checks `http://127.0.0.1:3000/api/health`
+
+Normal releases do not read, write, reload, restart, install, or enable Caddy.
 
 If the local test suite or project checks fail, the command exits before connecting to, building for, or uploading to the VPS. External link health reporting remains a separate weekly workflow and does not block deployments.
 
@@ -205,5 +238,6 @@ curl -s https://wangqiwen.me/api/health
 
 - Runtime secrets live on the VPS at `/srv/nextjs/wangqiwen-me/.env.local`.
 - The app listens only on `127.0.0.1:3000`; public traffic goes through Caddy on ports `80` and `443`.
+- Caddy remains the only public listener. Do not publish the app directly or bind another service to `80` or `443`.
 - Production `/editor` and `/api/editor/*` return `404`; author and validate content locally, commit it, then deploy the artifact.
 - Operational details and recovery commands are in [operations.md](operations.md).

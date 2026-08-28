@@ -13,15 +13,15 @@ Use [deployment.md](deployment.md) to release code. Use this file after deploys,
 | systemd service | `wangqiwen-me.service`                      |
 | App listener    | `127.0.0.1:3000`                            |
 | Public proxy    | Caddy                                       |
-| Caddy site file | `/etc/caddy/Caddyfile.d/wangqiwen.me.caddy` |
+| Caddy site file | `/etc/caddy/Caddyfile` (two scoped site blocks) |
 | Production env  | `/srv/nextjs/wangqiwen-me/.env.local`       |
 
 The app listens only on localhost. Public traffic enters through Caddy on `80/tcp` and `443/tcp`.
 
-The deploy SSH user is `qiwen` by default. It needs passwordless sudo for install, systemd, and Caddy changes:
+The deploy SSH target is configured in `deploy.env`. A non-root SSH user needs passwordless sudo for installation and the app's systemd service; `root@…` is detected and runs without `sudo`. Caddy is changed only during first setup when this app's host blocks are missing or an approved conflicting block is replaced:
 
 ```bash
-ssh qiwen@wangqiwen.me 'sudo -n true'
+ssh <deploy-user>@wangqiwen.me 'sudo -n true'
 ```
 
 If needed, configure it on the VPS with:
@@ -31,7 +31,7 @@ sudo visudo -f /etc/sudoers.d/wangqiwen-me-deploy
 ```
 
 ```text
-qiwen ALL=(root) NOPASSWD: ALL
+<deploy-user> ALL=(root) NOPASSWD: ALL
 ```
 
 The deploy script reuses one SSH connection by default, so password-based SSH should normally prompt once per deploy. SSH keys are still preferred.
@@ -167,6 +167,8 @@ GEO_IP_API_KEY=
 ## Deploy Safety
 
 `pnpm deploy:vps` installs the new artifact into a temporary directory, swaps it into `/srv/nextjs/wangqiwen-me`, restarts `wangqiwen-me.service`, and checks `/api/health`.
+
+Normal releases do not touch Caddy. During `SETUP_SERVER=1`, Caddy handling is limited to the `wangqiwen.me` reverse proxy and `www.wangqiwen.me` redirect. Matching existing blocks are left unchanged; missing blocks are appended; conflicting standalone blocks require confirmation. The deploy script validates the full candidate file before a graceful reload and restores the original file if that reload fails. It never restarts Caddy as a fallback.
 
 If restart or health check fails, the deploy script restores the previous release automatically from:
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bootstrap an Ubuntu server for a Next.js standalone app managed by systemd
-# and exposed through Caddy.
+# Bootstrap an Ubuntu server for a Next.js standalone app managed by systemd.
+# Install Caddy on a fresh host, but leave an existing Caddy untouched.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -95,7 +95,7 @@ fi
 install_caddy() {
   if command -v caddy >/dev/null 2>&1; then
     echo "Caddy already installed: $(caddy version)"
-    as_root systemctl enable --now caddy
+    echo "Leaving its service state and configuration unchanged."
     return
   fi
 
@@ -126,9 +126,18 @@ install_caddy() {
   as_root systemctl enable --now caddy
 }
 
-if [[ "${INSTALL_CADDY}" == "1" ]]; then
-  install_caddy
-fi
+case "${INSTALL_CADDY}" in
+  1)
+    install_caddy
+    ;;
+  0)
+    echo "==> Skipping Caddy installation"
+    ;;
+  *)
+    echo "INSTALL_CADDY must be 0 or 1, got: ${INSTALL_CADDY}" >&2
+    exit 1
+    ;;
+esac
 
 echo "==> Preparing service user and directories"
 if [[ "${CREATE_SERVICE_USER}" == "1" ]] && ! id "${SERVICE_USER}" >/dev/null 2>&1; then
