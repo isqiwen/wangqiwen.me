@@ -62,7 +62,17 @@ test("serves the home page", async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
-  assert.match(await response.text(), /<main/);
+  const body = await response.text();
+
+  assert.match(body, /<main/);
+  assert.match(body, /class="mt-4 text-center"/);
+  assert.match(body, /蜀ICP备2026050765号/);
+  assert.match(body, /工业和信息化部备案管理系统/);
+  assert.match(body, /href="https:\/\/beian\.miit\.gov\.cn\/"/);
+  assert.ok(
+    body.indexOf("蜀ICP备2026050765号") <
+      body.indexOf("工业和信息化部备案管理系统")
+  );
 });
 
 test("serves a published article", async () => {

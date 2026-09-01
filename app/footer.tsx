@@ -25,9 +25,16 @@ export function Footer() {
       </div>
       <p className="mt-2 text-left text-[11px] text-gray-400">{footer.note}</p>
       {footer.icpRegistration ? (
-        <p className="mt-1 text-left text-[11px] text-gray-400">
-          <A href={footer.icpRegistration.url}>{footer.icpRegistration.label}</A>
-        </p>
+        <div className="mt-4 text-center">
+          <p className="font-medium text-gray-600 dark:text-gray-300">
+            {footer.icpRegistration.label}
+          </p>
+          <p className="mt-1 text-[11px]">
+            <A href={footer.icpRegistration.url}>
+              {footer.icpRegistration.systemLinkLabel}
+            </A>
+          </p>
+        </div>
       ) : null}
     </footer>
   );
