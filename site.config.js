@@ -75,6 +75,10 @@ const siteConfig = {
   footer: {
     sourceLabel: "Source",
     note: "Built for writing, publishing, and ongoing experiments.",
+    icpRegistration: {
+      label: "蜀ICP备2026050765号",
+      url: "https://beian.miit.gov.cn/",
+    },
   },
   about: {
     title: "About",

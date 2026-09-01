@@ -24,6 +24,11 @@ export function Footer() {
         ) : null}
       </div>
       <p className="mt-2 text-left text-[11px] text-gray-400">{footer.note}</p>
+      {footer.icpRegistration ? (
+        <p className="mt-1 text-left text-[11px] text-gray-400">
+          <A href={footer.icpRegistration.url}>{footer.icpRegistration.label}</A>
+        </p>
+      ) : null}
     </footer>
   );
 }

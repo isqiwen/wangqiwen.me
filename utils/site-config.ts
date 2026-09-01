@@ -68,6 +68,10 @@ export type SiteConfig = {
   footer: {
     sourceLabel: string;
     note: string;
+    icpRegistration?: {
+      label: string;
+      url: string;
+    } | null;
   };
   about: AboutContent;
   opengraph: {
@@ -138,6 +142,12 @@ export function getFooterContent() {
   return {
     sourceLabel: siteConfig.footer.sourceLabel,
     note: siteConfig.footer.note,
+    icpRegistration: siteConfig.footer.icpRegistration
+      ? {
+          label: siteConfig.footer.icpRegistration.label,
+          url: siteConfig.footer.icpRegistration.url,
+        }
+      : null,
   };
 }
 

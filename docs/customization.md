@@ -34,7 +34,7 @@ Update [site.config.js](../site.config.js):
 - `project.sourceUrl`
 - `navigation.*`
 - `home.*`
-- `footer.*`
+- `footer.*` (including the optional `footer.icpRegistration` for mainland China ICP filing)
 - `about.*`
 - `opengraph.*`
 
