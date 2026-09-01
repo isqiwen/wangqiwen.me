@@ -23,7 +23,6 @@ export function Footer() {
           </div>
         ) : null}
       </div>
-      <p className="mt-2 text-left text-[11px] text-gray-400">{footer.note}</p>
       {footer.icpRegistration ? (
         <div className="mt-4 text-center">
           <p className="font-medium text-gray-600 dark:text-gray-300">
