@@ -27,11 +27,8 @@ export function Footer() {
       {footer.icpRegistration ? (
         <div className="mt-4 text-center">
           <p className="font-medium text-gray-600 dark:text-gray-300">
-            {footer.icpRegistration.label}
-          </p>
-          <p className="mt-1 text-[11px]">
             <A href={footer.icpRegistration.url}>
-              {footer.icpRegistration.systemLinkLabel}
+              {footer.icpRegistration.label}
             </A>
           </p>
         </div>

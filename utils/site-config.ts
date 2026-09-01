@@ -71,7 +71,6 @@ export type SiteConfig = {
     icpRegistration?: {
       label: string;
       url: string;
-      systemLinkLabel: string;
     } | null;
   };
   about: AboutContent;
@@ -147,7 +146,6 @@ export function getFooterContent() {
       ? {
           label: siteConfig.footer.icpRegistration.label,
           url: siteConfig.footer.icpRegistration.url,
-          systemLinkLabel: siteConfig.footer.icpRegistration.systemLinkLabel,
         }
       : null,
   };

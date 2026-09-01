@@ -78,7 +78,6 @@ const siteConfig = {
     icpRegistration: {
       label: "蜀ICP备2026050765号",
       url: "https://beian.miit.gov.cn/",
-      systemLinkLabel: "工业和信息化部备案管理系统",
     },
   },
   about: {
