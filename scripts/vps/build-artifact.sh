@@ -10,11 +10,16 @@ set -euo pipefail
 #   ARTIFACT_NAME=blog-<sha>.tar.gz   Override the artifact file name
 #   RUN_LINT_POSTS=1                  Run `pnpm lint:posts` before the build
 #   BUILD_WITH_REMOTE_REDIS=0         Use real Upstash Redis during build
+#   COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ARTIFACT_DIR="${ARTIFACT_DIR:-${ROOT_DIR}/dist}"
 RUN_LINT_POSTS="${RUN_LINT_POSTS:-1}"
 BUILD_WITH_REMOTE_REDIS="${BUILD_WITH_REMOTE_REDIS:-0}"
+# Corepack downloads pnpm before pnpm can read this project's .npmrc.
+# It appends the package name itself, so normalize away a trailing slash.
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}"
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY%/}"
 
 REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)"
 ARTIFACT_NAME="${ARTIFACT_NAME:-nextjs-standalone-${REVISION}.tar.gz}"
@@ -80,7 +85,7 @@ PNPM_SPEC="$(get_pnpm_spec)"
 if command -v corepack >/dev/null 2>&1; then
   enable_corepack
   if [[ "${PNPM_SPEC}" == pnpm@* ]]; then
-    corepack prepare "${PNPM_SPEC}" --activate
+    COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY}" corepack prepare "${PNPM_SPEC}" --activate
   fi
 elif command -v pnpm >/dev/null 2>&1; then
   echo "corepack not found; using existing pnpm $(pnpm -v)."

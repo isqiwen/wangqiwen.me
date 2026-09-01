@@ -8,6 +8,10 @@ set -euo pipefail
 # - Synchronizes post metadata so the local manifest is ready
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Corepack downloads pnpm before pnpm can read this project's .npmrc.
+# It appends the package name itself, so normalize away a trailing slash.
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}"
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY%/}"
 
 get_pnpm_spec() {
   node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); const v=p.packageManager || ''; console.log(typeof v === 'string' ? v.replace(/\\+.*/, '') : '')" "${ROOT_DIR}/package.json"
@@ -69,7 +73,7 @@ PNPM_SPEC="$(get_pnpm_spec)"
 if command -v corepack >/dev/null 2>&1; then
   enable_corepack
   if [[ "${PNPM_SPEC}" == pnpm@* ]]; then
-    corepack prepare "${PNPM_SPEC}" --activate
+    COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY}" corepack prepare "${PNPM_SPEC}" --activate
   fi
 elif command -v pnpm >/dev/null 2>&1; then
   echo "corepack not found; using existing pnpm $(pnpm -v)."

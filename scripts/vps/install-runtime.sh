@@ -11,6 +11,10 @@ APP_NAME="${APP_NAME:-nextjs-app}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
 SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
 APP_DIR="${APP_DIR:-${SERVICE_HOME}/${APP_NAME}}"
+# Corepack downloads pnpm before pnpm can read this project's .npmrc.
+# It appends the package name itself, so normalize away a trailing slash.
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}"
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY%/}"
 
 CREATE_SERVICE_USER="${CREATE_SERVICE_USER:-1}"
 INSTALL_CADDY="${INSTALL_CADDY:-1}"
@@ -87,9 +91,15 @@ if [[ -f "${ROOT_DIR}/package.json" ]]; then
 fi
 
 if [[ "${PNPM_SPEC}" == pnpm@* ]]; then
-  as_root env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare "${PNPM_SPEC}" --activate
+  as_root env \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY}" \
+    corepack prepare "${PNPM_SPEC}" --activate
 else
-  as_root env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare pnpm@latest --activate
+  as_root env \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY}" \
+    corepack prepare pnpm@latest --activate
 fi
 
 install_caddy() {

@@ -9,6 +9,12 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $Root
 
+# Corepack obtains pnpm before pnpm can read the project's .npmrc.
+if (-not $env:COREPACK_NPM_REGISTRY) {
+  $env:COREPACK_NPM_REGISTRY = "https://registry.npmmirror.com"
+}
+$env:COREPACK_NPM_REGISTRY = $env:COREPACK_NPM_REGISTRY.TrimEnd([char]"/")
+
 Write-Host "==> Ensuring corepack is enabled (pnpm)"
 if (-not (Get-Command corepack -ErrorAction SilentlyContinue)) {
   Write-Error "corepack not found. Install Node.js 20.9+ (includes corepack) and rerun."

@@ -37,6 +37,26 @@ That command reads the tracked, non-secret deployment defaults from
 | Production env source | VPS `.env.local`; upload `.env.production` only with `UPLOAD_ENV=1` |
 | Caddy ownership       | Shared server config; normal releases do not touch it               |
 
+## Package Registry
+
+The tracked [`.npmrc`](../.npmrc) uses the mainland China npm mirror at
+`https://registry.npmmirror.com/`. It applies to `pnpm install` during the
+local pre-deploy checks and standalone artifact build, including Docker builds.
+
+During first VPS setup, Corepack downloads the pinned pnpm version before pnpm
+can read `.npmrc`; the setup scripts therefore use the same mirror through
+`COREPACK_NPM_REGISTRY`. This setting defaults to
+`https://registry.npmmirror.com` (without a trailing slash) and can be
+overridden for one deployment:
+
+```bash
+COREPACK_NPM_REGISTRY=https://registry.npmjs.org pnpm deploy:vps
+```
+
+Normal releases do not run `pnpm install` on the VPS. They upload a prebuilt
+artifact, so package download problems during those releases originate on the
+machine or Docker environment that starts the deployment.
+
 Edit `deploy.env` when the deployment target changes. Command environment variables take precedence for one-off overrides:
 
 ```bash

@@ -103,6 +103,7 @@ write_fake() {
   grep -Fqx "root@example.test chmod 600 '${REMOTE_WORK_DIR}/prod.env'" "${SSH_LOG}"
   grep -Fqx "${ARTIFACT_DIR}/release.tar.gz root@example.test:${REMOTE_WORK_DIR}/release.tar.gz" "${SCP_LOG}"
   grep -Fqx "${ENV_FILE} root@example.test:${REMOTE_WORK_DIR}/prod.env" "${SCP_LOG}"
+  grep -Fq "COREPACK_NPM_REGISTRY='https://registry.npmmirror.com'" "${SSH_LOG}"
   ! grep -Fq '/tmp/prod.env' "${SCP_LOG}"
   grep -Fq "rm -rf '${REMOTE_WORK_DIR}'" "${SSH_LOG}"
 }

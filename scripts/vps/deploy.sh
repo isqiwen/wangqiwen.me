@@ -23,6 +23,7 @@ set -euo pipefail
 #   SKIP_REMOTE_SUDO_CHECK=0
 #   SSH_CONTROL=1
 #   CLEAN_REMOTE_ON_EXIT=1
+#   COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 #
 # Before any SSH connection, deploys install locked dependencies and run:
 #   pnpm test
@@ -46,6 +47,7 @@ load_deploy_config() {
     SERVER_ALIASES
     APP_HOST
     APP_PORT
+    COREPACK_NPM_REGISTRY
     RUN_INSTALL
     INSTALL_CADDY
     RUN_SITE_CONFIG
@@ -97,6 +99,8 @@ RUN_INSTALL="${RUN_INSTALL:-${SETUP_SERVER}}"
 RUN_SITE_CONFIG="${RUN_SITE_CONFIG:-${SETUP_SERVER}}"
 INSTALL_CADDY="${INSTALL_CADDY:-${SETUP_SERVER}}"
 CADDY_OVERWRITE="${CADDY_OVERWRITE:-ask}"
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}"
+COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY%/}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-node:20-bookworm-slim}"
@@ -223,6 +227,7 @@ build_artifact_with_docker() {
     --env ARTIFACT_DIR=/artifacts \
     --env ARTIFACT_NAME="${ARTIFACT_NAME}" \
     --env RUN_LINT_POSTS=0 \
+    --env COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY}" \
     "${DOCKER_IMAGE}" \
     bash scripts/vps/build-artifact.sh
 }
@@ -519,6 +524,7 @@ append_remote_env APP_HOST "${APP_HOST}"
 append_remote_env APP_PORT "${APP_PORT}"
 append_remote_env RUN_INSTALL "${RUN_INSTALL}"
 append_remote_env INSTALL_CADDY "${INSTALL_CADDY}"
+append_remote_env COREPACK_NPM_REGISTRY "${COREPACK_NPM_REGISTRY}"
 REMOTE_CMD="${REMOTE_CMD} RUN_DEPLOY=1"
 append_remote_env RUN_SITE_CONFIG "${RUN_SITE_CONFIG}"
 append_remote_env CADDY_OVERWRITE "${CADDY_OVERWRITE}"

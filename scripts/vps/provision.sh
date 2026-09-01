@@ -24,6 +24,7 @@ set -euo pipefail
 #   OPEN_HTTP3=0
 #   APP_HOST=127.0.0.1
 #   APP_PORT=3000
+#   COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 #   RUN_INSTALL=1
 #   RUN_DEPLOY=1
 #   RUN_SITE_CONFIG=0
@@ -109,6 +110,7 @@ if [[ "${RUN_INSTALL}" == "1" ]]; then
     SERVICE_USER="${SERVICE_USER}" \
     SERVICE_HOME="${SERVICE_HOME}" \
     APP_DIR="${APP_DIR}" \
+    COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}" \
     CREATE_SERVICE_USER="${CREATE_SERVICE_USER:-1}" \
     INSTALL_CADDY="${INSTALL_CADDY}" \
     INSTALL_UFW="${INSTALL_UFW:-0}" \
