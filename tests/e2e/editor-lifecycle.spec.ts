@@ -125,8 +125,15 @@ async function expectMutation(page: Page, action: () => Promise<unknown>, method
     { timeout: 15_000 }),
     action(),
   ]);
-  // A 4xx/5xx must fail with its response body, not hang waiting for success.
-  expect(response.ok(), `${method} ${endpoint}: ${response.status()} ${await response.text()}`).toBe(true);
+  // A dev response can expose headers before Playwright retrieves its body.
+  // Successful writes need no body read; errors always report their status.
+  if (!response.ok()) {
+    const detail = await Promise.race([
+      response.text().catch(() => "Response body unavailable."),
+      new Promise<string>(resolve => setTimeout(() => resolve("Response body unavailable within 2s."), 2_000)),
+    ]);
+    throw new Error(`${method} ${endpoint}: HTTP ${response.status()} ${detail.slice(0, 2_000)}`);
+  }
 }
 
 async function saveFromEditor(page: Page, name: string) {
