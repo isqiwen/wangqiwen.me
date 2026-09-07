@@ -1,3 +1,4 @@
+diff --git a/dist/server/lib/router-utils/setup-dev-bundler.js b/dist/server/lib/router-utils/setup-dev-bundler.js
 --- a/dist/server/lib/router-utils/setup-dev-bundler.js
 +++ b/dist/server/lib/router-utils/setup-dev-bundler.js
 @@ -288,10 +288,11 @@
@@ -40,6 +41,7 @@
              const numConflicting = conflictingAppPagePaths.size;
              conflictingPageChange = numConflicting - previousConflictingPagePaths.size;
              if (conflictingPageChange !== 0) {
+diff --git a/dist/esm/server/lib/router-utils/setup-dev-bundler.js b/dist/esm/server/lib/router-utils/setup-dev-bundler.js
 --- a/dist/esm/server/lib/router-utils/setup-dev-bundler.js
 +++ b/dist/esm/server/lib/router-utils/setup-dev-bundler.js
 @@ -220,10 +220,11 @@
