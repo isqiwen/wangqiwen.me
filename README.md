@@ -4,7 +4,7 @@ Personal publishing site built with Next.js, MDX, Tailwind CSS, SWR, and Upstash
 
 ## Development Setup
 
-Install Node.js 20.9+, then run the setup script for your platform:
+Install Node.js 24 LTS (see `.nvmrc`), then run the setup script for your platform:
 
 macOS/Linux:
 
@@ -24,7 +24,7 @@ Start the site:
 pnpm dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://127.0.0.1:3000>. The editor is local-only; use an SSH forward for remote development, not a publicly exposed development server.
 
 No local environment file is needed by default. Create one only when using real external services:
 
@@ -44,8 +44,11 @@ Then write and publish it locally at `/editor`. See the [Editor guide](docs/edit
 
 ```bash
 pnpm check
+pnpm test
 pnpm build
 ```
+
+The complete release gate also requires browser tests, a dependency audit and packaged-runtime smoke tests. See [Release safety](docs/release-safety.md) for the checks, local smoke-test workflow and Node.js 24 migration procedure.
 
 ## Deploy
 
@@ -79,10 +82,13 @@ run it from the same WSL2 terminal:
 pnpm deploy:vps
 ```
 
+Existing Node.js 20 servers need the one-time runtime migration described in [Release safety](docs/release-safety.md) before deploying the new baseline.
+
 ## Guides
 
 - [Initialization and customization](docs/customization.md)
 - [Editor guide](docs/editor.md)
 - [VPS deployment](docs/deployment.md)
 - [Operations runbook](docs/operations.md)
+- [Release safety and runtime migration](docs/release-safety.md)
 - [Script reference](scripts/README.md)

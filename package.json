@@ -3,7 +3,7 @@
   "license": "MIT",
   "description": "wangqiwen.me (blog)",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=24.0.0 <25"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -55,10 +55,11 @@
       "cross-spawn": "7.0.6",
       "dompurify": "3.4.13",
       "mdast-util-to-hast": "13.2.1",
-      "nanoid": "3.3.17",
+      "nanoid": "3.3.18",
       "postcss": "8.5.23",
       "sharp": "0.35.3",
-      "use-sync-external-store": "1.6.0"
+      "use-sync-external-store": "1.6.0",
+      "fast-uri": "3.1.6"
     },
     "ignoredBuiltDependencies": [
       "esbuild",
@@ -66,10 +67,10 @@
     ]
   },
   "scripts": {
-    "dev": "next dev --turbopack -H 0.0.0.0",
+    "dev": "next dev --turbopack -H 127.0.0.1",
     "build": "node scripts/content/build-site.cjs",
     "start": "next start",
-    "lint": "eslint app scripts tests utils mdx-components.ts next.config.js --ext .js,.cjs,.mjs,.jsx,.ts,.tsx --no-error-on-unmatched-pattern",
+    "lint": "eslint app scripts tests utils mdx-components.ts middleware.tsx next.config.js --ext .js,.cjs,.mjs,.jsx,.ts,.tsx --no-error-on-unmatched-pattern",
     "test": "tsx --test tests/*.test.ts",
     "test:smoke": "tsx --test tests/smoke/*.test.ts",
     "test:e2e": "NEXT_DIST_DIR=.next-e2e playwright test",
