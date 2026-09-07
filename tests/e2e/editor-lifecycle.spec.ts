@@ -25,12 +25,17 @@ test.afterEach(async () => {
 
 // Independent UI journeys should not share one 30-second test budget.
 test("shows advanced components and configures pseudocode steps", async ({ page }) => {
-  await expect(page.getByText(/^\d+ writing essentials$/)).toBeVisible();
-  await expect(page.getByText("AblationTable", { exact: true })).not.toBeVisible();
+  await createDraft(page);
+  // The article can contain component names; only inspect the library cards.
+  await page.getByLabel("Body (MDX)").fill("## Components\n\n<AblationTable />\n\n<Algorithm />\n");
+  await expect(page.getByTestId("mdx-syntax-highlight")).toContainText("AblationTable");
+  const library = page.getByRole("heading", { name: "Component Library", exact: true }).locator("..");
+  await expect(library.getByText(/^\d+ writing essentials$/)).toBeVisible();
+  await expect(library.getByText("AblationTable", { exact: true })).not.toBeVisible();
   await expect(page.getByTestId("advanced-components-toggle")).toHaveText(/Show \d+ advanced components/);
   await page.getByTestId("advanced-components-toggle").click();
-  await expect(page.getByText("AblationTable", { exact: true })).toBeVisible();
-  const card = page.getByText("Algorithm", { exact: true }).locator("xpath=../../..");
+  await expect(library.getByText("AblationTable", { exact: true })).toBeVisible();
+  const card = library.getByText("Algorithm", { exact: true }).locator("xpath=../../..");
   await card.getByRole("button", { name: "Configure" }).click();
   await expect(page.getByText("Pseudocode steps", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Add step" }).click();

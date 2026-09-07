@@ -1,0 +1,86 @@
+diff --git a/dist/server/lib/router-utils/setup-dev-bundler.js b/dist/server/lib/router-utils/setup-dev-bundler.js
+--- a/dist/server/lib/router-utils/setup-dev-bundler.js
++++ b/dist/server/lib/router-utils/setup-dev-bundler.js
+@@ -288,10 +288,11 @@
+             let tsconfigChange = false;
+             let conflictingPageChange = 0;
+             let hasRootAppNotFound = false;
+-            const { appFiles, pageFiles } = opts.fsChecker;
+-            appFiles.clear();
+-            pageFiles.clear();
+-            _shared1.devPageFiles.clear();
++            // Assemble the next route snapshot without exposing an empty or partial
++            // table to requests while this scan awaits metadata or middleware.
++            const appFiles = new Set();
++            const pageFiles = new Set();
++            const nextDevPageFiles = new Set();
+             const sortedKnownFiles = [
+                 ...knownFiles.keys()
+             ].sort((0, _entries.sortByPageExts)(nextConfig.pageExtensions));
+@@ -367,7 +368,7 @@
+                     continue;
+                 }
+                 // Collect all current filenames for the TS plugin to use
+-                _shared1.devPageFiles.add(fileName);
++                nextDevPageFiles.add(fileName);
+                 let pageName = (0, _absolutepathtopage.absolutePathToPage)(fileName, {
+                     dir: isAppPath ? appDir : pagesDir,
+                     extensions: nextConfig.pageExtensions,
+@@ -488,6 +489,14 @@
+                 }
+                 routedPages.push(pageName);
+             }
++            // Publish synchronously only after the asynchronous scan succeeds.
++            // Preserve Set identity: the router and TypeScript plugin hold references.
++            opts.fsChecker.appFiles.clear();
++            for (const page of appFiles) opts.fsChecker.appFiles.add(page);
++            opts.fsChecker.pageFiles.clear();
++            for (const page of pageFiles) opts.fsChecker.pageFiles.add(page);
++            _shared1.devPageFiles.clear();
++            for (const file of nextDevPageFiles) _shared1.devPageFiles.add(file);
+             const numConflicting = conflictingAppPagePaths.size;
+             conflictingPageChange = numConflicting - previousConflictingPagePaths.size;
+             if (conflictingPageChange !== 0) {
+diff --git a/dist/esm/server/lib/router-utils/setup-dev-bundler.js b/dist/esm/server/lib/router-utils/setup-dev-bundler.js
+--- a/dist/esm/server/lib/router-utils/setup-dev-bundler.js
++++ b/dist/esm/server/lib/router-utils/setup-dev-bundler.js
+@@ -220,10 +220,11 @@
+             let tsconfigChange = false;
+             let conflictingPageChange = 0;
+             let hasRootAppNotFound = false;
+-            const { appFiles, pageFiles } = opts.fsChecker;
+-            appFiles.clear();
+-            pageFiles.clear();
+-            devPageFiles.clear();
++            // Assemble the next route snapshot without exposing an empty or partial
++            // table to requests while this scan awaits metadata or middleware.
++            const appFiles = new Set();
++            const pageFiles = new Set();
++            const nextDevPageFiles = new Set();
+             const sortedKnownFiles = [
+                 ...knownFiles.keys()
+             ].sort(sortByPageExts(nextConfig.pageExtensions));
+@@ -299,7 +300,7 @@
+                     continue;
+                 }
+                 // Collect all current filenames for the TS plugin to use
+-                devPageFiles.add(fileName);
++                nextDevPageFiles.add(fileName);
+                 let pageName = absolutePathToPage(fileName, {
+                     dir: isAppPath ? appDir : pagesDir,
+                     extensions: nextConfig.pageExtensions,
+@@ -420,6 +421,14 @@
+                 }
+                 routedPages.push(pageName);
+             }
++            // Publish synchronously only after the asynchronous scan succeeds.
++            // Preserve Set identity: the router and TypeScript plugin hold references.
++            opts.fsChecker.appFiles.clear();
++            for (const page of appFiles) opts.fsChecker.appFiles.add(page);
++            opts.fsChecker.pageFiles.clear();
++            for (const page of pageFiles) opts.fsChecker.pageFiles.add(page);
++            devPageFiles.clear();
++            for (const file of nextDevPageFiles) devPageFiles.add(file);
+             const numConflicting = conflictingAppPagePaths.size;
+             conflictingPageChange = numConflicting - previousConflictingPagePaths.size;
+             if (conflictingPageChange !== 0) {

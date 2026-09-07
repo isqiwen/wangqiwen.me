@@ -15,6 +15,11 @@ overrides:
   use-sync-external-store: 1.6.0
   fast-uri: 3.1.6
 
+patchedDependencies:
+  next@15.5.21:
+    hash: 22eb2bddf4d9d421ce04141532a653d828a9bd09797f235b8dc9afcfea83934f
+    path: patches/next@15.5.21.patch
+
 importers:
 
   .:
@@ -60,7 +65,7 @@ importers:
         version: 11.16.1
       next:
         specifier: 15.5.21
-        version: 15.5.21(@playwright/test@1.62.1)(@types/node@20.19.43)(react-dom@19.1.5(react@19.1.5))(react@19.1.5)
+        version: 15.5.21(patch_hash=22eb2bddf4d9d421ce04141532a653d828a9bd09797f235b8dc9afcfea83934f)(@playwright/test@1.62.1)(@types/node@20.19.43)(react-dom@19.1.5(react@19.1.5))(react@19.1.5)
       next-nprogress-bar:
         specifier: ^2.3.13
         version: 2.4.3
@@ -6040,7 +6045,7 @@ snapshots:
     dependencies:
       nprogress-v2: 1.0.4
 
-  next@15.5.21(@playwright/test@1.62.1)(@types/node@20.19.43)(react-dom@19.1.5(react@19.1.5))(react@19.1.5):
+  next@15.5.21(patch_hash=22eb2bddf4d9d421ce04141532a653d828a9bd09797f235b8dc9afcfea83934f)(@playwright/test@1.62.1)(@types/node@20.19.43)(react-dom@19.1.5(react@19.1.5))(react@19.1.5):
     dependencies:
       '@next/env': 15.5.21
       '@swc/helpers': 0.5.15

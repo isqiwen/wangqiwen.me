@@ -55,7 +55,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - name: Verify editor stability with three independent no-retry runs
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p editor-logs
+          for pass in 1 2 3; do
+            echo "Editor stability pass $pass/3 (retries disabled)"
+            PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report/pass-$pass" \
+              pnpm test:e2e --retries=0 --output="test-results/pass-$pass" \
+              2>&1 | tee "editor-logs/pass-$pass.log"
+          done
       - name: Preserve browser failure evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -64,6 +74,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            editor-logs/
           if-no-files-found: ignore
           retention-days: 7
 
