@@ -7,7 +7,8 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  // A passing retry must not hide a broken authoring request.
+  retries: 0,
   workers: 1,
   reporter: process.env.CI
     ? [["github"], ["html", { open: "never" }]]
@@ -21,6 +22,8 @@ export default defineConfig({
   webServer: {
     command: `NEXT_DIST_DIR=.next-e2e pnpm exec next dev --turbopack -H 127.0.0.1 --port ${port}`,
     url: `${baseURL}/editor`,
+    stdout: "pipe",
+    stderr: "pipe",
     reuseExistingServer: false,
     timeout: 120_000,
   },
