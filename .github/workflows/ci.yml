@@ -2,59 +2,132 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  UPSTASH_REDIS_REST_URL: ""
+  UPSTASH_REDIS_REST_TOKEN: ""
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      NEXT_TELEMETRY_DISABLED: "1"
-      UPSTASH_REDIS_REST_URL: ""
-      UPSTASH_REDIS_REST_TOKEN: ""
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - name: Check deployment scripts
+        run: |
+          for script in scripts/vps/*.sh; do bash -n "$script"; done
+          sudo apt-get update
+          sudo apt-get install -y bats
+          bats tests/vps
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  editor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Preserve browser failure evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-test-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
-      - name: Validate source and content
-        run: pnpm check
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
 
-      - name: Run unit tests
-        run: pnpm test
-
-      - name: Install Playwright browser
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Run editor browser tests
-        run: pnpm test:e2e
-
-      - name: Audit production dependencies
-        run: pnpm audit --prod --audit-level high
-
-      - name: Build application
-        run: pnpm build
-
-      - name: Smoke test production artifact
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare real unpublished build fixtures
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          for (const status of ['draft', 'archived']) {
+            const id = `ci-${status}-boundary`;
+            const directory = `app/(post)/2099/${id}`;
+            if (fs.existsSync(directory)) throw new Error(`Fixture path already exists: ${directory}`);
+            fs.mkdirSync(directory, { recursive: true });
+            const metadata = { id, title: `Private ${status} fixture`, description: 'Must never appear in the public artifact.', publishedAt: '2099-01-01', status, tags: [] };
+            fs.writeFileSync(`${directory}/article.mdx`, `export const metadata = ${JSON.stringify(metadata, null, 2)};\n\n## Private content\n\nThis is an unpublished build fixture.\n`);
+          }
+          NODE
+          pnpm sync:posts -- --silent
+      - name: Build and assemble the deployment runtime
+        run: |
+          pnpm build
+          pnpm sync:posts -- --published-only --silent
+          node scripts/vps/assemble-artifact.cjs . dist/smoke
+          pnpm sync:posts -- --silent
+      - name: Smoke test the assembled artifact, including private-content isolation
+        env:
+          SMOKE_APP_DIR: dist/smoke
         run: pnpm test:smoke
+
+  release-gate:
+    if: ${{ always() }}
+    needs: [validate, editor, audit, production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all release checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e 'const results = JSON.parse(process.env.RESULTS); for (const [name, job] of Object.entries(results)) { console.log(`${name}: ${job.result}`); if (job.result !== "success") process.exitCode = 1; }'
