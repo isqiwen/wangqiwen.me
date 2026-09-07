@@ -264,3 +264,8 @@ pnpm deploy:vps
 Production `/editor` and `/api/editor/*` return `404`. The VPS only runs content included in a deployed artifact.
 
 The deployment build imports and prerenders only `published` articles. Draft and archived MDX are omitted from the VPS bundle, and their URLs return `404` in production.
+
+## Save conflicts and recovery
+
+See [Versioned editor saves](editor-save-safety.md) for conflict recovery,
+conditional local API requests, and the single-process concurrency guarantee.

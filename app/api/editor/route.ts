@@ -21,6 +21,8 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { assertPostPrecondition, getPostVersion, PostPreconditionError } from "@/utils/server/post-version";
+
 const NO_STORE = { "Cache-Control": "no-store" };
 
 type EditorMetadata = {
@@ -50,8 +52,15 @@ export async function GET(req: Request) {
     logEditorInfo("read-file", "Loaded editor post.", {
       path: postFile.relativePath,
     });
-    return NextResponse.json({ content }, { headers: NO_STORE });
+    const version = getPostVersion(content);
+    return NextResponse.json({ content, version }, { headers: { ...NO_STORE, ETag: version } });
   } catch (error: any) {
+    if (error instanceof PostPreconditionError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status, headers: NO_STORE },
+      );
+    }
     if (error instanceof PostFileValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
     }
@@ -90,12 +99,7 @@ export async function POST(req: Request) {
       const originalPath = previous?.absolutePath ?? target.absolutePath;
       const originalContent = await readFileIfPresent(originalPath);
 
-      if (previous && originalContent === null) {
-        return NextResponse.json(
-          { error: "the original post no longer exists" },
-          { status: 404, headers: NO_STORE },
-        );
-      }
+      assertPostPrecondition(originalContent, req.headers, !previous);
 
       if (isMove && (await fileExists(target.absolutePath))) {
         return NextResponse.json(
@@ -104,12 +108,6 @@ export async function POST(req: Request) {
         );
       }
 
-      if (!previous && originalContent !== null) {
-        return NextResponse.json(
-          { error: "a post already exists at the target path" },
-          { status: 409, headers: NO_STORE },
-        );
-      }
 
       await writeFileAtomically(target.absolutePath, content);
       try {
@@ -137,11 +135,17 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json(
-        { ok: true, path: target.relativePath },
-        { headers: NO_STORE },
+        { ok: true, path: target.relativePath, version: getPostVersion(content) },
+        { headers: { ...NO_STORE, ETag: getPostVersion(content) } },
       );
     });
   } catch (error) {
+    if (error instanceof PostPreconditionError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status, headers: NO_STORE },
+      );
+    }
     if (error instanceof PostFileValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
     }
@@ -169,7 +173,10 @@ export async function DELETE(req: Request) {
     const postFile = resolvePostFile(payload?.path);
 
     return await withPostMutationLock(async () => {
-      const content = await fs.readFile(postFile.absolutePath, "utf8");
+      const content = await readFileIfPresent(postFile.absolutePath);
+      assertPostPrecondition(content, req.headers, false);
+      // The precondition rejects a missing file before any mutation occurs.
+      if (content === null) throw new Error("Post disappeared before deletion");
       const metadata = parseExportedMetadata<EditorMetadata>(content);
 
       if (
@@ -199,6 +206,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ ok: true }, { headers: NO_STORE });
     });
   } catch (error: any) {
+    if (error instanceof PostPreconditionError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status, headers: NO_STORE },
+      );
+    }
     if (error instanceof PostFileValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
     }
