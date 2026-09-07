@@ -42,6 +42,24 @@ this exact-version patch. Do not loosen its version constraint to make an upgrad
 install silently. A patch/application mismatch or changed regression-test anchors
 must be investigated rather than skipped.
 
+## Concurrent article listing
+
+After the route patch, a complete no-retry browser pass succeeded, but the second
+pass exposed a different JSON 500. The article-list walker called `stat` on every
+entry before filtering it; an atomic save renamed a `.article.mdx.*.tmp` file
+between `readdir` and `stat`, producing ENOENT. The request correctly failed the
+stability gate rather than being retried or accepted as an expected error.
+
+The list collector now filters the allowed year/slug/article entries before
+metadata I/O, so temporary files are never inspected. An article or directory
+removed during enumeration is skipped only for ENOENT; permission and other I/O
+errors still propagate. Listing keeps its existing order, path format and status
+fallback. It is a live directory view, not a transactional filesystem snapshot.
+The existing mutation lock, atomic writer and precondition checks are unchanged.
+Eight deterministic collector tests cover temporary files, disappearing entries,
+permission errors, missing roots and ordering. The HTTP regression continues to
+require a successful JSON list response while saves are running.
+
 ## Regression evidence and gates
 
 `tests/next-dev-route-snapshot.test.ts` executes the actual installed dependency's
