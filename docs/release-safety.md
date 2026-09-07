@@ -4,8 +4,9 @@
 
 Use Node.js 24 LTS locally, in CI, in the Linux build container and on the VPS.
 `.nvmrc` selects the major line; package.json rejects unsupported major lines.
-The existing dependency lockfile is unchanged. The pinned Node type definitions
-remain a conservative API surface and are not the deployed runtime version.
+The dependency lockfile includes targeted security fixes for nanoid 3.3.18 and
+fast-uri 3.1.6; application framework versions are unchanged. The pinned Node
+type definitions remain a conservative API surface, not the runtime version.
 
 With nvm, run `nvm install` and `nvm use` from the repository root, then run
 `bash scripts/dev/setup.sh`. Windows uses `pwsh ./scripts/dev/setup.ps1`.
