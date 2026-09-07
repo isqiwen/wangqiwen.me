@@ -24,13 +24,17 @@ jobs:
       - name: Record compatibility patch without upgrading dependencies
         run: |
           pnpm install --lockfile-only --ignore-scripts --registry=https://registry.npmjs.org
+          git diff -- pnpm-lock.yaml > patch-lock.diff
           node <<'NODE'
           const fs = require('node:fs');
           const cp = require('node:child_process');
           const before = cp.execFileSync('git', ['show', 'HEAD:pnpm-lock.yaml'], {encoding:'utf8'});
           const after = fs.readFileSync('pnpm-lock.yaml', 'utf8');
-          const packages = text => text.split('\npackages:\n')[1].split('\nsnapshots:\n')[0].match(/^  \S.*:\s*$/gm).sort();
-          if (JSON.stringify(packages(before)) !== JSON.stringify(packages(after))) throw new Error('Unexpected dependency version change');
+          const packages = text => text.split('\npackages:\n')[1].split('\nsnapshots:\n')[0].match(/^  \S.*:\s*$/gm).map(x => x.trim()).sort();
+          const a = packages(before), b = packages(after);
+          console.log('Removed:', a.filter(x => !b.includes(x)));
+          console.log('Added:', b.filter(x => !a.includes(x)));
+          if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error('Dependency lock changes require review');
           NODE
           git add pnpm-lock.yaml
           if git diff --cached --quiet; then exit 0; fi
@@ -38,3 +42,11 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'build: record pinned Next.js route snapshot patch'
           git push origin HEAD:refs/heads/codex/editor-test-stability
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: patch-lock-review
+          path: |
+            pnpm-lock.yaml
+            patch-lock.diff
+          retention-days: 1
