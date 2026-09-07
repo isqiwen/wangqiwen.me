@@ -7,6 +7,7 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,6 +43,7 @@ import {
 import { validateContentQuality } from "@/utils/shared/content-quality";
 import { getUnknownTopics, TOPIC_DEFINITIONS } from "@/utils/topics";
 import { SERIES_DEFINITIONS, isKnownSeries } from "@/utils/series";
+import { SaveConflictPanel, type SaveConflict } from "./save-conflict";
 
 type EditorFileOption = {
   path: string;
@@ -135,6 +137,7 @@ type EditorWorkspaceSnapshot = EditorDocumentState & {
 type EditorLocalAutosave = EditorWorkspaceSnapshot & {
   version: 2;
   savedAt: number;
+  baseVersion?: string | null;
 };
 
 const MDX_FORMATTING_ACTIONS: Array<{
@@ -363,6 +366,7 @@ function parseLocalAutosave(
       tagsInput: parsed.tagsInput,
       body: parsed.body,
       savedAt: parsed.savedAt,
+      baseVersion: typeof parsed.baseVersion === "string" && /^"sha256-[a-f0-9]{64}"$/.test(parsed.baseVersion) ? parsed.baseVersion : null,
     };
   } catch {
     return null;
@@ -422,6 +426,27 @@ function EditorWorkspace() {
     end: body.length,
   });
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [baseVersion, setBaseVersion] = useState<string | null>(null);
+  const baseVersionRef = useRef<string | null>(null);
+  const [conflict, setConflict] = useState<SaveConflict | null>(null);
+  type Activity = "save" | "transition" | "delete" | "load";
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const activityRef = useRef<Activity | null>(null);
+  const documentEpochRef = useRef(0);
+  const rememberVersion = useCallback((version: string | null) => {
+    baseVersionRef.current = version;
+    setBaseVersion(version);
+  }, []);
+  const beginActivity = useCallback((next: Activity) => {
+    if (activityRef.current) return false;
+    activityRef.current = next;
+    setActivity(next);
+    return true;
+  }, []);
+  const finishActivity = useCallback(() => {
+    activityRef.current = null;
+    setActivity(null);
+  }, []);
   const deferredHighlightedBody = useDeferredValue(body);
 
   const workspaceSnapshot = useMemo(
@@ -461,6 +486,12 @@ function EditorWorkspace() {
   );
   const [persistedFingerprint, setPersistedFingerprint] =
     useState(workspaceFingerprint);
+  const latestWorkspaceRef = useRef(workspaceSnapshot);
+  const latestDirtyRef = useRef(false);
+  useLayoutEffect(() => {
+    latestWorkspaceRef.current = workspaceSnapshot;
+    latestDirtyRef.current = workspaceFingerprint !== persistedFingerprint;
+  }, [workspaceSnapshot, workspaceFingerprint, persistedFingerprint]);
   const currentStatus = status;
   const readingTimeEstimate = useMemo(
     () => estimateReadingTimeMinutes(body),
@@ -487,7 +518,8 @@ function EditorWorkspace() {
     return `/${year}/${id}`;
   }, [publishedAt, id]);
   const assetFolderId = useMemo(() => normalizeAssetId(id), [id]);
-  const isReadOnly = currentStatus === "archived";
+  const isReadOnly = !initialLoadComplete || currentStatus === "archived" ||
+    activity === "load" || activity === "delete" || activity === "transition";
   const canOpenPreview =
     currentStatus !== "archived" && activePath === workspaceSnapshot.targetPath;
   const isDirty = workspaceFingerprint !== persistedFingerprint;
@@ -565,6 +597,7 @@ function EditorWorkspace() {
 
   const requestConfirmation = useCallback(
     (nextConfirmation: EditorConfirmation) => {
+      if (confirmationResolveRef.current) return Promise.resolve(false);
       return new Promise<boolean>(resolve => {
         confirmationResolveRef.current = resolve;
         setConfirmation(nextConfirmation);
@@ -613,9 +646,13 @@ function EditorWorkspace() {
       options: {
         activePath?: string | null;
         markPersisted?: boolean;
+        diskVersion?: string | null;
       } = {}
     ) => {
       const nextActivePath = options.activePath ?? null;
+      documentEpochRef.current += 1;
+      rememberVersion(options.diskVersion ?? null);
+      setConflict(null);
 
       setTitle(nextState.title);
       setDescription(nextState.description);
@@ -650,7 +687,7 @@ function EditorWorkspace() {
         );
       }
     },
-    []
+    [rememberVersion]
   );
 
   const restoreLocalAutosave = useCallback(
@@ -688,8 +725,12 @@ function EditorWorkspace() {
         },
         {
           activePath: autosave.activePath,
+          diskVersion: autosave.baseVersion ?? null,
         }
       );
+      if (autosave.activePath && !autosave.baseVersion) {
+        setConflict({ path: autosave.activePath, message: "This recovered draft has no base version. Compare or keep a copy before replacing a saved file." });
+      }
       setLocalAutosaveAt(autosave.savedAt);
       showFeedback(
         `Restored local autosave from ${formatUpdatedAt(autosave.savedAt)}`,
@@ -701,7 +742,18 @@ function EditorWorkspace() {
   );
 
   const loadFromPath = useCallback(
-    async (path: string, options: { successHint?: string } = {}) => {
+    async (path: string, options: { successHint?: string; initial?: boolean } = {}) => {
+      if (activityRef.current) return false;
+      if (!options.initial && latestDirtyRef.current) {
+        const confirmed = await requestConfirmation({
+          title: "Discard unsaved changes?",
+          description: "Loading a file replaces your current input. Download or keep a copy first if you need it.",
+          confirmLabel: "Discard and reload",
+          tone: "danger",
+        });
+        if (!confirmed) return false;
+      }
+      if (!beginActivity("load")) return false;
       try {
         const res = await fetch(
           `/api/editor?path=${encodeURIComponent(path)}`,
@@ -728,15 +780,20 @@ function EditorWorkspace() {
           return false;
         }
 
+        const version = data.version;
+        if (typeof version !== "string" || !/^"sha256-[a-f0-9]{64}"$/.test(version)) {
+          throw new Error("The file response has no valid version. Your current input was kept.");
+        }
         const nextState = parseEditorDocument(content, path);
         applyWorkspaceState(nextState, {
           activePath: path,
           markPersisted: true,
+          diskVersion: version,
         });
         setShowPicker(false);
         clearPickerFeedback();
 
-        const restoredAutosave = restoreLocalAutosave({ matchingPath: path });
+        const restoredAutosave = options.initial && restoreLocalAutosave({ matchingPath: path });
         if (!restoredAutosave) {
           showFeedback(options.successHint ?? `Loaded: ${path}`, "success");
         }
@@ -750,9 +807,14 @@ function EditorWorkspace() {
         showPickerFeedback(message, "error");
         showFeedback(message, "error");
         return false;
+      } finally {
+        finishActivity();
       }
     },
     [
+      beginActivity,
+      finishActivity,
+      requestConfirmation,
       applyWorkspaceState,
       clearPickerFeedback,
       restoreLocalAutosave,
@@ -813,6 +875,7 @@ function EditorWorkspace() {
         if (latestDraft) {
           await loadFromPath(latestDraft.path, {
             successHint: `Restored latest draft: ${latestDraft.label}`,
+            initial: true,
           });
           return;
         }
@@ -866,104 +929,64 @@ function EditorWorkspace() {
   );
 
   async function saveFile(
-    options: {
-      statusOverride?: EditorStatus;
-      showHint?: boolean;
-      successHint?: string;
-    } = {}
+    options: { statusOverride?: EditorStatus; successHint?: string } = {}
   ) {
+    if (activityRef.current || conflict) return false;
+    const submitted = { ...latestWorkspaceRef.current };
+    const nextStatus = options.statusOverride ?? submitted.status;
+    const error = validateEditorTarget(submitted.publishedAt, submitted.id) ||
+      validateEditorContent(submitted.title, submitted.description) ||
+      validateEditorSeries(submitted.series, submitted.seriesOrder);
+    if (error) {
+      showFeedback(error, "error");
+      return false;
+    }
+    const version = baseVersionRef.current;
+    if (submitted.activePath && !version) {
+      setConflict({ path: submitted.activePath, message: "A saved file version is required. Compare your recovered draft before continuing." });
+      return false;
+    }
+    if (!beginActivity(options.statusOverride ? "transition" : "save")) return false;
+    const epoch = documentEpochRef.current;
+    const content = buildMdxContent({ ...submitted, status: nextStatus });
     try {
-      const targetError = validateEditorTarget(publishedAt, id);
-      if (targetError) {
-        showFeedback(targetError, "error");
-        return false;
-      }
-
-      const contentError = validateEditorContent(title, description);
-      if (contentError) {
-        showFeedback(contentError, "error");
-        return false;
-      }
-
-      const seriesError = validateEditorSeries(series, seriesOrder);
-      if (seriesError) {
-        showFeedback(seriesError, "error");
-        return false;
-      }
-
-      const nextStatus = options.statusOverride ?? status;
-      const content = buildMdxContent({
-        title,
-        description,
-        summary,
-        series,
-        seriesOrder,
-        publishedAt,
-        updatedAt,
-        id,
-        status: nextStatus,
-        tagsInput,
-        body,
-      });
-
       const res = await fetch("/api/editor", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: targetPath,
-          previousPath: activePath,
-          content,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(
-          await readResponseError(
-            res,
-            "Save failed. Check the file path and permissions."
-          )
-        );
-      }
-
-      applyWorkspaceState(
-        {
-          title,
-          description,
-          summary,
-          series,
-          seriesOrder,
-          publishedAt,
-          updatedAt,
-          id,
-          status: nextStatus,
-          tagsInput,
-          body,
+        headers: {
+          "Content-Type": "application/json",
+          ...(submitted.activePath ? { "If-Match": version! } : { "If-None-Match": "*" }),
         },
-        {
-          activePath: targetPath,
-          markPersisted: true,
+        body: JSON.stringify({ path: submitted.targetPath, previousPath: submitted.activePath, content }),
+      });
+      if (!res.ok) {
+        const message = await readResponseError(res, "Save failed. Your input is still in the editor.");
+        if ([409, 412, 428].includes(res.status)) {
+          setConflict({ path: submitted.activePath ?? submitted.targetPath, message });
         }
-      );
+        throw new Error(message);
+      }
+      const saved = await res.json();
+      if (typeof saved.version !== "string" || !/^"sha256-[a-f0-9]{64}"$/.test(saved.version)) {
+        throw new Error("The save result is uncertain. Keep your draft and compare with disk before retrying.");
+      }
+      if (epoch !== documentEpochRef.current) return false;
+      rememberVersion(saved.version);
+      setActivePath(submitted.targetPath);
+      setSelectedPath(submitted.targetPath);
+      setStatus(nextStatus);
+      // Acknowledge only the submitted snapshot. Never reapply its text fields:
+      // the author may have continued typing while the request was in flight.
+      setPersistedFingerprint(serializeWorkspaceSnapshot(buildWorkspaceSnapshot({
+        ...submitted, activePath: submitted.targetPath, status: nextStatus,
+      })));
       void refreshFileList();
-
-      if (options.showHint !== false) {
-        showFeedback(
-          options.successHint ?? `Saved to ${targetPath}`,
-          "success"
-        );
-      }
-
+      showFeedback(options.successHint ?? `Saved to ${submitted.targetPath}`, "success");
       return true;
-    } catch (error) {
-      if (options.showHint !== false) {
-        showFeedback(
-          error instanceof Error
-            ? error.message
-            : "Save failed. Check the file path and permissions.",
-          "error"
-        );
-      }
+    } catch (reason) {
+      showFeedback(reason instanceof Error ? reason.message : "Save failed. Your input is preserved.", "error");
       return false;
+    } finally {
+      finishActivity();
     }
   }
 
@@ -1010,6 +1033,7 @@ function EditorWorkspace() {
   }
 
   async function publishPost() {
+    if (activityRef.current || conflict) return;
     const confirmed = await requestConfirmation({
       title: "Publish Post",
       description: `Mark "${title}" as published for the next deployment? It remains local until you commit and deploy.`,
@@ -1021,36 +1045,10 @@ function EditorWorkspace() {
       return;
     }
 
-    const saved = await saveFile({
+    await saveFile({
       statusOverride: "published",
-      showHint: false,
+      successHint: "Marked as published for the next deployment.",
     });
-
-    if (!saved) {
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/editor/publish", { method: "POST" });
-
-      if (!res.ok) {
-        throw new Error(
-          await readResponseError(res, "Publish failed. Check the server logs.")
-        );
-      }
-
-      showFeedback(
-        `Marked as published for the next deployment: ${targetPath}`,
-        "success"
-      );
-    } catch (error) {
-      showFeedback(
-        error instanceof Error
-          ? error.message
-          : "Publish failed. Check the server logs.",
-        "error"
-      );
-    }
   }
 
   async function moveToDraft() {
@@ -1061,6 +1059,7 @@ function EditorWorkspace() {
   }
 
   async function archivePost() {
+    if (activityRef.current || conflict) return;
     const confirmed = await requestConfirmation({
       title: "Archive Post",
       description: `Archive "${title}"? Archived posts are removed from public view and can be restored later.`,
@@ -1078,6 +1077,7 @@ function EditorWorkspace() {
   }
 
   async function startNewDraft() {
+    if (activityRef.current) return;
     if (isDirty) {
       const confirmed = await requestConfirmation({
         title: "Discard unsaved changes?",
@@ -1108,71 +1108,60 @@ function EditorWorkspace() {
   }
 
   async function deleteCurrentPost() {
-    if (!activePath) {
-      showFeedback("Save this document once before deleting it.", "info");
+    if (activityRef.current || conflict) return;
+    const submitted = { ...latestWorkspaceRef.current };
+    if (!submitted.activePath) return;
+    const version = baseVersionRef.current;
+    if (!version) {
+      setConflict({ path: submitted.activePath, message: "Reload or compare the file before deleting it." });
       return;
     }
-
     const confirmed = await requestConfirmation({
-      title:
-        currentStatus === "archived" ? "Delete Archived Post" : "Delete Draft",
-      description:
-        currentStatus === "archived"
-          ? `Delete archived post "${title}" permanently? This cannot be undone.`
-          : `Delete draft "${title}" permanently? This cannot be undone.`,
-      confirmLabel: "Delete",
-      tone: "danger",
+      title: submitted.status === "archived" ? "Delete Archived Post" : "Delete Draft",
+      description: `Delete "${submitted.title}" permanently? Unsaved changes will also be discarded. Download a copy first if needed.`,
+      confirmLabel: "Delete", tone: "danger",
     });
-
-    if (!confirmed) {
-      return;
-    }
-
+    if (!confirmed || !beginActivity("delete")) return;
+    const epoch = documentEpochRef.current;
     try {
       const res = await fetch("/api/editor", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: activePath }),
+        headers: { "Content-Type": "application/json", "If-Match": version },
+        body: JSON.stringify({ path: submitted.activePath }),
       });
-
-      if (res.status === 409) {
-        showFeedback(
-          "Published posts must be archived before they can be deleted.",
-          "error"
-        );
-        return;
-      }
-
       if (!res.ok) {
-        throw new Error(
-          await readResponseError(
-            res,
-            "Delete failed. Check the file path and permissions."
-          )
-        );
+        const message = await readResponseError(res, "Delete failed. Your input has been kept.");
+        if ([409, 412, 428].includes(res.status)) setConflict({ path: submitted.activePath, message });
+        throw new Error(message);
       }
-
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(LOCAL_AUTOSAVE_KEY);
-      }
+      // Wait for the complete acknowledgement before another lifecycle action.
+      await res.json();
+      if (epoch !== documentEpochRef.current) return;
+      const current = latestWorkspaceRef.current;
+      const changed = serializeWorkspaceSnapshot(current) !== serializeWorkspaceSnapshot(submitted);
+      applyWorkspaceState(changed ? { ...current, status: "draft" } : createEmptyEditorDocument(), {
+        activePath: null, markPersisted: !changed,
+      });
+      if (changed) setPersistedFingerprint("");
       pendingAutosaveRef.current = null;
       setLocalAutosaveAt(null);
-
-      applyWorkspaceState(createEmptyEditorDocument(), {
-        activePath: null,
-        markPersisted: true,
-      });
       setSelectedPath("");
-      showFeedback(`Deleted: ${activePath}`, "success");
-      await refreshFileList({ autoRestoreLatestDraft: true });
-    } catch (error) {
-      showFeedback(
-        error instanceof Error
-          ? error.message
-          : "Delete failed. Check the file path and permissions.",
-        "error"
-      );
+      showFeedback(changed ? "File deleted; newer input was kept as an unsaved draft." : `Deleted: ${submitted.activePath}`, "success");
+      void refreshFileList();
+    } catch (reason) {
+      showFeedback(reason instanceof Error ? reason.message : "Delete failed. Your draft is preserved.", "error");
+    } finally {
+      finishActivity();
     }
+  }
+
+  function keepConflictAsDraft() {
+    if (activityRef.current) return;
+    const current = latestWorkspaceRef.current;
+    const copyId = `${current.id.slice(0, 80).replace(/-+$/, "")}-copy-${crypto.randomUUID().slice(0, 8)}`;
+    applyWorkspaceState({ ...current, id: copyId, status: "draft", series: "", seriesOrder: "" });
+    setPersistedFingerprint("");
+    showFeedback("Your input is now a new unsaved draft. Save Draft writes a separate file.", "info");
   }
 
   useEffect(() => {
@@ -1191,18 +1180,24 @@ function EditorWorkspace() {
       return;
     }
 
+    if (!initialLoadComplete) return;
     const timer = window.setTimeout(() => {
       const autosave: EditorLocalAutosave = {
         version: LOCAL_AUTOSAVE_VERSION,
         savedAt: Date.now(),
         ...workspaceSnapshot,
+        baseVersion,
       };
-      window.localStorage.setItem(LOCAL_AUTOSAVE_KEY, JSON.stringify(autosave));
-      setLocalAutosaveAt(autosave.savedAt);
+      try {
+        window.localStorage.setItem(LOCAL_AUTOSAVE_KEY, JSON.stringify(autosave));
+        setLocalAutosaveAt(autosave.savedAt);
+      } catch {
+        showFeedback("Browser autosave is unavailable. Keep this tab open or download your draft.", "error");
+      }
     }, 800);
 
     return () => window.clearTimeout(timer);
-  }, [workspaceSnapshot]);
+  }, [workspaceSnapshot, baseVersion, initialLoadComplete, showFeedback]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !isDirty) {
@@ -1636,6 +1631,7 @@ function EditorWorkspace() {
           {currentStatus !== "archived" ? (
             <button
               onClick={() => void saveFile()}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
             >
               {currentStatus === "draft"
@@ -1646,6 +1642,7 @@ function EditorWorkspace() {
           {currentStatus === "draft" ? (
             <button
               onClick={publishPost}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
             >
               Publish Post
@@ -1654,6 +1651,7 @@ function EditorWorkspace() {
           {currentStatus === "published" ? (
             <button
               onClick={moveToDraft}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100"
             >
               Move To Draft
@@ -1662,6 +1660,7 @@ function EditorWorkspace() {
           {currentStatus === "published" ? (
             <button
               onClick={archivePost}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
             >
               Archive Post
@@ -1670,6 +1669,7 @@ function EditorWorkspace() {
           {currentStatus === "archived" ? (
             <button
               onClick={moveToDraft}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100"
             >
               Restore To Draft
@@ -1679,6 +1679,7 @@ function EditorWorkspace() {
           activePath ? (
             <button
               onClick={deleteCurrentPost}
+              disabled={Boolean(activity) || Boolean(conflict) || !initialLoadComplete}
               className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-900 hover:bg-rose-100"
             >
               {currentStatus === "archived"
@@ -1688,18 +1689,29 @@ function EditorWorkspace() {
           ) : null}
           <button
             onClick={() => void startNewDraft()}
+            disabled={Boolean(activity) || !initialLoadComplete}
             className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             New Draft
           </button>
           <button
             onClick={() => setShowPicker(true)}
+            disabled={Boolean(activity) || !initialLoadComplete}
             className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-700"
           >
             Load
           </button>
         </div>
       </header>
+
+      {conflict ? <SaveConflictPanel
+        key={conflict.path}
+        conflict={conflict}
+        content={mdxContent}
+        busy={Boolean(activity)}
+        onReload={() => void loadFromPath(conflict.path)}
+        onCopy={keepConflictAsDraft}
+      /> : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         {isReadOnly ? (
@@ -1888,8 +1900,9 @@ function EditorWorkspace() {
           <span>Target path: {targetPath}</span>
           <span>Estimated reading time: {readingTimeEstimate} min</span>
           <span>Current status: {currentStatus}</span>
-          <span>
-            {isDirty ? "Unsaved changes" : "All changes saved to disk"}
+          <span role="status" data-testid="editor-save-status">
+            {activity === "save" || activity === "transition" ? "Saving…" :
+              isDirty ? "Unsaved changes" : "All changes saved to disk"}
           </span>
           {localAutosaveAt ? (
             <span>Local autosave: {formatUpdatedAt(localAutosaveAt)}</span>

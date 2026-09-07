@@ -148,5 +148,5 @@ async function publishFromEditor(page: Page) {
   await expect(confirmation.getByText("Description", { exact: true })).toBeVisible();
   await expect(confirmation.getByText("Heading hierarchy", { exact: true })).toBeVisible();
   await expectMutation(page, () => confirmation.getByRole("button", { name: "Publish", exact: true }).click(),
-    "POST", "/api/editor/publish");
+    "POST", "/api/editor");
 }
