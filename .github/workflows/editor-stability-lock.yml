@@ -1,0 +1,40 @@
+name: Refresh pinned editor stability patch lock
+on:
+  push:
+    branches: [codex/editor-test-stability]
+    paths: [.github/workflows/editor-stability-lock.yml]
+permissions:
+  contents: write
+jobs:
+  lock:
+    if: github.repository == 'isqiwen/wangqiwen.me' && github.ref == 'refs/heads/codex/editor-test-stability'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Record compatibility patch without upgrading dependencies
+        run: |
+          pnpm install --lockfile-only --ignore-scripts --registry=https://registry.npmjs.org
+          node <<'NODE'
+          const fs = require('node:fs');
+          const cp = require('node:child_process');
+          const before = cp.execFileSync('git', ['show', 'HEAD:pnpm-lock.yaml'], {encoding:'utf8'});
+          const after = fs.readFileSync('pnpm-lock.yaml', 'utf8');
+          const packages = text => text.split('\npackages:\n')[1].split('\nsnapshots:\n')[0].match(/^  \S.*:\s*$/gm).sort();
+          if (JSON.stringify(packages(before)) !== JSON.stringify(packages(after))) throw new Error('Unexpected dependency version change');
+          NODE
+          git add pnpm-lock.yaml
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'build: record pinned Next.js route snapshot patch'
+          git push origin HEAD:refs/heads/codex/editor-test-stability

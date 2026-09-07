@@ -1,61 +1,72 @@
 # Editor request and test stability
 
-## Failure and repair
+## Two distinct failures
 
-The browser component test used a page-wide text locator for `AblationTable`.
-An automatically restored article could contain that name in its syntax-highlighted
-MDX, so the test inspected the article instead of the collapsed component library.
-It now creates a known draft, deliberately inserts both `AblationTable` and
-`Algorithm` into the body, and scopes card lookups to the Component Library.
+The component test used a page-wide `AblationTable` text locator. The editor's
+restored MDX could contain that same name in the syntax highlighter. The test now
+creates a known draft, deliberately inserts both `AblationTable` and `Algorithm`
+into its body, and scopes card lookups to the Component Library.
 
-Separately, `middleware.tsx` statically imported `posts/manifest.json`. Editor
-mutations regenerate that index, rebuilding middleware while authoring requests
-are in flight. On the pinned Next.js 15.5.21/Turbopack development server, a local
-HTTP probe reproduced HTML 404 responses across `/api/editor`, `/api/editor/list`,
-`/api/posts` and `/editor` (4 failures in 47 requests). This was not a save conflict
-response or a selector failure.
+The unexpected HTML 404s were a separate development-server routing race. In the
+pinned Next.js 15.5.21 package, `setup-dev-bundler` clears the shared `appFiles`,
+`pageFiles` and `devPageFiles` sets before an asynchronous filesystem scan. Requests
+arriving during a metadata/middleware await can see an empty or partial route table.
+The upstream report describes the same window:
+https://github.com/vercel/next.js/issues/82315
 
-Middleware now uses the Node.js runtime supported by Next.js 15.5 and reads the
-index from disk only for article access checks. The same probe completed all 75
-requests with no failures after the change, with only the initial middleware
-compilation. This is a bounded regression result, not a proof that every upstream
-hot-reload failure is impossible. Turbopack, atomic file writes, mutation locking,
-version preconditions and API rate limits are unchanged. There are no automatic
-retries of mutations.
+Article writes and generated-registry updates trigger the filesystem watcher.
+An initial attempt to stop importing the changing manifest from middleware reduced
+failures in a small probe (4/47 requests before, 0/75 after), but full CI still
+caught a publication POST returning HTML 404. That mitigation was insufficient and
+has been withdrawn: middleware, its runtime and its visibility policies are left
+unchanged. The solution must keep the route table usable during the scan itself.
 
-## Preserved boundaries
+## Version-pinned compatibility patch
 
-- Published article access is unchanged. Drafts are local-only; archived or
-  unknown articles remain unavailable.
-- A missing or malformed index fails article checks closed with an uncached 503.
-  Editor access checks do not read the article index.
-- Production editor routes remain 404, and local Host/Origin checks remain active.
-- The runtime reads `posts/manifest.json` from the application working directory.
-  The existing standalone assembler includes a published-only copy; deployment
-  smoke tests continue to exercise the assembled artifact.
-- No new dependency, article rewrite, URL change or editor UI redesign is needed.
+`patches/next@15.5.21.patch` is applied by pnpm through `patchedDependencies`.
+It changes only the CommonJS and ESM development-bundler implementations. Each
+scan builds new local sets and, only after successful completion, synchronously
+copies them into the existing published sets. No await occurs during publication,
+and Set identity is retained for the router and TypeScript plugin. A rejected
+scan leaves the previous complete route snapshot intact.
 
-## Regression gates
+This is a project-maintained compatibility patch, not an upstream release or a
+claim that every hot-reload failure is fixed. It does not change production route
+handling, middleware authorization, atomic article writes, save preconditions or
+API rate limits. Next.js, React and all dependency versions remain pinned as before.
+The lockfile records the patch hash, and a frozen install applies the same patch
+locally and in CI. Do not install with another package manager that ignores it.
 
-`tests/middleware-index.test.ts` checks live index changes, visibility policies,
-missing/malformed indexes and index-independent editor access.
-`tests/e2e/editor-index-stability.spec.ts` interleaves 12 versioned updates with
-editor/list/public API reads, then verifies deletion. It does not sleep or retry
-until success, and rejects an HTML response where JSON is required.
+When upgrading Next.js, review the upstream implementation and remove or rebase
+this exact-version patch. Do not loosen its version constraint to make an upgrade
+install silently. A patch/application mismatch or changed regression-test anchors
+must be investigated rather than skipped.
 
-The editor CI job starts the complete Playwright suite three separate times with
-`--retries=0`. Every run must pass; an error stops the job and fails `release-gate`.
-Each invocation starts a fresh authoring process (including fresh rate-limit
-state), rather than increasing rate limits to accommodate repeated tests.
-Reports, traces and server output are retained separately for each pass under
-`playwright-report/`, `test-results/` and `editor-logs/`.
+## Regression evidence and gates
 
-For one local run with the repository's supported Node.js and Playwright browser:
+`tests/next-dev-route-snapshot.test.ts` executes the actual installed dependency's
+scan block with controlled asynchronous metadata reads. It checks both module
+formats for complete route snapshots during awaits and preservation after a failed
+scan. All four cases fail against the unpatched code and pass with the patch.
+This deterministically tests the race window without sleeps or request retries.
+
+`tests/e2e/editor-index-stability.spec.ts` interleaves 12 version-checked writes
+with editor/list/public API reads, then verifies deletion. It rejects an HTML
+response where JSON is required and does not retry mutations.
+
+CI starts the complete Playwright suite three separate times with `--retries=0`.
+Every run must pass; a failure stops the job and fails `release-gate`. Each run
+starts a fresh authoring process and fresh rate-limit state. Turbopack remains
+enabled for the real development command and for the tests. Reports, traces and
+server output are retained per pass under `playwright-report/`, `test-results/`
+and `editor-logs/`.
+
+After updating the branch, install the patched dependency before starting dev:
 
 ```bash
+pnpm install --frozen-lockfile
 pnpm test:e2e --retries=0
 ```
 
-Do not run concurrent authoring servers or content commands against the same
-checkout. This remains a single-process local writing tool; see
-[save safety](editor-save-safety.md) and [release safety](release-safety.md).
+Do not run concurrent authoring servers or content commands against one checkout.
+See [save safety](editor-save-safety.md) and [release safety](release-safety.md).
