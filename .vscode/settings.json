@@ -1,4 +1,14 @@
 {
     "typescript.tsdk": "node_modules/.pnpm/typescript@4.7.3/node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "files.exclude": {
+        "**/.next": true,
+        "**/.next-e2e": true,
+        "**/dist": true
+    },
+    "files.watcherExclude": {
+        "**/.next/**": true,
+        "**/.next-e2e/**": true,
+        "**/dist/**": true
+    }
 }
