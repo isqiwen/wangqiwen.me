@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { getPostByRoute, getPosts } from "@/app/get-posts";
 import { getSiteUrl, siteConfig } from "@/utils/site-config";
 import { canPreviewDrafts } from "@/utils/server/local-editor";
-import { getArticleComponent } from "../../post-registry";
+import { getArticleComponent } from "@/content/posts/post-registry";
 
-export const revalidate = 60;
-// Published routes are still pre-rendered by generateStaticParams. Allowing
-// known draft routes through locally makes the editor previewable without
-// publishing a temporary article; production returns 404 for those drafts.
-export const dynamicParams = true;
+// Only the routes that generateStaticParams lists exist. In production those
+// are the published articles, so a draft, an archived article or an unknown
+// path is a 404 that is neither rendered nor cached. Local work also lists
+// drafts, which is what makes the editor preview work.
+export const dynamicParams = false;
 
 type ArticlePageProps = {
   params: Promise<{
@@ -19,10 +19,7 @@ type ArticlePageProps = {
 };
 
 export async function generateStaticParams() {
-  const posts = await getPosts({
-    includeDrafts: canPreviewDrafts(),
-    includeViews: false,
-  });
+  const posts = await getPosts({ includeDrafts: canPreviewDrafts() });
 
   return posts.map(post => ({
     year: post.publishedAt.slice(0, 4),
@@ -36,7 +33,6 @@ export async function generateMetadata({
   const { year, slug } = await params;
   const post = await getPostByRoute(year, slug, {
     includeDrafts: canPreviewDrafts(),
-    includeViews: false,
   });
 
   if (!post) {
@@ -78,7 +74,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const { year, slug } = await params;
   const post = await getPostByRoute(year, slug, {
     includeDrafts: canPreviewDrafts(),
-    includeViews: false,
   });
   const Article = getArticleComponent(year, slug);
 

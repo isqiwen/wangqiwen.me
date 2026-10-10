@@ -1,12 +1,11 @@
 import "@/styles/globals.css";
-import "katex/dist/katex.min.css";
+import { preload } from "react-dom";
 import { themeEffect } from "./themes/theme-effect";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { doge } from "./doge";
 import ProgressBar from "./progress-bar";
 import { siteConfig } from "@/utils/site-config";
-import { ensureEnvironmentWarnings } from "@/utils/server/env-warnings";
 
 export const metadata = {
   title: siteConfig.site.title,
@@ -35,7 +34,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  ensureEnvironmentWarnings();
+  // The interface font is needed for the first paint of every page. Without a
+  // hint the browser finds it only after it has parsed the stylesheet.
+  preload("/fonts/inter-latin-wght-normal.woff2", {
+    as: "font",
+    type: "font/woff2",
+    crossOrigin: "anonymous",
+  });
 
   return (
     <html lang={siteConfig.site.language} suppressHydrationWarning={true}>

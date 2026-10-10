@@ -1,5 +1,6 @@
 import { promises as fs, type Dirent } from "node:fs";
 import path from "node:path";
+import { isPostSlug, POSTS_DIRECTORY } from "@/utils/shared/post-fields";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 
 export type EditorFileEntry = {
@@ -18,15 +19,14 @@ function isMissing(error: unknown): boolean {
 function isArticleEntry(entry: Dirent, depth: number): boolean {
   if (depth === 0) return entry.isDirectory() && /^\d{4}$/.test(entry.name);
   if (depth === 1) {
-    return entry.isDirectory() && entry.name.length <= 100 &&
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name);
+    return entry.isDirectory() && isPostSlug(entry.name);
   }
   return depth === 2 && entry.isFile() && entry.name === "article.mdx";
 }
 
 export async function collectEditorFiles(root = process.cwd()): Promise<EditorFileEntry[]> {
   const result: EditorFileEntry[] = [];
-  await walk(path.join(root, "app", "(post)"), 0, root, result);
+  await walk(path.join(root, ...POSTS_DIRECTORY.split("/")), 0, root, result);
   return result;
 }
 
@@ -77,7 +77,7 @@ async function walk(dir: string, depth: number, root: string, bucket: EditorFile
     const relativePath = path.relative(root, abs).replace(/\\/g, "/");
     bucket.push({
       path: relativePath,
-      label: relativePath.replace(/^app\/\(post\)\//, "").replace(/\/article\.mdx$/, ""),
+      label: relativePath.slice(POSTS_DIRECTORY.length + 1).replace(/\/article\.mdx$/, ""),
       status: status === "draft" || status === "published" || status === "archived" ? status : "archived",
       updatedAt: mtime,
     });

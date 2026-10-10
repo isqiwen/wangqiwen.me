@@ -1,3 +1,12 @@
+import {
+  estimateReadingTimeMinutes,
+  normalizeDateString,
+  normalizeOptionalString,
+  normalizePositiveInteger,
+  normalizeTags,
+  type PostStatus,
+} from "@/utils/shared/post-fields";
+
 export type ExportedMetadataBlock = {
   start: number;
   end: number;
@@ -94,4 +103,71 @@ export function parseExportedMetadata<T extends object>(
 export function stripExportedMetadata(source: string): string {
   const block = findExportedMetadataBlock(source);
   return block ? source.slice(0, block.start) + source.slice(block.end) : source;
+}
+
+export type NormalizedPostMetadata = {
+  title: string;
+  description: string;
+  publishedAt: string;
+  id: string;
+  status: PostStatus;
+  tags: string[];
+  readingTimeMinutes: number;
+  summary?: string;
+  series?: string;
+  seriesOrder?: number;
+  updatedAt?: string;
+};
+
+// The canonical metadata block: trimmed values, a fixed key order and optional
+// fields only when set. Call this for metadata that has passed validation.
+export function normalizePostMetadata(
+  metadata: Record<string, unknown>,
+  source: string,
+): NormalizedPostMetadata {
+  const summary = normalizeOptionalString(metadata.summary);
+  const series = normalizeOptionalString(metadata.series);
+  const updatedAt = normalizeDateString(metadata.updatedAt);
+  const normalized: NormalizedPostMetadata = {
+    title: normalizeOptionalString(metadata.title),
+    description: normalizeOptionalString(metadata.description),
+    publishedAt: metadata.publishedAt as string,
+    id: metadata.id as string,
+    status: metadata.status as PostStatus,
+    tags: normalizeTags(metadata.tags),
+    readingTimeMinutes:
+      normalizePositiveInteger(metadata.readingTimeMinutes) ||
+      estimateReadingTimeMinutes(stripExportedMetadata(source)),
+  };
+
+  if (summary) {
+    normalized.summary = summary;
+  }
+
+  if (series) {
+    normalized.series = series;
+    normalized.seriesOrder = normalizePositiveInteger(metadata.seriesOrder);
+  }
+
+  if (updatedAt) {
+    normalized.updatedAt = updatedAt;
+  }
+
+  return normalized;
+}
+
+export function formatExportedMetadata(metadata: object): string {
+  return `export const metadata = ${JSON.stringify(metadata, null, 2)};\n\n`;
+}
+
+export function replaceExportedMetadata(
+  source: string,
+  metadata: object,
+): string | null {
+  const block = findExportedMetadataBlock(source);
+  return block
+    ? source.slice(0, block.start) +
+        formatExportedMetadata(metadata) +
+        source.slice(block.end)
+    : null;
 }

@@ -9,7 +9,7 @@ import {
 } from "@/utils/server/post-files";
 import { syncPostsMetadata } from "@/utils/server/sync-posts";
 
-const relativePath = "app/(post)/2026/editor-lifecycle/article.mdx";
+const relativePath = "content/posts/2026/editor-lifecycle/article.mdx";
 
 function postSource(
   status: "draft" | "published" | "archived",
@@ -43,7 +43,7 @@ async function readManifest(path: string) {
 
 test("synchronizes draft, publish, archive, and deletion transitions", async () => {
   const root = await mkdtemp(join(tmpdir(), "wangqiwen-editor-lifecycle-"));
-  const postsRoot = join(root, "app", "(post)");
+  const postsRoot = join(root, "content", "posts");
   const manifestPath = join(root, "posts", "manifest.json");
   const postFile = resolvePostFile(relativePath, postsRoot);
 
@@ -76,7 +76,7 @@ test("synchronizes draft, publish, archive, and deletion transitions", async () 
 
 test("rejects editor content that violates publishing quality rules", async () => {
   const root = await mkdtemp(join(tmpdir(), "wangqiwen-editor-quality-"));
-  const postsRoot = join(root, "app", "(post)");
+  const postsRoot = join(root, "content", "posts");
   const manifestPath = join(root, "posts", "manifest.json");
   const postFile = resolvePostFile(relativePath, postsRoot);
 
@@ -96,14 +96,14 @@ test("rejects editor content that violates publishing quality rules", async () =
 
 test("rejects duplicate positions in a series", async () => {
   const root = await mkdtemp(join(tmpdir(), "wangqiwen-editor-series-"));
-  const postsRoot = join(root, "app", "(post)");
+  const postsRoot = join(root, "content", "posts");
   const manifestPath = join(root, "posts", "manifest.json");
   const first = resolvePostFile(
-    "app/(post)/2026/first-series-post/article.mdx",
+    "content/posts/2026/first-series-post/article.mdx",
     postsRoot
   );
   const second = resolvePostFile(
-    "app/(post)/2026/second-series-post/article.mdx",
+    "content/posts/2026/second-series-post/article.mdx",
     postsRoot
   );
 

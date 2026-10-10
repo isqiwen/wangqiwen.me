@@ -4,7 +4,7 @@ const { mkdir, readdir, rm, writeFile } = require("fs/promises");
 const { join } = require("path");
 const { spawnSync } = require("child_process");
 
-const POSTS_ROOT = join(process.cwd(), "app", "(post)");
+const POSTS_ROOT = join(process.cwd(), "content", "posts");
 const IMAGES_ROOT = join(process.cwd(), "public", "images");
 const PLACEHOLDER_IMAGES = new Set([
   "avatar-placeholder.svg",

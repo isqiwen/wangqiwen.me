@@ -1,3 +1,4 @@
+import "katex/dist/katex.min.css";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AudioPlayer } from "@/app/(post)/components/audio-player";

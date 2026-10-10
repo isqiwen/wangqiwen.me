@@ -1,10 +1,10 @@
 import { getPosts } from "@/app/get-posts";
 import { getSiteUrl, siteConfig } from "@/utils/site-config";
 
-export const revalidate = 60;
+export const dynamic = "force-static";
 
 export async function GET() {
-  const posts = (await getPosts({ includeViews: false })).slice(0, 100);
+  const posts = (await getPosts()).slice(0, 100);
   const updated =
     posts
       .map(post => toRfc3339(post.updatedAt ?? post.publishedAt))

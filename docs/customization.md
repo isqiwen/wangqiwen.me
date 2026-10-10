@@ -19,7 +19,7 @@ pnpm reset:content -- --force
 That command will:
 
 - create a backup first
-- remove all post directories under `app/(post)/<year>`
+- remove all post directories under `content/posts/<year>`
 - clear article image folders under `public/images`
 - preserve the neutral avatar placeholder files
 - reset `posts/manifest.json`
@@ -55,15 +55,12 @@ No environment file is required for the default local workflow. Create one only 
 cp .env.example .env.local
 ```
 
-Recommended variables:
-
-- `UPSTASH_REDIS_REST_URL`
-- `UPSTASH_REDIS_REST_TOKEN`
-
 Optional variables:
 
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: store view counts
+- `UPSTASH_REDIS_FORCE_REMOTE=1`: use that store in local development, which
+  otherwise counts in memory
 - `GEO_IP_API_KEY`
-- `UPSTASH_REDIS_FORCE_REMOTE`
 
 If you prefer a scripted local setup first, run one of these:
 

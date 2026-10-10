@@ -10,7 +10,7 @@ const {
     source: string,
     options: { articlePaths: Set<string> }
   ) => string[];
-} = require("../scripts/content/lib/content-quality.js");
+} = require("../utils/shared/content-quality.js");
 
 const articlePaths = new Set(["/2024/real-post"]);
 

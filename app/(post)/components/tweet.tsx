@@ -7,9 +7,9 @@ import {
   TweetSkeleton,
   type TweetProps,
 } from "react-tweet";
-import redis from "@/app/redis";
 import { Caption } from "./caption";
 import { logger } from "@/utils/logger";
+import { getUpstash, withTimeout } from "@/utils/server/upstash";
 import "./tweet.css";
 
 interface TweetArgs {
@@ -17,7 +17,12 @@ interface TweetArgs {
   caption: ReactNode;
 }
 
+// Tweets are fetched while the page is built. A build that is given the remote
+// store (BUILD_WITH_REMOTE_REDIS=1) also keeps a copy there, so a later build
+// that cannot reach X still renders them. Without a store there is no copy.
 async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
+  const redis = getUpstash();
+
   // `getTweet` logs tombstones with console.error. Read the raw result instead
   // so private or deleted embeds can quietly use the unavailable fallback.
   const result = await fetchTweet(id).catch(() => undefined);
@@ -26,7 +31,7 @@ async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
   if (tweet) {
     // we populate the cache if we have a fresh tweet
     try {
-      await redis.set(`tweet:${id}`, tweet);
+      await (redis && withTimeout(redis.set(`tweet:${id}`, tweet)));
     } catch (error) {
       logger.warn("tweet cache write error", error);
     }
@@ -39,13 +44,12 @@ async function getAndCacheTweet(id: string): Promise<Tweet | undefined> {
     return undefined;
   }
 
+  if (!redis) {
+    return undefined;
+  }
+
   try {
-    const cached = await redis.get(`tweet:${id}`);
-    const cachedTweet = (cached ?? null) as Tweet | null;
-
-    if (!cachedTweet) return undefined;
-
-    return cachedTweet;
+    return (await withTimeout(redis.get<Tweet>(`tweet:${id}`))) ?? undefined;
   } catch (error) {
     logger.warn("tweet cache read error", error);
     return undefined;

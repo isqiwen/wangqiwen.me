@@ -5,7 +5,7 @@ import { getTopics } from "@/utils/topics";
 import { getSeries } from "@/utils/series";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
 
   return [
     {

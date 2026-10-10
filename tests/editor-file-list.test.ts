@@ -8,7 +8,7 @@ import { collectEditorFiles } from "@/utils/server/editor-files";
 async function fixture(t: TestContext) {
   const root = await fs.mkdtemp(path.join(tmpdir(), "editor-file-list-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const directory = path.join(root, "app", "(post)", "2092", "list-fixture");
+  const directory = path.join(root, "content", "posts", "2092", "list-fixture");
   await fs.mkdir(directory, { recursive: true });
   const article = path.join(directory, "article.mdx");
   await fs.writeFile(article, 'export const metadata = {"status":"draft"};\n\n## Body\n');
@@ -33,7 +33,7 @@ test("article lists exclude temporary/unrelated files before touching their meta
   });
   const entries = await collectEditorFiles(root);
   assert.equal(entries.length, 1);
-  assert.equal(entries[0].path, "app/(post)/2092/list-fixture/article.mdx");
+  assert.equal(entries[0].path, "content/posts/2092/list-fixture/article.mdx");
   assert.equal(entries[0].status, "draft");
   assert.equal(entries[0].label, "2092/list-fixture");
   assert.ok(!observed.includes(temporary));
@@ -68,7 +68,7 @@ for (const operation of ["stat", "readFile", "readdir"] as const) {
 
 test("missing article roots are empty; invalid metadata stays archived and years stay descending", async t => {
   const { root } = await fixture(t);
-  const older = path.join(root, "app", "(post)", "2091", "older");
+  const older = path.join(root, "content", "posts", "2091", "older");
   await fs.mkdir(older, { recursive: true });
   await fs.writeFile(path.join(older, "article.mdx"), "## Missing metadata\n");
   const entries = await collectEditorFiles(root);

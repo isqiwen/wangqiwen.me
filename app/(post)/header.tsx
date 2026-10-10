@@ -1,10 +1,11 @@
 "use client";
 
 import { useSelectedLayoutSegments } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import useSWR, { type KeyedMutator } from "swr";
+import { useEffect } from "react";
+import useSWR from "swr";
 import type { Post } from "@/app/get-posts";
 import { PostDate } from "@/app/(post)/post-date";
+import { formatCount } from "@/utils/common/string-helper";
 import { logger } from "@/utils/logger";
 import { uiCopy } from "@/utils/ui-copy";
 import { getPrimarySocialHandle, siteConfig } from "@/utils/site-config";
@@ -12,38 +13,28 @@ import { getTopicSlug } from "@/utils/topics";
 import { getSeriesContext } from "@/utils/series";
 import Link from "next/link";
 
-const fetcher = async (url: string): Promise<Post> => {
+type ViewCount = { id: string; views: number | null };
+
+const VIEWS_REFRESH_MS = 60 * 1000;
+const isDevelopment = process.env.NODE_ENV === "development";
+
+async function fetchViewCount(url: string): Promise<ViewCount> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to load post metadata: ${response.status}`);
+    throw new Error(`Failed to load the view count: ${response.status}`);
   }
   return response.json();
-};
+}
 
 export function Header({ posts }: { posts: Post[] }) {
   const segments = useSelectedLayoutSegments();
-  const initialPost = posts.find(
-    post => post.id === segments[segments.length - 1]
-  );
-  const post = initialPost ?? null;
-  const viewEndpoint = post
-    ? `/api/view?id=${encodeURIComponent(post.id)}`
-    : null;
-  const [liveViewPostId, setLiveViewPostId] = useState<string | null>(null);
+  const post = posts.find(item => item.id === segments[segments.length - 1]);
 
-  const { data: hydratedPost, mutate } = useSWR<Post>(viewEndpoint, fetcher, {
-    fallbackData: post ?? undefined,
-    refreshInterval: post ? 60000 : 0,
-    onSuccess: latestPost => {
-      setLiveViewPostId(latestPost.id);
-    },
-  });
-
-  if (post == null || hydratedPost == null) {
+  if (post == null) {
     return null;
   }
 
-  const seriesContext = getSeriesContext(hydratedPost, posts);
+  const seriesContext = getSeriesContext(post, posts);
 
   return (
     <>
@@ -60,7 +51,7 @@ export function Header({ posts }: { posts: Post[] }) {
         </p>
       ) : null}
       <h1 className="mb-1 text-2xl font-bold dark:text-gray-100">
-        {hydratedPost.title}
+        {post.title}
       </h1>
 
       <p className="flex font-mono text-xs text-gray-500 dark:text-gray-500">
@@ -78,32 +69,26 @@ export function Header({ posts }: { posts: Post[] }) {
           </span>
 
           <span suppressHydrationWarning={true}>
-            <PostDate post={hydratedPost} />
+            <PostDate post={post} />
           </span>
 
           <span className="mx-2">|</span>
 
           <span>
             {formatReadingTime(
-              hydratedPost.readingTimeMinutes,
+              post.readingTimeMinutes,
               uiCopy.post.readingTime
             )}
           </span>
         </span>
 
-        <Views
-          id={hydratedPost.id}
-          mutate={mutate}
-          defaultValue={hydratedPost.viewsFormatted}
-          show={liveViewPostId === hydratedPost.id}
-          onLoaded={setLiveViewPostId}
-        />
+        <Views id={post.id} />
       </p>
 
-      {hydratedPost.tags.length > 0 ? (
+      {post.tags.length > 0 ? (
         <nav className="mt-3" aria-label="Topics">
           <ul className="flex flex-wrap gap-2">
-            {hydratedPost.tags.map(tag => (
+            {post.tags.map(tag => (
               <li key={tag}>
                 <Link
                   href={`/topics/${getTopicSlug(tag)}`}
@@ -120,55 +105,43 @@ export function Header({ posts }: { posts: Post[] }) {
   );
 }
 
-function Views({
-  id,
-  mutate,
-  defaultValue,
-  show,
-  onLoaded,
-}: {
-  id: string;
-  mutate: KeyedMutator<Post>;
-  defaultValue: string;
-  show: boolean;
-  onLoaded: (postId: string) => void;
-}) {
-  const views = defaultValue;
-  const didLogViewRef = useRef(false);
+function Views({ id }: { id: string }) {
+  const endpoint = `/api/view?id=${encodeURIComponent(id)}`;
+  // In production the request that records the visit also returns the count,
+  // so there is nothing to fetch on mount. Development records no visits.
+  const { data, mutate } = useSWR<ViewCount>(endpoint, fetchViewCount, {
+    refreshInterval: VIEWS_REFRESH_MS,
+    revalidateOnMount: isDevelopment,
+    revalidateOnFocus: false,
+  });
 
   useEffect(() => {
-    didLogViewRef.current = false;
-  }, [id]);
+    if (isDevelopment) return;
 
-  useEffect(() => {
-    if ("development" === process.env.NODE_ENV) return;
-    if (!didLogViewRef.current) {
-      const url = `/api/view?incr=1&id=${encodeURIComponent(id)}`;
-      fetch(url)
-        .then(async res => {
-          if (!res.ok) {
-            throw new Error(`Failed to record page view: ${res.status}`);
-          }
-          return res.json();
-        })
-        .then(obj => {
-          mutate(obj);
-          onLoaded(obj.id);
-        })
-        .catch(error => {
-          logger.error("Failed to record page view.", error);
-        });
-      didLogViewRef.current = true;
-    }
-  }, [id, mutate, onLoaded]);
+    let cancelled = false;
+    fetchViewCount(`${endpoint}&incr=1`)
+      .then(result => {
+        if (!cancelled) {
+          void mutate(result, { revalidate: false });
+        }
+      })
+      .catch(error => {
+        logger.error("Failed to record page view.", error);
+      });
 
-  if (!show || views == null) {
+    return () => {
+      cancelled = true;
+    };
+  }, [endpoint, mutate]);
+
+  // Omitted until known, and whenever the count is unavailable.
+  if (data?.views == null) {
     return null;
   }
 
   return (
     <span className="pr-1.5" data-view-count="true">
-      {views} {uiCopy.post.views}
+      {formatCount(data.views)} {uiCopy.post.views}
     </span>
   );
 }

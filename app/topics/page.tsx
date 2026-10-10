@@ -4,8 +4,6 @@ import { getPosts } from "@/app/get-posts";
 import { getSiteUrl } from "@/utils/site-config";
 import { getTopics } from "@/utils/topics";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Topics",
   description: "Browse writing by topic.",
@@ -15,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TopicsPage() {
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
   const topics = getTopics(posts);
 
   return (

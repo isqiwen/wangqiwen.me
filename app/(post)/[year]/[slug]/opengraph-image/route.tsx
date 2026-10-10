@@ -1,11 +1,13 @@
-export const revalidate = 60;
-export const dynamic = "force-dynamic";
+// One image per published article, rendered at build time. Any other path,
+// including a draft or an archived article, is a 404.
+export const dynamic = "force-static";
+export const dynamicParams = false;
 export const runtime = "nodejs";
 
 import { ImageResponse } from "next/og";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getPostByRoute } from "@/app/get-posts";
+import { getPostByRoute, getPosts } from "@/app/get-posts";
 import { siteConfig } from "@/utils/site-config";
 
 const fontsDir = join(process.cwd(), "public", "fonts");
@@ -24,12 +26,19 @@ type ArticleImageRouteProps = {
   params: Promise<{ year: string; slug: string }>;
 };
 
+export async function generateStaticParams() {
+  return (await getPosts()).map(post => ({
+    year: post.publishedAt.slice(0, 4),
+    slug: post.id,
+  }));
+}
+
 export async function GET(
   _request: Request,
   { params }: ArticleImageRouteProps
 ) {
   const { year, slug } = await params;
-  const post = await getPostByRoute(year, slug, { includeViews: false });
+  const post = await getPostByRoute(year, slug);
 
   if (!post) {
     return new Response("Not found", { status: 404 });

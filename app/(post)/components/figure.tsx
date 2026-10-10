@@ -1,4 +1,14 @@
-export function Figure({ id = undefined, wide = false, children }) {
+import type { ReactNode } from "react";
+
+export function Figure({
+  id = undefined,
+  wide = false,
+  children,
+}: {
+  id?: string;
+  wide?: boolean;
+  children?: ReactNode;
+}) {
   return (
     <figure
       id={id}

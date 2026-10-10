@@ -1,5 +1,3 @@
-"use client";
-
 import { Caption } from "./caption";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";

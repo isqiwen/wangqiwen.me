@@ -1,24 +1,9 @@
-"use client";
-
-import {
-  Children,
-  ReactElement,
-  ReactNode,
-  isValidElement,
-  useId,
-  useMemo,
-  useState,
-} from "react";
+import { Children, isValidElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type { Language } from "prism-react-renderer";
 import { Snippet } from "./snippet";
-import { Caption } from "./caption";
-import {
-  mdxEmptyStateClass,
-  mdxInsetClass,
-  mdxMutedTextClass,
-  mdxPanelClass,
-  mdxPillButtonClass,
-} from "./surface";
+import { mdxEmptyStateClass, mdxInsetClass, mdxMutedTextClass } from "./surface";
+import { TabSwitcher, type TabPanel } from "./tab-switcher";
 
 type TabProps = {
   title: string;
@@ -31,6 +16,8 @@ function isElementWithChildren(node: unknown): node is ReactElement<ElementWithC
   return isValidElement<ElementWithChildren>(node);
 }
 
+// Every panel is rendered here, so code is highlighted before it reaches the
+// browser. The switcher that follows only chooses which panel to show.
 export function Tabs({
   children,
   defaultIndex = 0,
@@ -43,72 +30,47 @@ export function Tabs({
   lineNumbers?: boolean;
 }) {
   const tabs = Children.toArray(children) as ReactElement<TabProps>[];
-  const [active, setActive] = useState(defaultIndex);
-  const id = useId();
-  const activeTab = tabs[active];
-
-  const renderedState = useMemo(() => {
-    if (!activeTab) {
-      return {
-        content: <div className={mdxEmptyStateClass}>No tabs are available in this block.</div>,
-        isSnippet: false,
-      };
-    }
-
-    const cleanedChildren = cleanChildren(activeTab.props.children);
-    const highlightInfo = findCodeSnippet(cleanedChildren);
-
-    if (!highlightInfo) {
-      const content =
-        cleanedChildren.length > 0 ? cleanedChildren : activeTab.props.children;
-
-      return {
-        content: <div className={`${mdxInsetClass} p-4 ${mdxMutedTextClass}`}>{content}</div>,
-        isSnippet: false,
-      };
-    }
-
-    const { code, language } = highlightInfo;
-
-    return {
-      content: (
-        <Snippet scroll caption={caption} className="my-0" lineNumbers={lineNumbers}>
-          <code className={`language-${language}`}>{code}</code>
-        </Snippet>
-      ),
-      isSnippet: true,
-    };
-  }, [activeTab, caption, lineNumbers]);
+  const panels = tabs.map(tab => renderPanel(tab, caption, lineNumbers));
 
   return (
-    <div className={`${mdxPanelClass} w-full space-y-3`}>
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Code or content tabs">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab.props.title + index}
-            type="button"
-            onClick={() => setActive(index)}
-            className={mdxPillButtonClass(index === active)}
-            role="tab"
-            aria-selected={index === active}
-            aria-controls={`${id}-panel-${index}`}
-            id={`${id}-tab-${index}`}
-          >
-            {tab.props.title}
-          </button>
-        ))}
-      </div>
-      <div
-        id={`${id}-panel-${active}`}
-        role="tabpanel"
-        aria-labelledby={`${id}-tab-${active}`}
-        className="w-full"
-      >
-        {renderedState.content}
-      </div>
-      {!renderedState.isSnippet && caption ? <Caption className="mt-1">{caption}</Caption> : null}
-    </div>
+    <TabSwitcher
+      panels={panels}
+      defaultIndex={defaultIndex}
+      caption={caption}
+      emptyState={<div className={mdxEmptyStateClass}>No tabs are available in this block.</div>}
+    />
   );
+}
+
+function renderPanel(
+  tab: ReactElement<TabProps>,
+  caption: ReactNode,
+  lineNumbers: boolean,
+): TabPanel {
+  const cleanedChildren = cleanChildren(tab.props.children);
+  const highlightInfo = findCodeSnippet(cleanedChildren);
+
+  if (!highlightInfo) {
+    const content = cleanedChildren.length > 0 ? cleanedChildren : tab.props.children;
+
+    return {
+      title: tab.props.title,
+      content: <div className={`${mdxInsetClass} p-4 ${mdxMutedTextClass}`}>{content}</div>,
+      isSnippet: false,
+    };
+  }
+
+  const { code, language } = highlightInfo;
+
+  return {
+    title: tab.props.title,
+    content: (
+      <Snippet scroll caption={caption} className="my-0" lineNumbers={lineNumbers}>
+        <code className={`language-${language}`}>{code}</code>
+      </Snippet>
+    ),
+    isSnippet: true,
+  };
 }
 
 export function Tab({ children }: TabProps) {

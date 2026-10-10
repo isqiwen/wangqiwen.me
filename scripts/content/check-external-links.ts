@@ -2,7 +2,6 @@
 
 import { constants } from "node:fs";
 import { access, mkdir, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { relative, resolve } from "node:path";
 import { fetchTweet } from "react-tweet/api";
 import {
@@ -10,11 +9,7 @@ import {
   type ExternalReference,
   type ExternalReferenceKind,
 } from "../../utils/external-links";
-
-const require = createRequire(import.meta.url);
-const { collectPosts } = require("./lib/posts") as {
-  collectPosts: () => Promise<Map<string, { path: string; source: string }>>;
-};
+import { collectSourcePosts } from "../../utils/server/sync-posts";
 
 const REQUEST_TIMEOUT_MS = 12_000;
 const CONCURRENCY = 4;
@@ -35,11 +30,11 @@ type CheckResult = {
 
 async function main() {
   const reportDirectory = getArgument("--report-dir");
-  const entries = await collectPosts();
-  const references = [...entries.values()].flatMap(entry =>
-    extractExternalReferences(entry.source).map(reference => ({
+  const { posts } = await collectSourcePosts();
+  const references = posts.flatMap(post =>
+    extractExternalReferences(post.source).map(reference => ({
       ...reference,
-      file: relative(process.cwd(), entry.path),
+      file: relative(process.cwd(), post.absolutePath),
     }))
   );
   const targets = groupReferences(references);

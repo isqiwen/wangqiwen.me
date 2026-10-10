@@ -12,6 +12,8 @@ changing your input, download your current MDX, or keep it as a new unsaved draf
 The new draft receives a distinct ID and clears its series position so it cannot
 replace the original or accidentally claim the same series slot. Save it normally.
 Reload latest requires confirmation whenever current input is unsaved.
+A file that was just opened is not unsaved: opening it, or switching to another
+file without editing, asks for no confirmation.
 
 During an ordinary save, typing remains enabled. The completed request marks only
 its submitted snapshot as saved. Newer text and metadata stay in the editor and

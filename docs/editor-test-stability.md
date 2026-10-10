@@ -8,7 +8,7 @@ creates a known draft, deliberately inserts both `AblationTable` and `Algorithm`
 into its body, and scopes card lookups to the Component Library.
 
 The unexpected HTML 404s were a separate development-server routing race. In the
-pinned Next.js 15.5.21 package, `setup-dev-bundler` clears the shared `appFiles`,
+Next.js 15.5 line (checked through 15.5.27), `setup-dev-bundler` clears the shared `appFiles`,
 `pageFiles` and `devPageFiles` sets before an asynchronous filesystem scan. Requests
 arriving during a metadata/middleware await can see an empty or partial route table.
 The upstream report describes the same window:
@@ -18,29 +18,91 @@ Article writes and generated-registry updates trigger the filesystem watcher.
 An initial attempt to stop importing the changing manifest from middleware reduced
 failures in a small probe (4/47 requests before, 0/75 after), but full CI still
 caught a publication POST returning HTML 404. That mitigation was insufficient and
-has been withdrawn: middleware, its runtime and its visibility policies are left
-unchanged. The solution must keep the route table usable during the scan itself.
+has been withdrawn. The first fix that held was a patch to Next.js that kept the
+route table usable during the scan. It is no longer needed; see below.
 
-## Version-pinned compatibility patch
+## Articles are stored outside `app/`
 
-`patches/next@15.5.21.patch` is applied by pnpm through `patchedDependencies`.
-It changes only the CommonJS and ESM development-bundler implementations. Each
-scan builds new local sets and, only after successful completion, synchronously
-copies them into the existing published sets. No await occurs during publication,
-and Set identity is retained for the router and TypeScript plugin. A rejected
-scan leaves the previous complete route snapshot intact.
+The route-table race needs a trigger. Next.js rescans its routes only when a
+file inside `app/` (or `pages/`) changes, or one of a few root files does:
+the middleware, `.env*` and `tsconfig.json`. Every editor save used to write
+there. The article, its temporary file and the generated registry all lived in
+`app/(post)/`, so each save opened the window that its own follow-up requests
+then fell into.
 
-This is a project-maintained compatibility patch, not an upstream release or a
-claim that every hot-reload failure is fixed. It does not change production route
-handling, middleware authorization, atomic article writes, save preconditions or
-API rate limits. Next.js, React and all dependency versions remain pinned as before.
-The lockfile records the patch hash, and a frozen install applies the same patch
-locally and in CI. Do not install with another package manager that ignores it.
+Articles now live in `content/posts/<year>/<slug>/article.mdx` and the
+generated registry in `content/posts/post-registry.ts`. Public URLs are
+unchanged: routes come from `app/(post)/[year]/[slug]/page.tsx`, which imports
+the registry. `POSTS_DIRECTORY` in `utils/shared/post-fields.ts` is the single
+definition of the location, and the editor API rejects any other path.
 
-When upgrading Next.js, review the upstream implementation and remove or rebase
-this exact-version patch. Do not loosen its version constraint to make an upgrade
-install silently. A patch/application mismatch or changed regression-test anchors
-must be investigated rather than skipped.
+Measured with the watcher and ignore rule that Next.js 15.5.27 itself uses:
+
+| Write                                    | Rescans triggered |
+| ---------------------------------------- | ----------------- |
+| Save an article under `app/(post)/`      | 1                 |
+| Rewrite `app/(post)/post-registry.ts`    | 1                 |
+| Save an article under `content/posts/`   | 0                 |
+| Rewrite `content/posts/post-registry.ts` | 0                 |
+| Rewrite `posts/manifest.json`            | 0                 |
+
+Do not move article sources, the registry or anything else the editor writes
+back under `app/`, and do not name such a directory with an `app` prefix: the
+watcher matches paths by string prefix. Editing application code under `app/`
+while the editor is in use can still trigger a rescan. That is ordinary
+development, not the save path.
+
+## The Next.js patch was removed
+
+Between the discovery of the race and the move above, the project carried a
+pnpm patch for Next.js. It made each scan build new route sets and publish them
+only when complete. Because pnpm binds a patch to an exact version, every
+Next.js upgrade, including security releases, needed a manual rebase.
+
+With articles outside `app/`, editor saves no longer start a scan, so the patch
+had nothing left to protect on the save path. It was deleted together with its
+unit test after the complete browser suite passed three consecutive no-retry
+runs on unpatched Next.js 15.5.27. Next.js now installs unmodified and upgrades
+are ordinary version bumps.
+
+If HTML 404s return for editor requests, first check that nothing the editor
+writes has moved back under `app/`. Do not reintroduce the patch as a first
+response.
+
+## The middleware imports nothing that changes
+
+A second cause of bad responses survived the move. The middleware used to import
+`posts/manifest.json` to decide which article paths exist, and every save
+rewrites that file. The development server recompiles the middleware whenever
+one of its imports changes. While it does, the router and the renderer can
+disagree about whether the middleware matches a path, and Next.js then answers
+the request with an empty `200`: no body, no content type and none of the
+configured headers. Browser tests saw it as an editor page that never loaded or
+a JSON response that could not be parsed, in roughly two runs out of five.
+
+The middleware now guards only `/editor` and `/api/editor`, and imports
+nothing that authoring changes, so a save no longer recompiles it. Which
+articles are public is decided by the article route:
+`app/(post)/[year]/[slug]/page.tsx` sets `dynamicParams = false`, so only the
+paths that `generateStaticParams` lists exist. In production those are the
+published articles; a draft, an archived article or an unknown path is a 404
+that is neither rendered nor cached. Local work also lists drafts.
+
+Do not import the manifest, the registry or any other generated file into
+`middleware.tsx`. The index stability test also requires a content type on the
+editor page, so an empty answer fails it.
+
+## Selection after formatting
+
+Bold, link and the other formatting actions replace the body and then restore a
+selection. The restore used to wait for the next animation frame. An input that
+arrived inside that frame saw the old selection: a test that filled the body
+right after a shortcut replaced only part of it, about once in thirty runs.
+
+The selection is now restored in the same React commit that writes the new
+body, so it is final when the event handler returns. A browser test dispatches
+the shortcut and reads the selection back before any frame can run; it fails
+deterministically against the one-frame delay.
 
 ## Concurrent article listing
 
@@ -62,12 +124,6 @@ require a successful JSON list response while saves are running.
 
 ## Regression evidence and gates
 
-`tests/next-dev-route-snapshot.test.ts` executes the actual installed dependency's
-scan block with controlled asynchronous metadata reads. It checks both module
-formats for complete route snapshots during awaits and preservation after a failed
-scan. All four cases fail against the unpatched code and pass with the patch.
-This deterministically tests the race window without sleeps or request retries.
-
 `tests/e2e/editor-index-stability.spec.ts` interleaves 12 version-checked writes
 with editor/list/public API reads, then verifies deletion. It rejects an HTML
 response where JSON is required and does not retry mutations.
@@ -79,7 +135,7 @@ enabled for the real development command and for the tests. Reports, traces and
 server output are retained per pass under `playwright-report/`, `test-results/`
 and `editor-logs/`.
 
-After updating the branch, install the patched dependency before starting dev:
+After updating the branch, install dependencies before starting dev:
 
 ```bash
 pnpm install --frozen-lockfile

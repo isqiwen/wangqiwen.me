@@ -7,27 +7,6 @@ pre code {
   font-size: 0.9rem;
 }
 
-figure[data-rehype-pretty-code-figure] {
-  position: relative;
-}
-
-figure[data-rehype-pretty-code-figure] pre {
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: #0b1120;
-  padding: 1.25rem;
-  color: rgb(226, 232, 240);
-  overflow: auto;
-}
-
-figure[data-rehype-pretty-code-figure] [data-rehype-pretty-code-title] {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: rgba(226, 232, 240, 0.7);
-  margin-bottom: 0.5rem;
-}
-
 .mdx-inline-math {
   display: inline;
   vertical-align: baseline;

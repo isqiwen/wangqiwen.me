@@ -9,12 +9,14 @@ const execFileAsync = promisify(execFile);
 
 async function expectResponse(response: APIResponse, status = 200, json = true) {
   expect(response.status(), (await response.text()).slice(0, 2_000)).toBe(status);
-  if (json) expect(response.headers()["content-type"]).toContain("application/json");
+  // An answer without a content type did not come from the route: the
+  // development server can end a request with an empty 200.
+  expect(response.headers()["content-type"] ?? "").toContain(json ? "application/json" : "text/html");
 }
 
 test("index regeneration cannot turn editor and public API routes into HTML 404s", async ({ request, baseURL }) => {
   const id = `index-stability-${randomUUID().slice(0, 8)}`;
-  const path = `app/(post)/2092/${id}/article.mdx`;
+  const path = `content/posts/2092/${id}/article.mdx`;
   const origin = new URL(baseURL!).origin;
   const content = (status: string, revision: number) =>
     `export const metadata = ${JSON.stringify({ id, title: "Index stability fixture", description: "Exercises live index regeneration without request retries.", publishedAt: "2092-01-01", status, tags: [] }, null, 2)};\n\n## Introduction\n\nRevision ${revision}.\n`;
@@ -57,7 +59,7 @@ test("index regeneration cannot turn editor and public API routes into HTML 404s
     await expectResponse(await request.get(`/api/editor?path=${encodeURIComponent(path)}`), 404);
   } finally {
     // Remove only this test's unique fixture, including after an assertion fails.
-    await rm(join(process.cwd(), "app", "(post)", "2092", id), { recursive: true, force: true });
-    await execFileAsync(process.execPath, ["scripts/content/sync-posts.cjs", "--silent"]);
+    await rm(join(process.cwd(), "content", "posts", "2092", id), { recursive: true, force: true });
+    await execFileAsync("pnpm", ["sync:posts", "--", "--silent"]);
   }
 });

@@ -8,7 +8,7 @@ import { getFollowLabel, getNavigationLinks, siteConfig } from "@/utils/site-con
 export async function Header() {
   const navigationLinks = getNavigationLinks();
   const followLabel = getFollowLabel();
-  const articles = (await getPosts({ includeViews: false })).map(post => ({
+  const articles = (await getPosts()).map(post => ({
     id: post.id,
     title: post.title,
     description: post.description,

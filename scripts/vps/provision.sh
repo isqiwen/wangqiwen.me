@@ -17,7 +17,8 @@ set -euo pipefail
 #   ENV_FILE_PATH=/path/to/private/prod.env
 #
 # Advanced env vars:
-#   NODE_MAJOR=20
+#   NODE_MAJOR=24          # default owned by install-runtime.sh
+#   SKIP_NODE_VERSION_CHECK=0
 #   CREATE_SERVICE_USER=1
 #   INSTALL_CADDY=1
 #   INSTALL_UFW=0
@@ -104,8 +105,10 @@ fi
 
 if [[ "${RUN_INSTALL}" == "1" ]]; then
   echo "==> Running environment bootstrap"
+  # Forward only an explicit override. install-runtime.sh owns the default so
+  # the supported Node.js major is defined in one place.
   as_root env \
-    NODE_MAJOR="${NODE_MAJOR:-20}" \
+    NODE_MAJOR="${NODE_MAJOR:-}" \
     APP_NAME="${APP_NAME}" \
     SERVICE_USER="${SERVICE_USER}" \
     SERVICE_HOME="${SERVICE_HOME}" \
@@ -150,6 +153,7 @@ if [[ "${RUN_DEPLOY}" == "1" ]]; then
       APP_DIR="${APP_DIR}" \
       APP_HOST="${APP_HOST}" \
       APP_PORT="${APP_PORT}" \
+      SKIP_NODE_VERSION_CHECK="${SKIP_NODE_VERSION_CHECK:-0}" \
       ARTIFACT_TARBALL="${DEPLOYABLE_ARTIFACT}" \
       bash "${ROOT_DIR}/scripts/vps/install-release.sh"
   else

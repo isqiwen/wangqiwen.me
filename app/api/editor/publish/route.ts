@@ -1,42 +1,35 @@
 import { NextResponse } from "next/server";
-import { requireLocalEditor } from "@/utils/server/local-editor";
-import { syncPostsMetadata } from "@/utils/server/sync-posts";
-import { withPostMutationLock } from "@/utils/server/post-files";
 import {
   createEditorJsonError,
-  enforceEditorRateLimit,
+  editorRoute,
   logEditorInfo,
 } from "@/utils/server/editor-api";
+import { withPostMutationLock } from "@/utils/server/post-files";
+import { syncPostsMetadata } from "@/utils/server/sync-posts";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
-    action: "publish",
-    limit: 20,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
-  }
+export const POST = editorRoute(
+  { action: "publish", limit: 20, failureMessage: "publish failed" },
+  async () => {
+    try {
+      const { stdout, stderr } = await withPostMutationLock(() =>
+        syncPostsMetadata()
+      );
+      logEditorInfo("publish", "Synchronized post metadata after publish.", {
+        hasStdout: Boolean(stdout),
+        hasStderr: Boolean(stderr),
+      });
 
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
+      return NextResponse.json({ ok: true, stdout, stderr });
+    } catch (error) {
+      // The author needs the validation text itself, not a generic failure.
+      return createEditorJsonError(
+        "publish",
+        error instanceof Error ? error.message : "publish failed",
+        500,
+        error
+      );
+    }
   }
-
-  try {
-    const { stdout, stderr } = await withPostMutationLock(syncPostsMetadata);
-    logEditorInfo("publish", "Synchronized post metadata after publish.", {
-      hasStdout: Boolean(stdout),
-      hasStderr: Boolean(stderr),
-    });
-
-    return NextResponse.json({ ok: true, stdout, stderr });
-  } catch (error: any) {
-    return createEditorJsonError("publish", error?.message ?? "publish failed", 500, error, {
-      stdout: error?.stdout,
-      stderr: error?.stderr,
-    });
-  }
-}
+);

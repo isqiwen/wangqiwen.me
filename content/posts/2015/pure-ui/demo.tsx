@@ -4,7 +4,7 @@ import "./demo.css";
 import loadScript from "load-script";
 import { useEffect, useRef } from "react";
 
-export function Demo({ id }) {
+export function Demo({ id }: { id: string }) {
   return <div id={id} className="pure-ui-demo"></div>;
 }
 

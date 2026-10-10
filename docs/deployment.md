@@ -148,12 +148,14 @@ cp .env.example .env.production
 
 This file contains production secrets and must not be committed.
 
-Fill at least:
+Every value is optional. To show view counts, fill:
 
 ```text
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 ```
+
+Without them the site is deployed and served normally, without the counts.
 
 Then run:
 

@@ -37,12 +37,12 @@ async function files(root: string, prefix = ""): Promise<string[]> {
 test("assembles only runtime files and excludes backups, env files and article source", async () => {
   const f = await fixture();
   try {
-    await f.write("backups/site-content/old/app/(post)/2026/draft/article.mdx", "PRIVATE_DRAFT");
-    await f.write("app/(post)/2026/draft/article.mdx", "PRIVATE_DRAFT");
+    await f.write("backups/site-content/old/content/posts/2026/draft/article.mdx", "PRIVATE_DRAFT");
+    await f.write("content/posts/2026/draft/article.mdx", "PRIVATE_DRAFT");
     await f.write(".env.production", "PRIVATE_TOKEN");
     await f.write(".next/standalone/.env.production", "PRIVATE_TOKEN");
     await f.write(".next/standalone/backups/copy.mdx", "PRIVATE_DRAFT");
-    await f.write(".next/standalone/app/(post)/2026/draft/article.mdx", "PRIVATE_DRAFT");
+    await f.write(".next/standalone/content/posts/2026/draft/article.mdx", "PRIVATE_DRAFT");
     await f.write(".next/standalone/node_modules/example/.env.local", "PRIVATE_TOKEN");
     await assembleArtifact(f.build, f.bundle);
     const output = await files(f.bundle);

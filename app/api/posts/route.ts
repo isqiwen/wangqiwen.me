@@ -1,27 +1,14 @@
 import { NextResponse } from "next/server";
-import { getManifest } from "../../get-posts";
+import { getPosts } from "@/app/get-posts";
 
 export const dynamic = "force-dynamic";
 
+// The public index of published posts.
 export async function GET() {
-  const manifest = await getManifest();
-  const posts =
-    manifest?.posts
-      ?.map(post => ({
-        id: post.id,
-        title: post.title,
-        description: post.description,
-        summary: post.summary,
-        series: post.series,
-        seriesOrder: post.seriesOrder,
-        publishedAt: post.publishedAt,
-        updatedAt: post.updatedAt,
-        status: post.status ?? "published",
-        tags: post.tags ?? [],
-        readingTimeMinutes: post.readingTimeMinutes ?? 1,
-        path: post.path,
-      }))
-      .filter(post => post.status === "published") ?? [];
+  const posts = (await getPosts()).map(({ date: _date, ...post }) => ({
+    ...post,
+    path: `/${post.publishedAt.slice(0, 4)}/${post.id}`,
+  }));
 
   return NextResponse.json({ posts });
 }

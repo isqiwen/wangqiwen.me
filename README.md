@@ -82,7 +82,7 @@ run it from the same WSL2 terminal:
 pnpm deploy:vps
 ```
 
-Existing Node.js 20 servers need the one-time runtime migration described in [Release safety](docs/release-safety.md) before deploying the new baseline.
+Existing Node.js 20 servers need the one-time runtime migration described in [Release safety](docs/release-safety.md) before deploying the new baseline. A release built with another Node.js major than the server's is refused before it replaces the running site.
 
 ## Guides
 

@@ -2,26 +2,31 @@ import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { resolvePathInside } from "@/utils/server/path-safety";
+import {
+  isIsoDate,
+  isPostStatus,
+  MAX_POST_SLUG_LENGTH,
+  parsePostFilePath,
+  POSTS_DIRECTORY,
+  normalizeOptionalString,
+  normalizePositiveInteger,
+  normalizeTags,
+} from "@/utils/shared/post-fields";
+import { POSTS_MANIFEST_FILE } from "@/utils/shared/post-manifest";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
 import { getUnknownTopics, TOPIC_DEFINITIONS } from "@/utils/topics";
 import { isKnownSeries, SERIES_DEFINITIONS } from "@/utils/series";
 
-export const POSTS_ROOT = path.join(process.cwd(), "app", "(post)");
+export const POSTS_ROOT = path.join(
+  process.cwd(),
+  ...POSTS_DIRECTORY.split("/")
+);
 export const POSTS_MANIFEST_PATH = path.join(
   process.cwd(),
-  "posts",
-  "manifest.json"
+  ...POSTS_MANIFEST_FILE.split("/")
 );
-export const POSTS_REGISTRY_PATH = path.join(
-  process.cwd(),
-  "app",
-  "(post)",
-  "post-registry.ts"
-);
+export const POSTS_REGISTRY_PATH = path.join(POSTS_ROOT, "post-registry.ts");
 
-const POST_FILE_PATTERN =
-  /^app\/\(post\)\/(\d{4})\/([a-z0-9]+(?:-[a-z0-9]+)*)\/article\.mdx$/;
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_POST_BYTES = 2 * 1024 * 1024;
 
 export type ResolvedPostFile = {
@@ -35,6 +40,7 @@ export type ResolvedPostFile = {
 type PostMetadata = {
   title?: unknown;
   description?: unknown;
+  summary?: unknown;
   id?: unknown;
   publishedAt?: unknown;
   updatedAt?: unknown;
@@ -58,15 +64,15 @@ export function resolvePostFile(
   }
 
   const relativePath = inputPath.replace(/\\/g, "/").replace(/^\.?\//, "");
-  const match = relativePath.match(POST_FILE_PATTERN);
+  const match = parsePostFilePath(relativePath);
   if (!match) {
     throw new PostFileValidationError(
-      "path must match app/(post)/YYYY/slug/article.mdx"
+      `path must match ${POSTS_DIRECTORY}/YYYY/slug/article.mdx`
     );
   }
 
-  const [, year, slug] = match;
-  if (slug.length > 100) {
+  const { year, slug } = match;
+  if (slug.length > MAX_POST_SLUG_LENGTH) {
     throw new PostFileValidationError("slug must not exceed 100 characters");
   }
 
@@ -79,61 +85,57 @@ export function resolvePostFile(
   };
 }
 
-export function validatePostContent(
+// Every problem with one article, in a stable order. The editor reports the
+// first; the content scripts report them all.
+export function collectPostContentIssues(
   content: unknown,
   target: ResolvedPostFile
-): string {
+): string[] {
   if (typeof content !== "string") {
-    throw new PostFileValidationError("content is required");
+    return ["content is required"];
   }
 
   if (Buffer.byteLength(content, "utf8") > MAX_POST_BYTES) {
-    throw new PostFileValidationError("post content exceeds the 2 MB limit");
+    return ["post content exceeds the 2 MB limit"];
   }
 
   const metadata = parseExportedMetadata<PostMetadata>(content);
   if (!metadata) {
-    throw new PostFileValidationError(
-      "content must contain JSON-compatible exported metadata"
-    );
+    return ["content must contain JSON-compatible exported metadata"];
   }
 
+  const issues: string[] = [];
+
   if (metadata.id !== target.slug) {
-    throw new PostFileValidationError("metadata id must match the target slug");
+    issues.push("metadata id must match the target slug");
   }
 
   if (typeof metadata.title !== "string" || !metadata.title.trim()) {
-    throw new PostFileValidationError("title is required");
+    issues.push("title is required");
   }
 
   if (
     typeof metadata.publishedAt !== "string" ||
     !isIsoDate(metadata.publishedAt)
   ) {
-    throw new PostFileValidationError("publishedAt must use YYYY-MM-DD");
+    issues.push("publishedAt must use YYYY-MM-DD");
+  } else if (metadata.publishedAt.slice(0, 4) !== target.year) {
+    issues.push("publishedAt year must match the target directory");
   }
 
-  if (metadata.publishedAt.slice(0, 4) !== target.year) {
-    throw new PostFileValidationError(
-      "publishedAt year must match the target directory"
-    );
-  }
-
-  if (
-    metadata.status !== "draft" &&
-    metadata.status !== "published" &&
-    metadata.status !== "archived"
-  ) {
-    throw new PostFileValidationError(
-      "status must be draft, published, or archived"
-    );
+  if (!isPostStatus(metadata.status)) {
+    issues.push("status must be draft, published, or archived");
   }
 
   if (
     typeof metadata.description !== "string" ||
     !metadata.description.trim()
   ) {
-    throw new PostFileValidationError("posts require a description");
+    issues.push("posts require a description");
+  }
+
+  if (metadata.summary != null && typeof metadata.summary !== "string") {
+    issues.push("summary must be a string");
   }
 
   if (
@@ -142,7 +144,7 @@ export function validatePostContent(
     (typeof metadata.updatedAt !== "string" ||
       Number.isNaN(Date.parse(metadata.updatedAt)))
   ) {
-    throw new PostFileValidationError("updatedAt must be a valid date");
+    issues.push("updatedAt must be a valid date");
   }
 
   if (
@@ -150,20 +152,31 @@ export function validatePostContent(
     (!Array.isArray(metadata.tags) ||
       metadata.tags.some(tag => typeof tag !== "string"))
   ) {
-    throw new PostFileValidationError("tags must be an array of strings");
-  }
+    issues.push("tags must be an array of strings");
+  } else {
+    const tags = normalizeTags(metadata.tags);
+    if (
+      Array.isArray(metadata.tags) &&
+      metadata.tags.length > 0 &&
+      tags.length === 0
+    ) {
+      issues.push("tags must not be blank");
+    }
 
-  const unknownTopics = getUnknownTopics(normalizeTags(metadata.tags));
-  if (unknownTopics.length > 0) {
-    throw new PostFileValidationError(
-      `unknown topics: ${unknownTopics.join(
-        ", "
-      )}. Choose from: ${TOPIC_DEFINITIONS.map(topic => topic.name).join(", ")}`
-    );
+    const unknownTopics = getUnknownTopics(tags);
+    if (unknownTopics.length > 0) {
+      issues.push(
+        `unknown topics: ${unknownTopics.join(
+          ", "
+        )}. Choose from: ${TOPIC_DEFINITIONS.map(topic => topic.name).join(
+          ", "
+        )}`
+      );
+    }
   }
 
   if (metadata.series != null && typeof metadata.series !== "string") {
-    throw new PostFileValidationError("series must be a string");
+    issues.push("series must be a string");
   }
 
   if (
@@ -172,9 +185,7 @@ export function validatePostContent(
       !Number.isInteger(metadata.seriesOrder) ||
       metadata.seriesOrder < 1)
   ) {
-    throw new PostFileValidationError(
-      "seriesOrder must be a positive integer when series is set"
-    );
+    issues.push("seriesOrder must be a positive integer when series is set");
   }
 
   if (
@@ -183,16 +194,12 @@ export function validatePostContent(
       !Number.isInteger(metadata.readingTimeMinutes) ||
       metadata.readingTimeMinutes < 1)
   ) {
-    throw new PostFileValidationError(
-      "readingTimeMinutes must be a positive integer"
-    );
+    issues.push("readingTimeMinutes must be a positive integer");
   }
 
   for (const retiredField of ["draft", "archived", "excerpt"]) {
     if (Object.hasOwn(metadata, retiredField)) {
-      throw new PostFileValidationError(
-        `retired metadata field: ${retiredField}`
-      );
+      issues.push(`retired metadata field: ${retiredField}`);
     }
   }
 
@@ -200,7 +207,7 @@ export function validatePostContent(
   const seriesOrder = normalizePositiveInteger(metadata.seriesOrder);
   if (series) {
     if (!isKnownSeries(series)) {
-      throw new PostFileValidationError(
+      issues.push(
         `unknown series: ${series}. Choose from: ${SERIES_DEFINITIONS.map(
           definition => definition.slug
         ).join(", ")}`
@@ -208,15 +215,25 @@ export function validatePostContent(
     }
 
     if (seriesOrder === 0) {
-      throw new PostFileValidationError(
-        "seriesOrder must be a positive integer when series is set"
-      );
+      issues.push("seriesOrder must be a positive integer when series is set");
     }
   } else if (metadata.seriesOrder != null) {
-    throw new PostFileValidationError("seriesOrder requires a series");
+    issues.push("seriesOrder requires a series");
   }
 
-  return content;
+  return [...new Set(issues)];
+}
+
+export function validatePostContent(
+  content: unknown,
+  target: ResolvedPostFile
+): string {
+  const [firstIssue] = collectPostContentIssues(content, target);
+  if (firstIssue) {
+    throw new PostFileValidationError(firstIssue);
+  }
+
+  return content as string;
 }
 
 export async function writeFileAtomically(targetPath: string, content: string) {
@@ -235,6 +252,43 @@ export async function writeFileAtomically(targetPath: string, content: string) {
     await fs.rename(temporaryPath, targetPath);
   } finally {
     await fs.rm(temporaryPath, { force: true }).catch(() => undefined);
+  }
+}
+
+export async function readFileIfPresent(
+  filePath: string
+): Promise<string | null> {
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | null)?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Removes `startDirectory` and then each parent that became empty, stopping
+// below `rootDirectory`, which is never removed.
+export async function removeEmptyParents(
+  startDirectory: string,
+  rootDirectory: string
+) {
+  let current = startDirectory;
+
+  while (current !== rootDirectory) {
+    const relative = path.relative(rootDirectory, current);
+    if (relative === ".." || relative.startsWith(`..${path.sep}`)) {
+      return;
+    }
+
+    const entries = await fs.readdir(current);
+    if (entries.length > 0) {
+      return;
+    }
+
+    await fs.rmdir(current);
+    current = path.dirname(current);
   }
 }
 
@@ -257,37 +311,3 @@ export async function withPostMutationLock<T>(
 }
 
 export class PostFileValidationError extends Error {}
-
-function isIsoDate(value: string): boolean {
-  if (!ISO_DATE_PATTERN.test(value)) {
-    return false;
-  }
-
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  return (
-    !Number.isNaN(parsed.getTime()) &&
-    parsed.toISOString().slice(0, 10) === value
-  );
-}
-
-function normalizeTags(value: unknown): string[] {
-  const rawTags = Array.isArray(value) ? value : [];
-
-  return Array.from(
-    new Set(
-      rawTags
-        .map(tag => (typeof tag === "string" ? tag.trim() : ""))
-        .filter(Boolean)
-    )
-  );
-}
-
-function normalizeOptionalString(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizePositiveInteger(value: unknown): number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0
-    ? value
-    : 0;
-}

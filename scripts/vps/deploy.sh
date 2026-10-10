@@ -18,9 +18,10 @@ set -euo pipefail
 #   RUN_SITE_CONFIG=0
 #   CADDY_OVERWRITE=ask
 #   ALLOW_NON_LINUX_BUILD=0
-#   DOCKER_IMAGE=node:20-bookworm-slim
+#   DOCKER_IMAGE=node:24-bookworm-slim
 #   SKIP_REMOTE_PLATFORM_CHECK=0
 #   SKIP_REMOTE_SUDO_CHECK=0
+#   SKIP_NODE_VERSION_CHECK=0
 #   SSH_CONTROL=1
 #   CLEAN_REMOTE_ON_EXIT=1
 #   COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
@@ -103,9 +104,10 @@ COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY:-https://registry.npmmirror.com}"
 COREPACK_NPM_REGISTRY="${COREPACK_NPM_REGISTRY%/}"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 ALLOW_NON_LINUX_BUILD="${ALLOW_NON_LINUX_BUILD:-0}"
-DOCKER_IMAGE="${DOCKER_IMAGE:-node:20-bookworm-slim}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-node:24-bookworm-slim}"
 SKIP_REMOTE_PLATFORM_CHECK="${SKIP_REMOTE_PLATFORM_CHECK:-0}"
 SKIP_REMOTE_SUDO_CHECK="${SKIP_REMOTE_SUDO_CHECK:-0}"
+SKIP_NODE_VERSION_CHECK="${SKIP_NODE_VERSION_CHECK:-0}"
 SSH_CONTROL="${SSH_CONTROL:-1}"
 CLEAN_REMOTE_ON_EXIT="${CLEAN_REMOTE_ON_EXIT:-1}"
 
@@ -154,10 +156,11 @@ Useful env vars:
   RUN_SITE_CONFIG=0                 Leave Caddy configuration untouched
   CADDY_OVERWRITE=1                 Approve a scoped conflicting-site replacement
   ALLOW_DIRTY=1                     Build from an uncommitted working tree
-  DOCKER_IMAGE=node:20-bookworm-slim Linux image for automatic non-Linux builds
+  DOCKER_IMAGE=node:24-bookworm-slim Linux image for automatic non-Linux builds
   ALLOW_NON_LINUX_BUILD=1           Allow an unsafe local non-Linux build
   SKIP_REMOTE_PLATFORM_CHECK=1      Skip local/VPS architecture comparison
   SKIP_REMOTE_SUDO_CHECK=1          Skip passwordless sudo preflight
+  SKIP_NODE_VERSION_CHECK=1         Release onto a VPS Node.js major other than the build's
   SSH_CONTROL=0                     Disable SSH connection reuse
   CLEAN_REMOTE_ON_EXIT=0            Keep private temp files; avoid with UPLOAD_ENV=1
 EOF
@@ -528,6 +531,7 @@ append_remote_env COREPACK_NPM_REGISTRY "${COREPACK_NPM_REGISTRY}"
 REMOTE_CMD="${REMOTE_CMD} RUN_DEPLOY=1"
 append_remote_env RUN_SITE_CONFIG "${RUN_SITE_CONFIG}"
 append_remote_env CADDY_OVERWRITE "${CADDY_OVERWRITE}"
+append_remote_env SKIP_NODE_VERSION_CHECK "${SKIP_NODE_VERSION_CHECK}"
 append_remote_env ARTIFACT_TARBALL "${REMOTE_ARTIFACT}"
 if [[ "${UPLOAD_ENV}" == "1" ]]; then
   append_remote_env ENV_FILE_PATH "${REMOTE_ENV}"

@@ -4,16 +4,8 @@ import os from "os";
 import path from "path";
 import { promisify } from "util";
 import { NextResponse } from "next/server";
-import { requireLocalEditor } from "@/utils/server/local-editor";
-import {
-  PostFileValidationError,
-  resolvePostFile,
-} from "@/utils/server/post-files";
-import {
-  createEditorJsonError,
-  enforceEditorRateLimit,
-  logEditorInfo,
-} from "@/utils/server/editor-api";
+import { editorRoute, logEditorInfo } from "@/utils/server/editor-api";
+import { readFileIfPresent, resolvePostFile } from "@/utils/server/post-files";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,22 +20,13 @@ type CommandError = Error & {
   stdout?: string;
 };
 
-export async function POST(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
+export const POST = editorRoute(
+  {
     action: "compare-changes",
     limit: 60,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
-  }
-
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
-  }
-
-  try {
+    failureMessage: "failed to compare post changes",
+  },
+  async req => {
     const payload = await req.json();
     if (typeof payload?.content !== "string") {
       return NextResponse.json(
@@ -88,21 +71,8 @@ export async function POST(req: Request) {
       },
       { headers: NO_STORE }
     );
-  } catch (error) {
-    if (error instanceof PostFileValidationError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400, headers: NO_STORE }
-      );
-    }
-    return createEditorJsonError(
-      "compare-changes",
-      "failed to compare post changes",
-      500,
-      error
-    );
   }
-}
+);
 
 async function compareSavedContent(savedPath: string, currentSource: string) {
   const temporaryDirectory = await fs.mkdtemp(
@@ -177,17 +147,6 @@ async function runDiffCommand(command: string, args: string[]) {
     const commandError = error as CommandError;
     if (commandError.code === 1) {
       return commandError.stdout ?? "";
-    }
-    throw error;
-  }
-}
-
-async function readFileIfPresent(filePath: string) {
-  try {
-    return await fs.readFile(filePath, "utf8");
-  } catch (error: any) {
-    if (error?.code === "ENOENT") {
-      return null;
     }
     throw error;
   }

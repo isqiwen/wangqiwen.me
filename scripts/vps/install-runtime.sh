@@ -7,6 +7,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 NODE_MAJOR="${NODE_MAJOR:-24}"
+# The systemd unit written by install-release.sh runs this binary.
+NODE_BIN="${NODE_BIN:-/usr/bin/node}"
 APP_NAME="${APP_NAME:-nextjs-app}"
 SERVICE_USER="${SERVICE_USER:-nextjs}"
 SERVICE_HOME="${SERVICE_HOME:-/srv/${SERVICE_USER}}"
@@ -79,6 +81,14 @@ as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
 echo "==> Installing Node.js ${NODE_MAJOR}.x"
 curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | as_root bash -
 as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+
+# apt keeps a newer or pinned nodejs package without failing, so confirm the
+# requested major is what the service will actually run.
+if ! bash "${ROOT_DIR}/scripts/vps/check-node-major.sh" "${NODE_MAJOR}" "${NODE_BIN}"; then
+  echo "NodeSource setup did not leave Node.js ${NODE_MAJOR}.x at ${NODE_BIN}." >&2
+  echo "Check apt pins and other Node.js installations on this host." >&2
+  exit 1
+fi
 
 echo "==> Enabling corepack/pnpm"
 as_root env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack enable

@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import redis from "@/app/redis";
-import { getManifest } from "@/app/get-posts";
-import { logger } from "@/utils/logger";
+import { getPosts } from "@/app/get-posts";
 import {
   consumeRateLimitToken,
   getRequestClientIp,
 } from "@/utils/server/rate-limit";
+import { readViews } from "@/utils/server/views";
+import { isPostSlug } from "@/utils/shared/post-fields";
 
 export const dynamic = "force-dynamic";
 const MAX_IDS = 100;
-const POST_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NO_STORE = { "Cache-Control": "no-store" };
 
+// GET /api/posts/views?ids=a,b -> { a: 12, b: 3 }
+//
+// Only published posts are answered. An empty object means the counts are
+// unavailable, which the list renders as blanks.
 export async function GET(req: NextRequest) {
   const rateLimit = consumeRateLimitToken(
     `views:list:${getRequestClientIp(req)}`,
@@ -46,13 +49,9 @@ export async function GET(req: NextRequest) {
       idsParam
         .split(",")
         .map(id => id.trim())
-        .filter(id => id.length <= 100 && POST_ID_PATTERN.test(id))
+        .filter(isPostSlug)
     )
   );
-
-  if (ids.length === 0) {
-    return NextResponse.json({}, { headers: NO_STORE });
-  }
   if (ids.length > MAX_IDS) {
     return NextResponse.json(
       { error: `at most ${MAX_IDS} ids are allowed` },
@@ -60,23 +59,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  try {
-    const manifest = await getManifest();
-    const publishedIds = new Set(
-      (manifest?.posts ?? [])
-        .filter(post => post.status === "published")
-        .map(post => post.id)
-    );
-    const allowedIds = ids.filter(id => publishedIds.has(id));
-    const values = allowedIds.length
-      ? (await redis.hmget("views", ...allowedIds)) ?? {}
-      : {};
-    const views = Object.fromEntries(
-      allowedIds.map(id => [id, Number(values[id] ?? 0)])
-    );
-    return NextResponse.json(views, { headers: NO_STORE });
-  } catch (error) {
-    logger.warn("Failed to load views", error);
-    return NextResponse.json({}, { status: 200, headers: NO_STORE });
-  }
+  const publishedIds = new Set((await getPosts()).map(post => post.id));
+  const views = await readViews(ids.filter(id => publishedIds.has(id)));
+
+  return NextResponse.json(views ?? {}, { headers: NO_STORE });
 }

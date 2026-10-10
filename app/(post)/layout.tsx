@@ -1,3 +1,7 @@
+// Formula styles are loaded where formulas can appear, not on every page.
+import "katex/dist/katex.min.css";
+import type { ReactNode } from "react";
+import { preload } from "react-dom";
 import { Header } from "./header";
 import { getPosts } from "../get-posts";
 import { canPreviewDrafts } from "@/utils/server/local-editor";
@@ -6,11 +10,16 @@ import { TableOfContents } from "./components/table-of-contents";
 import { RelatedPosts } from "./related-posts";
 import { SeriesNavigation } from "./series-navigation";
 
-export const revalidate = 60;
-
-export default async function Layout({ children }) {
+export default async function Layout({ children }: { children: ReactNode }) {
   const posts = await getPosts({
     includeDrafts: canPreviewDrafts(),
+  });
+
+  // Article text is set in the serif face.
+  preload("/fonts/source-serif-4-latin-standard-normal.woff2", {
+    as: "font",
+    type: "font/woff2",
+    crossOrigin: "anonymous",
   });
 
   return (

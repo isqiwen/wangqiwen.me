@@ -1,27 +1,25 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { requireLocalEditor } from "@/utils/server/local-editor";
+import { editorRoute, logEditorInfo } from "@/utils/server/editor-api";
 import {
   POSTS_ROOT,
-  PostFileValidationError,
+  readFileIfPresent,
+  removeEmptyParents,
   resolvePostFile,
   validatePostContent,
   withPostMutationLock,
   writeFileAtomically,
 } from "@/utils/server/post-files";
+import {
+  assertPostPrecondition,
+  getPostVersion,
+} from "@/utils/server/post-version";
 import { syncPostsMetadata } from "@/utils/server/sync-posts";
 import { parseExportedMetadata } from "@/utils/shared/post-metadata";
-import {
-  createEditorJsonError,
-  enforceEditorRateLimit,
-  logEditorInfo,
-} from "@/utils/server/editor-api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-import { assertPostPrecondition, getPostVersion, PostPreconditionError } from "@/utils/server/post-version";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -29,64 +27,32 @@ type EditorMetadata = {
   status?: unknown;
 };
 
-export async function GET(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
+export const GET = editorRoute(
+  {
     action: "read-file",
     limit: 180,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
-  }
-
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
-  }
-
-  const { searchParams } = new URL(req.url);
-
-  try {
+    failureMessage: "failed to read post",
+    missingFileIsNotFound: true,
+  },
+  async req => {
+    const { searchParams } = new URL(req.url);
     const postFile = resolvePostFile(searchParams.get("path"));
     const content = await fs.readFile(postFile.absolutePath, "utf8");
     logEditorInfo("read-file", "Loaded editor post.", {
       path: postFile.relativePath,
     });
     const version = getPostVersion(content);
-    return NextResponse.json({ content, version }, { headers: { ...NO_STORE, ETag: version } });
-  } catch (error: any) {
-    if (error instanceof PostPreconditionError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status, headers: NO_STORE },
-      );
-    }
-    if (error instanceof PostFileValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
-    }
-    if (error?.code === "ENOENT") {
-      return NextResponse.json({ error: "not found" }, { status: 404, headers: NO_STORE });
-    }
-    return createEditorJsonError("read-file", "failed to read post", 500, error);
-  }
-}
 
-export async function POST(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
-    action: "save-file",
-    limit: 60,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
+    return NextResponse.json(
+      { content, version },
+      { headers: { ...NO_STORE, ETag: version } }
+    );
   }
+);
 
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
-  }
-
-  try {
+export const POST = editorRoute(
+  { action: "save-file", limit: 60, failureMessage: "failed to save post" },
+  async req => {
     const payload = await req.json();
     const target = resolvePostFile(payload?.path);
     const previous = payload?.previousPath
@@ -94,8 +60,10 @@ export async function POST(req: Request) {
       : null;
     const content = validatePostContent(payload?.content, target);
 
-    return await withPostMutationLock(async () => {
-      const isMove = Boolean(previous && previous.absolutePath !== target.absolutePath);
+    return withPostMutationLock(async () => {
+      const isMove = Boolean(
+        previous && previous.absolutePath !== target.absolutePath
+      );
       const originalPath = previous?.absolutePath ?? target.absolutePath;
       const originalContent = await readFileIfPresent(originalPath);
 
@@ -104,10 +72,9 @@ export async function POST(req: Request) {
       if (isMove && (await fileExists(target.absolutePath))) {
         return NextResponse.json(
           { error: "a post already exists at the target path" },
-          { status: 409, headers: NO_STORE },
+          { status: 409, headers: NO_STORE }
         );
       }
-
 
       await writeFileAtomically(target.absolutePath, content);
       try {
@@ -126,7 +93,10 @@ export async function POST(req: Request) {
       }
 
       if (isMove && previous) {
-        await cleanupEmptyParents(path.dirname(previous.absolutePath));
+        await removeEmptyParents(
+          path.dirname(previous.absolutePath),
+          POSTS_ROOT
+        );
       }
 
       logEditorInfo("save-file", "Saved editor post and synchronized posts.", {
@@ -134,45 +104,27 @@ export async function POST(req: Request) {
         previousPath: previous?.relativePath,
       });
 
+      const version = getPostVersion(content);
       return NextResponse.json(
-        { ok: true, path: target.relativePath, version: getPostVersion(content) },
-        { headers: { ...NO_STORE, ETag: getPostVersion(content) } },
+        { ok: true, path: target.relativePath, version },
+        { headers: { ...NO_STORE, ETag: version } }
       );
     });
-  } catch (error) {
-    if (error instanceof PostPreconditionError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status, headers: NO_STORE },
-      );
-    }
-    if (error instanceof PostFileValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
-    }
-    return createEditorJsonError("save-file", "failed to save post", 500, error);
   }
-}
+);
 
-export async function DELETE(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
+export const DELETE = editorRoute(
+  {
     action: "delete-file",
     limit: 30,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
-  }
-
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
-  }
-
-  try {
+    failureMessage: "failed to delete post",
+    missingFileIsNotFound: true,
+  },
+  async req => {
     const payload = await req.json();
     const postFile = resolvePostFile(payload?.path);
 
-    return await withPostMutationLock(async () => {
+    return withPostMutationLock(async () => {
       const content = await readFileIfPresent(postFile.absolutePath);
       assertPostPrecondition(content, req.headers, false);
       // The precondition rejects a missing file before any mutation occurs.
@@ -184,8 +136,11 @@ export async function DELETE(req: Request) {
         (metadata.status !== "draft" && metadata.status !== "archived")
       ) {
         return NextResponse.json(
-          { error: "published or invalid posts must be archived before deletion" },
-          { status: 409, headers: NO_STORE },
+          {
+            error:
+              "published or invalid posts must be archived before deletion",
+          },
+          { status: 409, headers: NO_STORE }
         );
       }
 
@@ -198,47 +153,24 @@ export async function DELETE(req: Request) {
         throw error;
       }
 
-      await cleanupEmptyParents(path.dirname(postFile.absolutePath));
-      logEditorInfo("delete-file", "Deleted editor post and synchronized posts.", {
-        path: postFile.relativePath,
-      });
+      await removeEmptyParents(path.dirname(postFile.absolutePath), POSTS_ROOT);
+      logEditorInfo(
+        "delete-file",
+        "Deleted editor post and synchronized posts.",
+        { path: postFile.relativePath }
+      );
 
       return NextResponse.json({ ok: true }, { headers: NO_STORE });
     });
-  } catch (error: any) {
-    if (error instanceof PostPreconditionError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status, headers: NO_STORE },
-      );
-    }
-    if (error instanceof PostFileValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE });
-    }
-    if (error?.code === "ENOENT") {
-      return NextResponse.json({ error: "not found" }, { status: 404, headers: NO_STORE });
-    }
-    return createEditorJsonError("delete-file", "failed to delete post", 500, error);
   }
-}
-
-async function readFileIfPresent(filePath: string): Promise<string | null> {
-  try {
-    return await fs.readFile(filePath, "utf8");
-  } catch (error: any) {
-    if (error?.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
-}
+);
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
-  } catch (error: any) {
-    if (error?.code === "ENOENT") {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | null)?.code === "ENOENT") {
       return false;
     }
     throw error;
@@ -259,23 +191,4 @@ async function rollbackSave(options: {
     await fs.rm(options.targetPath, { force: true });
   }
   await writeFileAtomically(options.originalPath, options.originalContent);
-}
-
-async function cleanupEmptyParents(startDirectory: string) {
-  let current = startDirectory;
-
-  while (current !== POSTS_ROOT) {
-    const relative = path.relative(POSTS_ROOT, current);
-    if (relative === ".." || relative.startsWith(`..${path.sep}`)) {
-      return;
-    }
-
-    const entries = await fs.readdir(current);
-    if (entries.length > 0) {
-      return;
-    }
-
-    await fs.rmdir(current);
-    current = path.dirname(current);
-  }
 }

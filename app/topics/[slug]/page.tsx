@@ -10,13 +10,18 @@ type TopicPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const dynamic = "force-dynamic";
+// Every topic with a published article is known when the site is built.
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  return getTopics(await getPosts()).map(topic => ({ slug: topic.slug }));
+}
 
 export async function generateMetadata({
   params,
 }: TopicPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
   const topic = getTopics(posts).find(item => item.slug === slug);
 
   if (!topic) {
@@ -57,12 +62,7 @@ export default async function TopicPage({ params }: TopicPageProps) {
         </h1>
       </header>
 
-      <Posts
-        posts={topicPosts}
-        postIds={topicPosts.map(post => post.id)}
-        as="div"
-        className="mt-3 font-mono text-sm"
-      />
+      <Posts posts={topicPosts} as="div" className="mt-3 font-mono text-sm" />
     </section>
   );
 }

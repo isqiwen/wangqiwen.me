@@ -37,8 +37,11 @@ Select **New Draft** in `/editor`, fill in the title, ID, description, and body,
 then select **Save Draft**. This creates:
 
 ```text
-app/(post)/<year>/my-first-post/article.mdx
+content/posts/<year>/my-first-post/article.mdx
 ```
+
+Articles are stored outside `app/` deliberately; see
+[Editor request and test stability](editor-test-stability.md).
 
 If the current document has unsaved changes, confirm before starting the new
 draft. The **ID** is the stable technical identifier used for the file path and
@@ -251,7 +254,7 @@ Editor changes remain in the local Git worktree. Review and validate the MDX, ma
 git status
 pnpm check
 pnpm build
-git add 'app/(post)' posts/manifest.json public/images
+git add content/posts posts/manifest.json public/images
 git commit
 ```
 
@@ -269,3 +272,31 @@ The deployment build imports and prerenders only `published` articles. Draft and
 
 See [Versioned editor saves](editor-save-safety.md) for conflict recovery,
 conditional local API requests, and the single-process concurrency guarantee.
+
+## Code Layout
+
+`app/editor/page.tsx` only mounts the workspace. Its code lives in
+`app/editor/workspace/`:
+
+| File                                                                                                                    | Responsibility                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `editor-workspace.tsx`                                                                                                  | Composition: wires the hooks to the sections below and holds no logic of its own.                        |
+| `use-editor-workspace.ts`                                                                                               | The open document and its lifecycle: load, save, publish, archive, delete, conflicts, browser autosave.  |
+| `use-body-editing.ts`, `use-assets.ts`, `use-changes.ts`, `use-confirmation.ts`, `use-feedback.ts`                      | One concern each: cursor and snippet insertion, image assets, the changes dialog, confirmations, toasts. |
+| `toolbar.tsx`, `metadata-form.tsx`, `body-editor.tsx`, `outline-panel.tsx`, `assets-panel.tsx`, `file-picker.tsx`       | One screen region each. They receive values and callbacks and keep only view state.                      |
+| `changes-dialog.tsx`, `confirmation-dialog.tsx`, `component-palette.tsx`, `folder-tree.tsx`, `mdx-syntax-highlight.tsx` | Self-contained dialogs and widgets.                                                                      |
+| `document.ts`, `publish-readiness.ts`, `mdx-formatting.ts`, `format.ts`, `api.ts`, `types.ts`                           | Pure functions and types, covered by `tests/editor-document.test.ts`.                                    |
+
+The lifecycle stays in one hook on purpose. Its guarantees depend on three
+values being read and updated together: the single in-flight request, the file
+version a write starts from, and a counter that discards a response when the
+document was replaced meanwhile. See [Versioned editor saves](editor-save-safety.md).
+
+The document is one state object. Whether it has unsaved changes is decided by
+comparing serialized snapshots, so every snapshot is built by
+`buildWorkspaceSnapshot`, which fixes the field order.
+
+Metadata rules are not defined in the editor. Field checks and normalization
+come from `utils/shared/post-fields.ts` and `utils/shared/post-metadata.ts`;
+saving runs the same `utils/server/post-files.ts` and `utils/server/sync-posts.ts`
+code as `pnpm lint:posts` and `pnpm sync:posts`.

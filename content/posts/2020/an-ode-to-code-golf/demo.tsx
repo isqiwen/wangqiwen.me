@@ -9,7 +9,8 @@ export function Demo() {
     rootMargin: "250px 0px 500px 0px",
   });
 
-  const onIframe = iframe => {
+  // The demo writes its own globals into the frame, so the frame is untyped.
+  const onIframe = (iframe: any) => {
     if (iframe != null) {
       if (iframe.__written) return;
       const win = iframe.contentWindow;

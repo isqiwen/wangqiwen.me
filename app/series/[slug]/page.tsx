@@ -13,11 +13,10 @@ type SeriesPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const revalidate = 60;
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
 
   return getSeries(posts).map(series => ({ slug: series.slug }));
 }
@@ -26,7 +25,7 @@ export async function generateMetadata({
   params,
 }: SeriesPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
   const definition = getSeriesDefinition(slug);
   const hasPublishedPosts = getSeries(posts).some(
     series => series.slug === slug
@@ -47,7 +46,7 @@ export async function generateMetadata({
 
 export default async function SeriesDetailPage({ params }: SeriesPageProps) {
   const { slug } = await params;
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
   const definition = getSeriesDefinition(slug);
   const seriesPosts = getPostsForSeries(posts, slug);
 

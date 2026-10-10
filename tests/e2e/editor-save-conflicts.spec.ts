@@ -17,8 +17,8 @@ function source(postId: string, body = initialBody, status = "draft") {
 }
 
 function filePath(postId: string) {
-  directories.add(join(process.cwd(), "app", "(post)", "2091", postId));
-  return `app/(post)/2091/${postId}/article.mdx`;
+  directories.add(join(process.cwd(), "content", "posts", "2091", postId));
+  return `content/posts/2091/${postId}/article.mdx`;
 }
 
 async function read(request: APIRequestContext, target = path) {
@@ -62,7 +62,7 @@ test.beforeEach(async ({ request }) => {
 test.afterEach(async () => {
   for (const directory of directories) await rm(directory, { recursive: true, force: true });
   directories.clear();
-  await execFileAsync(process.execPath, ["scripts/content/sync-posts.cjs", "--silent"], { cwd: process.cwd() });
+  await execFileAsync("pnpm", ["sync:posts", "--", "--silent"], { cwd: process.cwd() });
 });
 
 test("two tabs cannot overwrite each other and conflict input can be downloaded or kept as a copy", async ({ page, context, request }) => {
@@ -147,6 +147,14 @@ test("loading the latest conflicting file requires confirmation and cancellation
   await expect(conflict).not.toBeVisible();
   await expect(page.getByLabel("Body (MDX)")).toHaveValue("## Introduction\n\nExternal revision.\n");
   await clickSave(page);
+});
+
+test("an opened file is clean until the author changes it", async ({ page }) => {
+  await open(page);
+  const status = page.getByTestId("editor-save-status");
+  await expect(status).toHaveText("All changes saved to disk");
+  await page.getByLabel("Body (MDX)").fill("## Introduction\n\nEdited after opening.\n");
+  await expect(status).toHaveText("Unsaved changes");
 });
 
 test("a failed save keeps input dirty and allows a safe retry", async ({ page, request }) => {

@@ -26,23 +26,28 @@ const validPost = (overrides: Record<string, unknown> = {}) =>
   )};\n\nPost body.`;
 
 test("only resolves post files under the expected year and slug path", () => {
-  const post = resolvePostFile("app/(post)/2024/safe-post/article.mdx");
+  const post = resolvePostFile("content/posts/2024/safe-post/article.mdx");
 
   assert.equal(post.routePath, "/2024/safe-post");
   assert.equal(post.year, "2024");
   assert.equal(post.slug, "safe-post");
   assert.throws(
-    () => resolvePostFile("app/(post)/2024/../../secret/article.mdx"),
+    () => resolvePostFile("content/posts/2024/../../secret/article.mdx"),
     PostFileValidationError
   );
   assert.throws(
-    () => resolvePostFile("app/(post)/2024/Unsafe_Post/article.mdx"),
+    () => resolvePostFile("content/posts/2024/Unsafe_Post/article.mdx"),
     PostFileValidationError
+  );
+  // The editor must never write inside app/: see docs/editor-test-stability.md.
+  assert.throws(
+    () => resolvePostFile("app/(post)/2024/safe-post/article.mdx"),
+    /path must match content\/posts\/YYYY\/slug\/article\.mdx/
   );
 });
 
 test("validates post metadata against its target file", () => {
-  const target = resolvePostFile("app/(post)/2024/safe-post/article.mdx");
+  const target = resolvePostFile("content/posts/2024/safe-post/article.mdx");
 
   assert.equal(validatePostContent(validPost(), target), validPost());
   assert.throws(

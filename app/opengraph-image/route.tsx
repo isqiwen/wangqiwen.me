@@ -1,5 +1,5 @@
-export const revalidate = 60;
-export const dynamic = "force-dynamic";
+// Rendered once at build time: the list changes only with a deployment.
+export const dynamic = "force-static";
 
 import { ImageResponse } from "next/og";
 import { getPosts } from "@/app/get-posts";
@@ -42,7 +42,6 @@ export async function GET() {
           <div tw="flex w-full text-[26px] text-gray-400 mb-3">
             <div tw="w-24">date</div>
             <div tw="grow">title</div>
-            <div>views</div>
           </div>
 
           {posts.map((post, i) => (
@@ -57,7 +56,6 @@ export async function GET() {
                   : ""}
               </div>
               <div tw="flex grow">{post.title}</div>
-              <div tw="flex text-gray-400 pl-7">{post?.viewsFormatted}</div>
             </div>
           ))}
         </main>

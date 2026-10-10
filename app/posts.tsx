@@ -1,13 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import useSWR from "swr";
-import commaNumber from "comma-number";
 import { formatString } from "@/utils/common/string-helper";
 import { uiCopy } from "@/utils/ui-copy";
 import type { Post } from "./get-posts";
-import { PostList, PostListHeader } from "./post-list";
+import { PostList, PostListHeader, type ViewCounts } from "./post-list";
 
 type SortSetting = ["date" | "views", "desc" | "asc"];
 
@@ -15,161 +13,57 @@ interface PostsProps {
   posts: Post[];
   as?: "div" | "main";
   className?: string;
-  postIds?: string[];
 }
 
-type BasePost = {
-  id: string;
-  postId: string;
-  title: string;
-  description: string;
-  summary: string;
-  series: string | null;
-  seriesOrder: number | null;
-  date: string;
-  publishedAt: string;
-  updatedAt: string | null;
-  status: Post["status"];
-  tags: string[];
-  readingTimeMinutes: number;
-};
-
 const ITEMS_PER_PAGE = 20;
+const VIEWS_REFRESH_MS = 60 * 1000;
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-});
+async function fetchViewCounts([endpoint, ids]: [
+  string,
+  string
+]): Promise<ViewCounts> {
+  const response = await fetch(`${endpoint}?ids=${ids}`, {
+    cache: "no-store",
+  });
+  return response.ok ? ((await response.json()) as ViewCounts) : {};
+}
 
 export function Posts({
-  posts: initialPosts,
+  posts,
   as: Container = "main",
   className = "m-auto mb-10 max-w-2xl font-mono text-sm",
-  postIds,
 }: PostsProps) {
   const [sort, setSort] = useState<SortSetting>(["date", "desc"]);
   const [currentPage, setCurrentPage] = useState(1);
-  const initialBasePosts = useMemo(
-    () => initialPosts.map(stripPost),
-    [initialPosts]
-  );
-  const initialViewsMap = useMemo(
-    () => buildViewsMap(initialPosts),
-    [initialPosts]
-  );
+  const ids = useMemo(() => posts.map(post => post.id).join(","), [posts]);
 
-  const { data: basePosts = initialBasePosts } = useSWR(
-    "/api/posts",
-    async url => {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Failed to load posts metadata");
-      }
-
-      const data = await response.json();
-      const items: Array<{
-        id: string;
-        title: string;
-        description?: string;
-        summary?: string;
-        series?: string | null;
-        seriesOrder?: number | null;
-        publishedAt: string;
-        updatedAt?: string | null;
-        status?: Post["status"];
-        tags?: string[];
-        readingTimeMinutes?: number;
-      }> = data.posts ?? [];
-
-      return items.map(item => ({
-        id: item.id,
-        postId: item.id,
-        title: item.title,
-        description: item.description ?? "",
-        summary: item.summary ?? item.description ?? "",
-        series: item.series ?? null,
-        seriesOrder: item.seriesOrder ?? null,
-        date: formatPublishedAt(item.publishedAt),
-        publishedAt: item.publishedAt,
-        updatedAt: item.updatedAt ?? null,
-        status: item.status ?? "published",
-        tags: item.tags ?? [],
-        readingTimeMinutes: item.readingTimeMinutes ?? 1,
-      }));
-    },
+  // The list itself is part of the page and changes only with a deployment.
+  // The counts change at any time, so they alone are fetched.
+  const { data: views = {} } = useSWR(
+    ids ? ["/api/posts/views", ids] : null,
+    fetchViewCounts,
     {
-      fallbackData: initialBasePosts,
-      keepPreviousData: true,
-      revalidateOnFocus: true,
-    }
-  );
-
-  const scopedBasePosts = useMemo(() => {
-    if (!postIds) {
-      return basePosts;
-    }
-
-    const allowedPostIds = new Set(postIds);
-    return basePosts.filter(post => allowedPostIds.has(post.id));
-  }, [basePosts, postIds]);
-
-  const ids = useMemo(
-    () => scopedBasePosts.map(post => post.id),
-    [scopedBasePosts]
-  );
-
-  const { data: viewsMap = initialViewsMap } = useSWR(
-    ids.length ? ["/api/posts/views", ids.join(",")] : null,
-    async ([, idsParam]) => {
-      const response = await fetch(`/api/posts/views?ids=${idsParam}`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        return {};
-      }
-
-      return (await response.json()) as Record<string, number>;
-    },
-    {
-      fallbackData: initialViewsMap,
       revalidateOnFocus: true,
       refreshInterval: () =>
         typeof document !== "undefined" &&
         document.visibilityState === "visible"
-          ? 60000
+          ? VIEWS_REFRESH_MS
           : 0,
     }
   );
 
-  const posts = useMemo(
-    () =>
-      scopedBasePosts.map(post => {
-        const views = viewsMap[post.id] ?? 0;
-        return {
-          ...post,
-          views,
-          viewsFormatted: commaNumber(views),
-        } satisfies Post;
-      }),
-    [scopedBasePosts, viewsMap]
-  );
-
   const sortedPosts = useMemo(() => {
     const [sortKey, sortDirection] = sort;
+    const direction = sortDirection === "desc" ? -1 : 1;
 
-    return [...posts].sort((a, b) => {
-      if (sortKey === "date") {
-        return sortDirection === "desc"
-          ? new Date(b.publishedAt).getTime() -
-              new Date(a.publishedAt).getTime()
-          : new Date(a.publishedAt).getTime() -
-              new Date(b.publishedAt).getTime();
-      }
-
-      return sortDirection === "desc" ? b.views - a.views : a.views - b.views;
-    });
-  }, [posts, sort]);
+    return [...posts].sort(
+      (a, b) =>
+        direction *
+        (sortKey === "date"
+          ? Date.parse(a.publishedAt) - Date.parse(b.publishedAt)
+          : (views[a.id] ?? 0) - (views[b.id] ?? 0))
+    );
+  }, [posts, sort, views]);
 
   const paginatedPosts = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -228,7 +122,7 @@ export function Posts({
           }
         />
 
-        <PostList posts={paginatedPosts} />
+        <PostList posts={paginatedPosts} views={views} />
 
         <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
           {formatString(uiCopy.pagination, {
@@ -369,38 +263,4 @@ function Pagination({
       </button>
     </nav>
   );
-}
-
-function stripPost(post: Post): BasePost {
-  return {
-    id: post.id,
-    postId: post.postId,
-    title: post.title,
-    description: post.description,
-    summary: post.summary,
-    series: post.series,
-    seriesOrder: post.seriesOrder,
-    date: post.date,
-    publishedAt: post.publishedAt,
-    updatedAt: post.updatedAt,
-    status: post.status,
-    tags: post.tags,
-    readingTimeMinutes: post.readingTimeMinutes,
-  };
-}
-
-function buildViewsMap(posts: Post[]): Record<string, number> {
-  return posts.reduce<Record<string, number>>((acc, post) => {
-    acc[post.id] = post.views ?? 0;
-    return acc;
-  }, {});
-}
-
-function formatPublishedAt(publishedAt: string): string {
-  const date = new Date(publishedAt);
-  if (Number.isNaN(date.getTime())) {
-    return publishedAt;
-  }
-
-  return DATE_FORMATTER.format(date);
 }

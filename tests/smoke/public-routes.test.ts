@@ -70,11 +70,13 @@ test("serves public pages from the packaged runtime", async () => {
   }
 });
 
-test("serves a real article sharing image from the packaged runtime", async () => {
-  const response = await fetch(`${baseUrl}${publishedPostPath}/opengraph-image`);
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /image\/png/);
-  assert.deepEqual(Array.from(new Uint8Array(await response.arrayBuffer()).slice(0, 8)), [137, 80, 78, 71, 13, 10, 26, 10]);
+test("serves the site, about and article sharing images from the packaged runtime", async () => {
+  for (const path of ["/opengraph-image", "/about/opengraph-image", `${publishedPostPath}/opengraph-image`]) {
+    const response = await fetch(`${baseUrl}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get("content-type") ?? "", /image\/png/, path);
+    assert.deepEqual(Array.from(new Uint8Array(await response.arrayBuffer()).slice(0, 8)), [137, 80, 78, 71, 13, 10, 26, 10], path);
+  }
 });
 
 test("serves static assets referenced by the home page", async () => {
@@ -83,6 +85,18 @@ test("serves static assets referenced by the home page", async () => {
   assert.ok(assets.length > 0, "Home page must reference compiled assets");
   for (const asset of assets) {
     assert.equal((await fetch(`${baseUrl}${asset}`)).status, 200, asset);
+  }
+});
+
+test("sends security headers with pages, APIs, static files and blocked routes", async () => {
+  for (const path of ["/", publishedPostPath, "/api/posts", "/robots.txt", "/editor"]) {
+    const { headers } = await fetch(`${baseUrl}${path}`);
+    assert.equal(headers.get("x-content-type-options"), "nosniff", path);
+    assert.equal(headers.get("x-frame-options"), "SAMEORIGIN", path);
+    assert.equal(headers.get("referrer-policy"), "strict-origin-when-cross-origin", path);
+    assert.match(headers.get("strict-transport-security") ?? "", /^max-age=\d+$/, path);
+    assert.match(headers.get("permissions-policy") ?? "", /camera=\(\)/, path);
+    assert.match(headers.get("content-security-policy") ?? "", /frame-ancestors 'self'/, path);
   }
 });
 
@@ -113,12 +127,40 @@ test("blocks editor pages and API methods in production", async () => {
   }
 });
 
-test("reports missing production Redis configuration as degraded", async () => {
+test("stays healthy and serves pages without a view-count store", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
-  const body = await response.json() as { status?: string; timestamp?: string };
-  assert.equal(response.status, 503);
-  assert.equal(body.status, "degraded");
+  const body = await response.json() as { status?: string; views?: string; timestamp?: string; checks?: unknown };
+  assert.equal(response.status, 200);
+  assert.equal(body.status, "ok");
+  assert.equal(body.views, "disabled");
+  assert.equal(body.checks, undefined);
   assert.ok(body.timestamp && !Number.isNaN(Date.parse(body.timestamp)));
+});
+
+test("answers view-count requests without a store and never counts private articles", async () => {
+  const published = publishedPostPath.split("/").at(-1)!;
+  const single = await fetch(`${baseUrl}/api/view?id=${published}&incr=1`);
+  assert.equal(single.status, 200);
+  assert.deepEqual(await single.json(), { id: published, views: null });
+
+  const list = await fetch(`${baseUrl}/api/posts/views?ids=${published}`);
+  assert.equal(list.status, 200);
+  assert.deepEqual(await list.json(), {});
+
+  for (const post of privatePosts) {
+    const response = await fetch(`${baseUrl}/api/view?id=${post.id}&incr=1`);
+    assert.equal(response.status, 400, post.id);
+  }
+  assert.equal((await fetch(`${baseUrl}/api/view?id=Not_A_Slug`)).status, 400);
+});
+
+test("serves prerendered pages without regenerating them", async () => {
+  for (const path of ["/", "/topics", publishedPostPath]) {
+    const response = await fetch(`${baseUrl}${path}`);
+    assert.match(response.headers.get("x-nextjs-prerender") ?? "", /^1\b/, path);
+    // A page with a regeneration period advertises it as a short s-maxage.
+    assert.match(response.headers.get("cache-control") ?? "", /s-maxage=31536000/, path);
+  }
 });
 
 async function getAvailablePort(): Promise<number> {

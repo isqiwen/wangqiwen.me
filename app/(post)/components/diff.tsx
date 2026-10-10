@@ -1,5 +1,3 @@
-"use client";
-
 import { buildDiffRows, buildSplitDiffRows } from "@/utils/line-diff";
 import type { DiffContentRow, DiffRow, SplitDiffRow } from "@/utils/line-diff";
 import { Highlight, themes } from "prism-react-renderer";

@@ -15,7 +15,6 @@ async function main() {
   await mkdir(destinationRoot, { recursive: true });
 
   const targets = [
-    ["app/(post)", "app/(post)"],
     ["posts/manifest.json", "posts/manifest.json"],
     ["content", "content"],
     ["public/images", "public/images"],

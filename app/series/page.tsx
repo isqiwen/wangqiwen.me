@@ -4,7 +4,6 @@ import { getPosts } from "@/app/get-posts";
 import { getSiteUrl } from "@/utils/site-config";
 import { getSeries } from "@/utils/series";
 
-export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Series",
@@ -15,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SeriesPage() {
-  const posts = await getPosts({ includeViews: false });
+  const posts = await getPosts();
   const series = getSeries(posts);
 
   return (

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { formatCount } from "@/utils/common/string-helper";
 import { uiCopy } from "@/utils/ui-copy";
 import type { Post } from "./get-posts";
+
+export type ViewCounts = Record<string, number>;
 
 type PostListHeaderProps = {
   dateControl?: ReactNode;
@@ -28,7 +31,15 @@ export function PostListHeader({
   );
 }
 
-export function PostList({ posts }: { posts: Post[] }) {
+// A count is shown once it is known. Until the counts arrive, and whenever they
+// are unavailable, the column stays blank instead of claiming zero.
+export function PostList({
+  posts,
+  views = {},
+}: {
+  posts: Post[];
+  views?: ViewCounts;
+}) {
   return (
     <ul data-post-list="chronological">
       {posts.map((post, index) => {
@@ -68,7 +79,7 @@ export function PostList({ posts }: { posts: Post[] }) {
                     className="text-xs text-gray-500 dark:text-gray-500"
                     data-post-list-views="true"
                   >
-                    {post.viewsFormatted}
+                    {views[post.id] == null ? "" : formatCount(views[post.id])}
                   </span>
                 </span>
               </span>

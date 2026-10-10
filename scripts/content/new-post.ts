@@ -1,16 +1,37 @@
 #!/usr/bin/env node
 
-const { join } = require("path");
-const { mkdir, writeFile, stat } = require("fs/promises");
-const { spawnSync } = require("child_process");
-const { normalizeTags } = require("./lib/posts");
-const { TOPICS, getUnknownTopics } = require("./lib/topics");
-const { SERIES, isKnownSeries } = require("./lib/series");
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { POSTS_ROOT } from "../../utils/server/post-files";
+import {
+  PostsValidationError,
+  syncPostsMetadata,
+} from "../../utils/server/sync-posts";
+import {
+  isIsoDate,
+  isPostSlug,
+  normalizeTags,
+} from "../../utils/shared/post-fields";
+import { formatExportedMetadata } from "../../utils/shared/post-metadata";
+import { isKnownSeries, SERIES_DEFINITIONS } from "../../utils/series";
+import { getUnknownTopics, TOPIC_DEFINITIONS } from "../../utils/topics";
 
-const POSTS_ROOT = join(process.cwd(), "app", "(post)");
+type NewPostOptions = {
+  slug?: string;
+  title?: string;
+  description?: string;
+  summary?: string;
+  date?: string;
+  updatedAt?: string;
+  tags?: string;
+  series?: string;
+  seriesOrder?: string;
+  published?: boolean;
+  help?: boolean;
+};
 
-function parseArgs(argv) {
-  const options = {};
+function parseArgs(argv: string[]): NewPostOptions {
+  const options: NewPostOptions = {};
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -69,11 +90,7 @@ function parseArgs(argv) {
   return options;
 }
 
-async function ensureDir(path) {
-  await mkdir(path, { recursive: true });
-}
-
-async function exists(path) {
+async function exists(path: string) {
   try {
     await stat(path);
     return true;
@@ -82,15 +99,18 @@ async function exists(path) {
   }
 }
 
-async function createPostFile(year, slug, metadata) {
-  const dir = join(POSTS_ROOT, year, slug);
-  await ensureDir(dir);
-  const contents = `export const metadata = ${JSON.stringify(
-    metadata,
-    null,
-    2
-  )};\n\nStart writing here.\n`;
-  await writeFile(join(dir, "article.mdx"), contents, "utf8");
+async function createPostFile(
+  year: string,
+  slug: string,
+  metadata: Record<string, unknown>
+) {
+  const directory = join(POSTS_ROOT, year, slug);
+  await mkdir(directory, { recursive: true });
+  await writeFile(
+    join(directory, "article.mdx"),
+    `${formatExportedMetadata(metadata)}Start writing here.\n`,
+    "utf8"
+  );
 }
 
 async function main() {
@@ -111,13 +131,15 @@ Options:
 
 By default, new posts are created as drafts.`);
     console.log(
-      `\nAllowed topics: ${TOPICS.map(topic => topic.name).join(", ")}`
+      `\nAllowed topics: ${TOPIC_DEFINITIONS.map(topic => topic.name).join(
+        ", "
+      )}`
     );
     return;
   }
 
   const slug = args.slug.trim();
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 100) {
+  if (!isPostSlug(slug)) {
     throw new Error(
       "Invalid slug. Use 1-100 lowercase letters, numbers, and single hyphens."
     );
@@ -127,28 +149,21 @@ By default, new posts are created as drafts.`);
   if (!title || !description) {
     throw new Error("New posts require both --title and --description.");
   }
-  if (args.date && !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
-    throw new Error("Invalid date. Use YYYY-MM-DD.");
-  }
-  const dateValue = args.date ? new Date(args.date) : new Date();
-  if (
-    Number.isNaN(dateValue.getTime()) ||
-    (args.date && dateValue.toISOString().slice(0, 10) !== args.date)
-  ) {
+  if (args.date && !isIsoDate(args.date)) {
     throw new Error("Invalid date. Use YYYY-MM-DD.");
   }
 
-  const publishedAt = dateValue.toISOString().slice(0, 10);
+  const publishedAt = args.date ?? new Date().toISOString().slice(0, 10);
   const year = publishedAt.slice(0, 4);
-  const tags = normalizeTags(args.tags);
+  const tags = normalizeTags((args.tags ?? "").split(","));
   const unknownTopics = getUnknownTopics(tags);
   if (unknownTopics.length > 0) {
     throw new Error(
       `Unknown topics: ${unknownTopics.join(", ")}. ` +
-        `Choose from: ${TOPICS.map(topic => topic.name).join(", ")}`
+        `Choose from: ${TOPIC_DEFINITIONS.map(topic => topic.name).join(", ")}`
     );
   }
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     title,
     description,
     summary: args.summary || "",
@@ -166,7 +181,7 @@ By default, new posts are created as drafts.`);
     const series = args.series.trim();
     if (!isKnownSeries(series)) {
       throw new Error(
-        `Unknown series: ${series}. Choose from: ${SERIES.map(
+        `Unknown series: ${series}. Choose from: ${SERIES_DEFINITIONS.map(
           item => item.slug
         ).join(", ")}`
       );
@@ -190,27 +205,19 @@ By default, new posts are created as drafts.`);
   await createPostFile(year, slug, metadata);
   console.log(`Created post: ${year}/${slug}`);
 
-  const sync = spawnSync(
-    process.execPath,
-    ["scripts/content/sync-posts.cjs", "--silent"],
-    {
-      stdio: "inherit",
-    }
-  );
-  if (sync.error) {
+  try {
+    await syncPostsMetadata({ normalizeSources: true });
+  } catch (error) {
     throw new Error(
-      `Post metadata sync could not start: ${sync.error.message}`
-    );
-  }
-  if (sync.status !== 0) {
-    throw new Error(
-      `Post was created, but metadata sync failed with exit code ${sync.status}.`
+      `Post was created, but metadata sync failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
   }
   console.log("Post metadata synchronized and manifest updated.");
 }
 
 main().catch(error => {
-  console.error(error);
+  console.error(error instanceof PostsValidationError ? error.message : error);
   process.exitCode = 1;
 });

@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import path from "path";
+import { editorRoute, logEditorInfo } from "@/utils/server/editor-api";
 import {
   readImageMetadata,
   type SupportedImageFormat,
 } from "@/utils/server/image-metadata";
 import { assertPathInside } from "@/utils/server/path-safety";
-import { requireLocalEditor } from "@/utils/server/local-editor";
-import { logger } from "@/utils/logger";
-import { enforceEditorRateLimit, logEditorInfo } from "@/utils/server/editor-api";
+import { toAssetFolderId } from "@/utils/shared/post-fields";
 
 export const runtime = "nodejs";
 
@@ -34,22 +33,9 @@ const DETECTED_IMAGE_TYPES: Record<
 const MAX_SIZE = 15 * 1024 * 1024; // 15MB
 const MAX_PIXELS = 100_000_000;
 
-export async function POST(req: Request) {
-  const rateLimited = enforceEditorRateLimit(req, {
-    action: "upload-asset",
-    limit: 30,
-    windowMs: 60 * 1000,
-  });
-  if (rateLimited) {
-    return rateLimited;
-  }
-
-  const unavailable = requireLocalEditor();
-  if (unavailable) {
-    return unavailable;
-  }
-
-  try {
+export const POST = editorRoute(
+  { action: "upload-asset", limit: 30, failureMessage: "upload failed" },
+  async req => {
     const formData = await req.formData();
     const file = formData.get("file");
     const idInput = formData.get("id");
@@ -58,10 +44,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
     }
 
-    const safeId = normalizeId(typeof idInput === "string" ? idInput : "");
+    const safeId = toAssetFolderId(typeof idInput === "string" ? idInput : "");
 
     if (!ALLOWED_TYPES.has(file.type)) {
-      return NextResponse.json({ error: "unsupported file type" }, { status: 415 });
+      return NextResponse.json(
+        { error: "unsupported file type" },
+        { status: 415 }
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -74,18 +63,22 @@ export async function POST(req: Request) {
     try {
       dimensions = await readImageMetadata(buffer);
     } catch {
-      return NextResponse.json({ error: "invalid image data" }, { status: 415 });
+      return NextResponse.json(
+        { error: "invalid image data" },
+        { status: 415 }
+      );
     }
 
     const detected =
       dimensions.format === "svg"
         ? undefined
         : DETECTED_IMAGE_TYPES[dimensions.format];
-    const normalizedDeclaredType = file.type === "image/jpg" ? "image/jpeg" : file.type;
+    const normalizedDeclaredType =
+      file.type === "image/jpg" ? "image/jpeg" : file.type;
     if (!detected || detected.mime !== normalizedDeclaredType) {
       return NextResponse.json(
         { error: "file content does not match its declared image type" },
-        { status: 415 },
+        { status: 415 }
       );
     }
 
@@ -100,11 +93,13 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { error: "image dimensions are invalid or too large" },
-        { status: 413 },
+        { status: 413 }
       );
     }
 
-    const filename = buildFilename(detected.extension);
+    const filename = `${Date.now()}-${randomUUID().slice(0, 8)}${
+      detected.extension
+    }`;
     const targetDir = path.join(IMAGES_ROOT, safeId);
     assertPathInside(IMAGES_ROOT, targetDir);
     const targetPath = path.join(targetDir, filename);
@@ -122,20 +117,5 @@ export async function POST(req: Request) {
       width,
       height,
     });
-  } catch (error) {
-    logger.error("[api/editor/upload] failed to upload image", error);
-    return NextResponse.json({ error: "upload failed" }, { status: 500 });
   }
-}
-
-function buildFilename(ext: string) {
-  return `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
-}
-
-function normalizeId(value: string) {
-  const cleaned = value
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return cleaned || "misc";
-}
+);

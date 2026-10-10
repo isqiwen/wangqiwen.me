@@ -18,17 +18,23 @@ VPS deployment internals:
 | `vps/provision.sh`       | No            | Remote orchestrator used by `vps/deploy.sh`; installs runtime packages when requested, installs the release, and safely configures this app's Caddy hosts when requested. |
 | `vps/install-runtime.sh` | No            | Install Node.js, pnpm, and the `nextjs` service user on Ubuntu; installs Caddy if it is absent and otherwise leaves it unchanged.              |
 | `vps/install-release.sh` | No            | Install one prebuilt artifact under the configured service directory, write systemd, restart the app, check health, and rollback on failure.      |
+| `vps/check-node-major.sh` | No           | Fail unless a Node.js binary has the expected major; used after installing the runtime and before installing a release.                         |
 | `vps/configure-caddy.sh` | No            | Add missing app Caddy blocks or replace a confirmed conflicting standalone block; it never removes unrelated sites or snippets.                    |
 
 Content maintenance:
 
 | Script                   | Run directly?                          | Purpose                                                             |
 | ------------------------ | -------------------------------------- | ------------------------------------------------------------------- |
-| `content/new-post.cjs`   | Prefer `pnpm new:post`                 | Create a draft post and sync metadata.                              |
-| `content/sync-posts.cjs` | Prefer `pnpm sync:posts`               | Normalize post metadata and rebuild `posts/manifest.json`.          |
-| `content/lint-posts.cjs` | Prefer `pnpm lint:posts`               | Validate post metadata.                                             |
+| `content/new-post.ts`    | Use `pnpm new:post`                    | Create a draft post and sync metadata.                              |
+| `content/sync-posts.ts`  | Use `pnpm sync:posts`                  | Normalize post metadata and rebuild `posts/manifest.json`.          |
+| `content/lint-posts.ts`  | Use `pnpm lint:posts`                  | Validate post metadata.                                             |
 | `content/backup.cjs`     | Prefer `pnpm backup:content`           | Back up posts, images, manifest, content catalogs, and site config. |
 | `content/reset.cjs`      | Prefer `pnpm reset:content -- --force` | Reset content after taking a backup.                                |
+
+The three TypeScript content scripts run through `tsx` and are thin wrappers:
+parsing, validation and synchronization live in `utils/shared/post-metadata.ts`,
+`utils/server/post-files.ts` and `utils/server/sync-posts.ts`, the same code the
+local editor runs when it saves. Change a rule there, not in a script.
 
 Day-to-day deployment should use only:
 

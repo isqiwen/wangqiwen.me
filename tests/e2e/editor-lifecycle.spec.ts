@@ -9,8 +9,8 @@ const execFileAsync = promisify(execFile);
 const root = process.cwd();
 const postId = `editor-e2e-${randomUUID().slice(0, 8)}`;
 const publishedAt = "2090-01-01";
-const postPath = `app/(post)/2090/${postId}/article.mdx`;
-const postDirectory = join(root, "app", "(post)", "2090", postId);
+const postPath = `content/posts/2090/${postId}/article.mdx`;
+const postDirectory = join(root, "content", "posts", "2090", postId);
 const articleBody = "## Introduction\n\nThis post exists only while the browser test runs.\n\n### Detail\n\nThe outline includes this section.\n";
 
 test.beforeEach(async ({ page }) => {
@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(async () => {
   await rm(postDirectory, { force: true, recursive: true });
-  await execFileAsync(process.execPath, ["scripts/content/sync-posts.cjs", "--silent"], { cwd: root });
+  await execFileAsync("pnpm", ["sync:posts", "--", "--silent"], { cwd: root });
 });
 
 // Independent UI journeys should not share one 30-second test budget.
@@ -77,6 +77,23 @@ test("edits, validates, formats and compares a draft", async ({ page }) => {
   await expect(changes.locator("pre")).toContainText("Browser editor lifecycle");
   await changes.getByRole("button", { name: "Close" }).click();
   await saveFromEditor(page, "Save Draft");
+});
+
+test("formatting settles the selection before another input can arrive", async ({ page }) => {
+  await createDraft(page);
+  const editor = page.getByLabel("Body (MDX)");
+  await editor.fill("selected text");
+  // Read back after React commits but before any animation frame can run. A
+  // selection restored on a later frame can be overtaken by the next input,
+  // which then replaces the wrong range.
+  const settled = await editor.evaluate(async (element: HTMLTextAreaElement) => {
+    element.focus();
+    element.select();
+    element.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true, bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    return { value: element.value, start: element.selectionStart, end: element.selectionEnd };
+  });
+  expect(settled).toEqual({ value: "**selected text**", start: 2, end: 15 });
 });
 
 test("publishes, archives, restores and deletes a saved article", async ({ page }) => {

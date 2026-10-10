@@ -1,11 +1,10 @@
-export const revalidate = 60;
-export const dynamic = "force-dynamic";
+// Rendered once at build time: nothing in it changes between deployments.
+export const dynamic = "force-static";
 
 import { ImageResponse } from "next/og";
 import { getPosts } from "@/app/get-posts";
 import { readFileSync } from "fs";
 import { join } from "path";
-import commaNumber from "comma-number";
 import {
   getAuthorName,
   getProfileHighlights,
@@ -30,7 +29,6 @@ const robotoMono400 = readFileSync(
 
 export async function GET() {
   const posts = await getPosts();
-  const viewsSum = posts.reduce((sum, post) => sum + post.views, 0);
   const portrait = await loadPortrait();
   const authorName = getAuthorName();
   const highlights = getProfileHighlights();
@@ -79,7 +77,7 @@ export async function GET() {
           tw="flex w-full justify-center text-2xl text-gray-500"
           style={font("Roboto Mono 400")}
         >
-          {posts.length} posts / {commaNumber(viewsSum)} views
+          {posts.length} posts
         </footer>
       </div>
     ),
@@ -108,11 +106,17 @@ function font(fontFamily: string) {
   return { fontFamily };
 }
 
-function toArrayBuffer(buffer) {
+// The renderer recognises raster images from their bytes. It cannot do that
+// for SVG, which has to arrive as a data URL instead.
+function toImageSource(buffer: Buffer, isSvg: boolean): string | ArrayBuffer {
+  if (isSvg) {
+    return `data:image/svg+xml;base64,${buffer.toString("base64")}`;
+  }
+
   return buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength
-  );
+  ) as ArrayBuffer;
 }
 
 async function loadPortrait() {
@@ -128,12 +132,18 @@ async function loadPortrait() {
     if (!res.ok) {
       return null;
     }
-    return await res.arrayBuffer();
+    return toImageSource(
+      Buffer.from(await res.arrayBuffer()),
+      (res.headers.get("content-type") ?? "").includes("image/svg")
+    );
   }
 
   try {
-    return toArrayBuffer(
-      readFileSync(join(process.cwd(), "public", getPublicAssetPath(portraitPath)))
+    return toImageSource(
+      readFileSync(
+        join(process.cwd(), "public", getPublicAssetPath(portraitPath))
+      ),
+      portraitPath.toLowerCase().endsWith(".svg")
     );
   } catch {
     return null;

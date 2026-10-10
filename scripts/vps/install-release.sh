@@ -19,6 +19,9 @@ HEALTHCHECK_URL="${HEALTHCHECK_URL:-http://${APP_HOST}:${APP_PORT}/api/health}"
 HEALTHCHECK_ATTEMPTS="${HEALTHCHECK_ATTEMPTS:-30}"
 HEALTHCHECK_DELAY_SECONDS="${HEALTHCHECK_DELAY_SECONDS:-2}"
 ARTIFACT_TARBALL="${ARTIFACT_TARBALL:-${1:-}}"
+NODE_BIN="${NODE_BIN:-/usr/bin/node}"
+SKIP_NODE_VERSION_CHECK="${SKIP_NODE_VERSION_CHECK:-0}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGE_DIR=""
 ROLLBACK_DIR=""
 
@@ -178,6 +181,40 @@ validate_artifact_entries() {
   fi
 }
 
+# Runs against the staged release, before the current one is replaced, so a
+# runtime mismatch never costs a restart or a rollback.
+assert_node_runtime() {
+  local meta_file="${STAGE_DIR}/DEPLOY_ARTIFACT_META.txt"
+  local built_major
+
+  if [[ "${SKIP_NODE_VERSION_CHECK}" == "1" ]]; then
+    echo "==> Skipping Node.js runtime check"
+    return 0
+  fi
+
+  built_major="$(
+    as_root sed -n 's/^node_version=v\([0-9][0-9]*\)\..*$/\1/p' "${meta_file}" 2>/dev/null |
+      head -n 1 || true
+  )"
+  if [[ -z "${built_major}" ]]; then
+    echo "Warning: the artifact does not record its Node.js version; skipping the runtime check." >&2
+    return 0
+  fi
+
+  if ! bash "${SCRIPT_DIR}/check-node-major.sh" "${built_major}" "${NODE_BIN}"; then
+    cat >&2 <<EOF
+The artifact was built with Node.js ${built_major}. Upgrade the VPS runtime before
+releasing it (see docs/release-safety.md):
+
+  RUN_INSTALL=1 INSTALL_CADDY=0 RUN_SITE_CONFIG=0 pnpm deploy:vps
+
+Set SKIP_NODE_VERSION_CHECK=1 only to release onto another major on purpose.
+The current release was left untouched.
+EOF
+    return 1
+  fi
+}
+
 rollback_artifact() {
   echo "==> Deployment failed; restoring the previous release" >&2
   as_root systemctl stop "${SYSTEMD_SERVICE_NAME}.service" || true
@@ -235,6 +272,8 @@ deploy_artifact() {
     exit 1
   fi
 
+  assert_node_runtime || exit 1
+
   if as_root test -d "${APP_DIR}"; then
     preserve_env_files "${APP_DIR}" "${STAGE_DIR}"
   fi
@@ -249,7 +288,7 @@ deploy_artifact() {
   trap - EXIT
 
   if ! as_root chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}" ||
-    ! write_systemd_unit "/usr/bin/node ${APP_DIR}/server.js" ||
+    ! write_systemd_unit "${NODE_BIN} ${APP_DIR}/server.js" ||
     ! restart_service ||
     ! wait_for_health; then
     rollback_artifact || true

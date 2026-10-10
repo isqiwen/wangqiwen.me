@@ -112,7 +112,7 @@ jobs:
           const fs = require('node:fs');
           for (const status of ['draft', 'archived']) {
             const id = `ci-${status}-boundary`;
-            const directory = `app/(post)/2099/${id}`;
+            const directory = `content/posts/2099/${id}`;
             if (fs.existsSync(directory)) throw new Error(`Fixture path already exists: ${directory}`);
             fs.mkdirSync(directory, { recursive: true });
             const metadata = { id, title: `Private ${status} fixture`, description: 'Must never appear in the public artifact.', publishedAt: '2099-01-01', status, tags: [] };

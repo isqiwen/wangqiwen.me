@@ -3,6 +3,9 @@
 const { spawnSync } = require("child_process");
 const { join } = require("path");
 
+// The content scripts are TypeScript and share their rules with the app.
+const TSX_CLI = require.resolve("tsx/cli");
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: "inherit", ...options });
 
@@ -20,12 +23,13 @@ async function main() {
   let buildError = null;
 
   try {
-    run(process.execPath, ["scripts/content/lint-posts.cjs"]);
+    run(process.execPath, [TSX_CLI, "scripts/content/lint-posts.ts"]);
 
     // The registry is a static set of MDX imports. Restrict it before Next
     // compiles so draft and archived articles do not become public routes.
     run(process.execPath, [
-      "scripts/content/sync-posts.cjs",
+      TSX_CLI,
+      "scripts/content/sync-posts.ts",
       "--published-only",
       "--silent",
     ]);
@@ -49,7 +53,11 @@ async function main() {
     if (publishOnlyMetadataWritten) {
       try {
         // Keep the working tree ready for local draft editing after the build.
-        run(process.execPath, ["scripts/content/sync-posts.cjs", "--silent"]);
+        run(process.execPath, [
+          TSX_CLI,
+          "scripts/content/sync-posts.ts",
+          "--silent",
+        ]);
       } catch (error) {
         if (!buildError) {
           buildError = error;

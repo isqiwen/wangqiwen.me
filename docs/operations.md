@@ -86,10 +86,23 @@ Configure an external uptime monitor to make a public HTTPS `GET` request to:
 https://wangqiwen.me/api/health
 ```
 
-Use a five-minute interval and a ten-second timeout. It should expect HTTP `200`
-and a JSON body with `status: "ok"`. A `503` response means a required runtime
-dependency, such as Redis, is unavailable. Keep the monitor outside the VPS so it
-can also detect DNS, TLS, proxy, and network failures.
+Use a five-minute interval and a ten-second timeout. It should expect HTTP `200`.
+Keep the monitor outside the VPS so it can also detect DNS, TLS, proxy, and
+network failures.
+
+The endpoint answers `200` whenever the application can serve pages. The body
+reports the one optional dependency, the view-count store:
+
+| `status`   | `views`       | Meaning                                                              |
+| ---------- | ------------- | -------------------------------------------------------------------- |
+| `ok`       | `ok`          | Everything works.                                                    |
+| `ok`       | `disabled`    | No Redis credentials are set. Pages are served without view counts.  |
+| `degraded` | `unavailable` | Redis is configured but did not answer within two seconds.           |
+
+Pages never wait for Redis, so a `degraded` site still serves every page; only
+the view counts are missing. A deployment is therefore not rolled back because
+Redis is slow. To be alerted about Redis itself, add a keyword monitor for
+`"status":"ok"`.
 
 ### UptimeRobot Setup
 
@@ -151,18 +164,25 @@ When values change, upload `.env.production` explicitly:
 UPLOAD_ENV=1 pnpm deploy:vps
 ```
 
-Required in production:
+All values are optional. Without the first two the site runs without view counts:
 
 ```text
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
-```
-
-Optional:
-
-```text
 GEO_IP_API_KEY=
 ```
+
+## How Pages Are Served
+
+Every page, feed and sharing image is rendered once, when the artifact is
+built. Content changes only with a deployment, so nothing is regenerated on the
+server and no page waits for Redis. The browser asks `/api/view` and
+`/api/posts/views` for the counts after the page has loaded.
+
+Because of that, pages are sent with `Cache-Control: s-maxage=31536000`. Caddy
+does not cache, so a new release is visible immediately. If a CDN or another
+shared cache is ever placed in front of the site, purge its HTML on every
+deployment; otherwise it may keep serving the previous release.
 
 ## Deploy Safety
 
@@ -188,7 +208,7 @@ pnpm backup:content
 
 The backup includes:
 
-- `app/(post)`
+- `content` (articles in `content/posts`, plus the series and topic catalogs)
 - `posts/manifest.json`
 - `public/images`
 - `site.config.js`
